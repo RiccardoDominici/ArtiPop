@@ -10,7 +10,7 @@ Tired of waking up to the same wallpaper every day? ArtiPop does the creative he
 Sound good? Let's set it up in under five minutes.
 
 ## Step 1: Grab the Shortcut
-1. On your iPhone, tap this link: [Download the ArtiPop Daily Wallpaper shortcut](https://www.icloud.com/shortcuts/d9b45db329b94088ab198a8b0a5ae6a7)
+1. On your iPhone, tap this link: [Download the ArtiPop Daily Wallpaper shortcut](https://www.icloud.com/shortcuts/e8626d2d5345440b835a958bff294baa)
 
 The shortcut now lives in your Shortcuts library, ready to run.
 
