@@ -12,7 +12,7 @@ Sound good? Let's set it up in under five minutes.
 ## Step 1: Grab the Shortcut
 1. On your iPhone, tap this link: [Download the ArtiPop Daily Wallpaper shortcut](https://www.icloud.com/shortcuts/e8626d2d5345440b835a958bff294baa)
 2. Tap the **three dots** in the top-right corner:  
-   ![a](/<for devs/img2.jpg>)
+   ![a](<for devs/img2.jpg>)
 3. Tap **"wallpaper 5"** and select your **current wallpaper**.  
    ![a](</for devs/img1.jpg>)
    
