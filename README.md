@@ -1,6 +1,6 @@
 # Daily Wallpaper Magic (No App Required)
 
-Tired of waking up to the same wallpaper every day? ArtiPop does the creative heavy lifting for you. All you have to do is tap a link, add one shortcut, and let your iPhone refresh your background at sunset, every single day. Zero apps to install, zero effort, maximum vibe.
+Tired of waking up to the same wallpaper every day? ArtiPop does the creative heavy lifting for you. All you have to do is tap a link, add one shortcut, and let your iPhone refresh your background at sunrise, every single day. Zero apps to install, zero effort, maximum vibe.
 
 ## How It Works
 - ArtiPop generates a brand-new, high-quality background every day.
