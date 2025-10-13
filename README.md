@@ -14,10 +14,10 @@ Sound good? Let's set it up in under five minutes.
 
 The shortcut now lives in your Shortcuts library, ready to run.
 
-## Step 2: Automate the Sunset Magic
+## Step 2: Automate the Sunrise Magic
 1. Open the Shortcuts app and tap the **Automation** tab.
 2. Tap the **+** button .
-3. Select **Time of Day**, switch it to **Sunset**, Tap **Run Immediately** and make sure it runs **Daily**. Tap **Next**.
+3. Select **Time of Day**, switch it to **Sunrise**, Tap **Run Immediately** and make sure it runs **Daily**. Tap **Next**.
 5. Choose **ArtiPop** (or the name you gave it).
 6. Disable **Ask Before Running** and confirm with **Don't Ask**.
 7. Tap **Done**.
@@ -56,9 +56,9 @@ Set it up once. Then forget it. Your screen stays fresh forever.
    [Download the ArtiPop Daily Wallpaper Shortcut](https://www.icloud.com/shortcuts/d9b45db329b94088ab198a8b0a5ae6a7)
 2. It’ll instantly appear in your **Shortcuts** app, ready to go.
 
-## 🌇 Step 2: Automate the Sunset Magic
+## 🌇 Step 2: Automate the Sunrise Magic
 1. Open the **Shortcuts** app → **Automation** tab.  
-2. Tap **+**, then select **Time of Day** → switch it to **Sunset**.  
+2. Tap **+**, then select **Time of Day** → switch it to **Sunrise**.  
 3. Enable **Run Immediately**, make it run **Daily**, then tap **Next**.  
 4. Choose **ArtiPop** (or whatever name you gave it).  
 5. Turn off **Ask Before Running**, confirm with **Don’t Ask**.  
@@ -66,8 +66,9 @@ Set it up once. Then forget it. Your screen stays fresh forever.
 
 🎉 Done! Every evening, your iPhone will pull the newest ArtiPop wallpaper and set it automatically. You chill — ArtiPop does the rest.
 
-## 🎨 Prefer mornings?Just change the trigger time.  
-- Want to refresh anytime? Tap the shortcut manually for an instant new look.
+## 🎨 Prefer later?
+- Just change the trigger time.  
+
 
 ## 💡 FAQ
 
