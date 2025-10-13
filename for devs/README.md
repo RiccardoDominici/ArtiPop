@@ -16,17 +16,10 @@ ArtiPop v3 generates high-quality images with Stability AI's Stable Diffusion 3.
 - Dependencies listed in `requirements.txt` (install via `pip install -r requirements.txt`).
 
 ## Setup
-1. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv sd3-env
-   source sd3-env/bin/activate
-   pip install --upgrade pip
-   ```
-2. Install project dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Copy `secret_example.env` to `secrets.env` (or another `.env` file) and populate the required values:
+1. Make sure you have an active AWS account with Management Console access.
+2. Create an EC2 instance and an S3 bucket that will be used for execution and storage respectively.
+   Refer to the `configuration_steps` file for a step-by-step guide to configuring the EC2 instance.
+3. Copy `secret_example.env` to `secrets.env` (or another `.env` file) and fill in the required fields:
    ```env
    AWS_ACCESS_KEY_ID=...
    AWS_SECRET_ACCESS_KEY=...
@@ -34,9 +27,7 @@ ArtiPop v3 generates high-quality images with Stability AI's Stable Diffusion 3.
    S3_BUCKET=your-bucket-name
    REPLICATE_API_TOKEN=...
    ```
-4. (Optional) Place additional overrides in `.env`; the automation script will load both files in order.
-
-> **Tip:** The application soft-loads environment files and never overwrites variables that are already exported, allowing secure multi-stage configuration.
+   Replace the placeholders (`...`) with your AWS credentials, bucket name, and Replicate token.
 
 ## Running the Generator
 From an activated virtual environment, run:
