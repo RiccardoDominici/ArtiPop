@@ -54,7 +54,12 @@ Set it up once. Then forget it. Your screen stays fresh forever.
 ## ⚡️ Step 1: Get the Shortcut (Free)
 1. On your iPhone, tap this link:  
    [Download the ArtiPop Daily Wallpaper Shortcut](https://www.icloud.com/shortcuts/d9b45db329b94088ab198a8b0a5ae6a7)
-2. It’ll instantly appear in your **Shortcuts** app, ready to go.
+2. Tap the **three dots** in the top-right corner:  
+   ![Tap the three dots]("for devs/img2.jpg")
+
+3. Tap **"wallpaper 5"** and select your **current wallpaper**.  
+   ![Select your current wallpaper]("for devs/img1.jpg")
+4. It’ll instantly appear in your **Shortcuts** app, ready to go.
 
 ## 🌇 Step 2: Automate the Sunrise Magic
 1. Open the **Shortcuts** app → **Automation** tab.  
