@@ -11,12 +11,16 @@ Sound good? Let's set it up in under five minutes.
 
 ## Step 1: Grab the Shortcut
 1. On your iPhone, tap this link: [Download the ArtiPop Daily Wallpaper shortcut](https://www.icloud.com/shortcuts/e8626d2d5345440b835a958bff294baa)
-
+2. Tap the **three dots** in the top-right corner:  
+   ![]("for devs/img2.jpg")
+3. Tap **"wallpaper 5"** and select your **current wallpaper**.  
+   ![]("for devs/img1.jpg")
+   
 The shortcut now lives in your Shortcuts library, ready to run.
 
 ## Step 2: Automate the Sunrise Magic
 1. Open the Shortcuts app and tap the **Automation** tab.
-2. Tap the **+** button .
+2. Tap the **+** button.
 3. Select **Time of Day**, switch it to **Sunrise**, Tap **Run Immediately** and make sure it runs **Daily**. Tap **Next**.
 5. Choose **ArtiPop** (or the name you gave it).
 6. Disable **Ask Before Running** and confirm with **Don't Ask**.
