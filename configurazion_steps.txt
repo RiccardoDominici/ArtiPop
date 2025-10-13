@@ -1,0 +1,107 @@
+# Create project folder
+mkdir artipop_project
+cd artipop_project
+
+# Check Python version (3.9+)
+python3 --version
+
+# Update system packages
+sudo apt update
+sudo apt upgrade -y
+
+# Create virtual environment
+python3 -m venv sd3-env
+
+source sd3-env/bin/activate  # Linux/Mac
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Create project file, save with Ctrl+O, exit with Ctrl+X
+# Create configuration file and paste the sensitive data
+nano secrets.env
+
+# Create script for daily generation
+nano daily_generation.sh
+
+# Create requirements.txt
+nano requirements.txt
+
+# Create main.py
+nano main.py
+
+# Then install the dependencies
+pip install -r requirements.txt
+
+# Create the bucket (use a unique name) if not already done
+#aws s3 mb s3://artipop-storage --region eu-central-1
+
+# Verify creation
+aws s3 ls
+
+# Check permissions
+aws s3 ls s3://artipop-storage
+
+# Apply policy for public read access
+#aws s3api put-bucket-policy --bucket artipop-storage --policy '{
+#  "Version": "2012-10-17",
+#  "Statement": [{
+#    "Sid": "PublicReadGetObject",
+#    "Effect": "Allow",
+#    "Principal": "*",
+#    "Action": "s3:GetObject",
+#    "Resource": "arn:aws:s3:::artipop-storage/*"
+#  }]
+#}'
+
+# Create directory for logs
+mkdir -p logs
+
+# Verify structure
+ls -la
+# You should see: main.py, daily_generation.sh, secrets.env, logs/, sd3-env/
+
+
+# Quick test (1 step for speed)
+python3 main.py \
+  --bucket artipop-storage \
+  --prompt "a beautiful sunset over mountains" \
+  --steps 1 \
+  --public
+
+# If everything is OK, you will see:
+# IMAGE GENERATED AND UPLOADED SUCCESSFULLY
+# Public URL: https://...
+
+
+
+# Make the script executable
+chmod +x daily_generation.sh
+
+# Full script test
+./daily_generation.sh
+
+# Check logs
+tail -f logs/sd3_*.log
+
+# Get the current path
+pwd
+# IMPORTANT: Replace /home/ubuntu/ with your actual path
+
+# Edit crontab; if it asks for an editor, choose nano (easiest)
+crontab -e
+
+
+# Every 24 hours
+0 */24 * * * /home/ubuntu/artipop_project/daily_generation.sh >> /home/ubuntu/artipop_project/logs/cron.log 2>&1
+
+# List active jobs
+crontab -l
+
+# Check that cron is active
+sudo systemctl status cron
+
+# Close Instance Connect
+exit
+
+
