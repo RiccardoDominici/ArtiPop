@@ -22,8 +22,8 @@ The shortcut now lives in your Shortcuts library, ready to run.
 1. Open the Shortcuts app and tap the **Automation** tab.
 2. Tap the **+** button.
 3. Select **Time of Day**, switch it to **Sunrise**, Tap **Run Immediately** and make sure it runs **Daily**. Tap **Next**.
-5. Choose **ArtiPop** (or the name you gave it).
-6. 6.Tap **Done**.
+4. Choose **ArtiPop** (or the name you gave it).
+5. Tap **Done**.
 
 That's it. Every evening your iPhone will fetch the newest ArtiPop wallpaper and set it automatically. You enjoy a fresh backdrop; we handle the rest.
 
