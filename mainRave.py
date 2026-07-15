@@ -1,3 +1,17 @@
+'''
+A visually balanced [tipo di sfondo] background with a neutral, cohesive base scene: [descrizione della base — es. gradient texture, soft landscape, abstract geometry].
+Add up to seven independent and removable elements, each designed so the composition remains complete even if one or more are missing:
+	1.	[Elemento 1]
+	2.	[Elemento 2]
+	3.	[Elemento 3]
+	4.	[Elemento 4]
+	5.	[Elemento 5]
+	6.	[Elemento 6]
+	7.	[Elemento 7].
+Each element should occupy a distinct area of the image, with soft transitions and no dependency on other elements.
+The overall style should remain harmonious, minimal, and high-resolution, suitable as a standalone wallpaper at any level of element inclusion.
+'''
+
 #!/usr/bin/env python3
 import os
 os.environ.setdefault("HF_HOME", "/opt/hf-cache")
@@ -51,7 +65,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-MODEL_ID = "stability-ai/stable-diffusion-3.5-large"
+MODEL_ID_GENERATION = "stability-ai/stable-diffusion-3.5-large"
+MODEL_ID_EDIT = "reve/edit"
+
+
 
 # iPhone wallpaper defaults (approx 6:13 ~ 19.5:9 portrait)
 IPHONE_WALLPAPER_WIDTH = 1536
@@ -121,7 +138,7 @@ def generate_image_with_replicate(
         f"Generating with cfg={guidance}, aspect_ratio={inputs.get('aspect_ratio','1:1')} (requested {raw_ar})"
     )
     try:
-        out = client.run(MODEL_ID, input=inputs)
+        out = client.run(MODEL_ID_GENERATION, input=inputs)
 
         # normalize: it can be a FileOutput or URL string
         fo = out[0] if isinstance(out, list) else out
@@ -142,6 +159,48 @@ def generate_image_with_replicate(
         elif "401" in msg or "unauthorized" in msg.lower():
             raise ValueError("Invalid Replicate token (REPLICATE_API_TOKEN).")
         raise
+
+def edit_image_with_replicate(
+    prompt: str,
+    image: str
+) -> Image.Image:
+    token = get_replicate_token()
+    client = replicate.Client(api_token=token)
+
+
+    inputs = {
+        "prompt": prompt,
+        "image": image,
+    }
+
+
+    logger.info(
+        f"Generating edited image with prompt: {prompt}"
+    )
+
+    try:
+        out = client.run(MODEL_ID_EDIT, input=inputs)
+
+        # normalize: it can be a FileOutput or URL string
+        fo = out[0] if isinstance(out, list) else out
+        if hasattr(fo, "read"):
+            data = fo.read()
+        elif isinstance(fo, str):
+            import requests
+            r = requests.get(fo); r.raise_for_status()
+            data = r.content
+        else:
+            raise RuntimeError(f"Unexpected output type: {type(fo)}")
+
+        return Image.open(io.BytesIO(data))
+    except Exception as e:
+        msg = str(e)
+        if "404" in msg:
+            logger.error("Model slug not found: use 'rave/edit'")
+        elif "401" in msg or "unauthorized" in msg.lower():
+            raise ValueError("Invalid Replicate token (REPLICATE_API_TOKEN).")
+        raise
+
 
 def create_filename_with_date(prefix: str = "sd3") -> str:
     """

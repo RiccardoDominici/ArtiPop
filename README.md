@@ -1,6 +1,6 @@
 # Daily Wallpaper Magic (No App Required)
 
-Tired of waking up to the same wallpaper every day? ArtiPop does the creative heavy lifting for you. All you have to do is tap a link, add one shortcut, and let your iPhone refresh your background at sunrise, every single day. Zero apps to install, zero effort, maximum vibe.
+Tired of waking up to the same wallpaper every day? ArtiPop does the creative heavy lifting for you. All you have to do is tap a link, add one shortcut, and let your iPhone refresh your background at sunset, every single day. Zero apps to install, zero effort, maximum vibe.
 
 ## How It Works
 - ArtiPop generates a brand-new, high-quality background every day.
@@ -10,20 +10,17 @@ Tired of waking up to the same wallpaper every day? ArtiPop does the creative he
 Sound good? Let's set it up in under five minutes.
 
 ## Step 1: Grab the Shortcut
-1. On your iPhone, tap this link: [Download the ArtiPop Daily Wallpaper shortcut](https://www.icloud.com/shortcuts/85b9ffabbf9b49eb8d7f35657f86b6fc)
-2. Tap the **three dots** in the top-right corner:  
-   ![](<for devs/img2.jpg>)
-3. Tap **"wallpaper 5"** and select your **current wallpaper**.  
-   ![](</for devs/img1.jpg>)
-   
+1. On your iPhone, tap this link: [Download the ArtiPop Daily Wallpaper shortcut](https://www.icloud.com/shortcuts/d9b45db329b94088ab198a8b0a5ae6a7)
+
 The shortcut now lives in your Shortcuts library, ready to run.
 
-## Step 2: Automate the Sunrise Magic
+## Step 2: Automate the Sunset Magic
 1. Open the Shortcuts app and tap the **Automation** tab.
-2. Tap the **+** button.
-3. Select **Time of Day**, switch it to **Sunrise**, Tap **Run Immediately** and make sure it runs **Daily**. Tap **Next**.
-4. Choose **ArtiPop** (or the name you gave it).
-5. Tap **Done**.
+2. Tap the **+** button .
+3. Select **Time of Day**, switch it to **Sunset**, Tap **Run Immediately** and make sure it runs **Daily**. Tap **Next**.
+5. Choose **ArtiPop** (or the name you gave it).
+6. Disable **Ask Before Running** and confirm with **Don't Ask**.
+7. Tap **Done**.
 
 That's it. Every evening your iPhone will fetch the newest ArtiPop wallpaper and set it automatically. You enjoy a fresh backdrop; we handle the rest.
 
@@ -57,16 +54,11 @@ Set it up once. Then forget it. Your screen stays fresh forever.
 ## ⚡️ Step 1: Get the Shortcut (Free)
 1. On your iPhone, tap this link:  
    [Download the ArtiPop Daily Wallpaper Shortcut](https://www.icloud.com/shortcuts/d9b45db329b94088ab198a8b0a5ae6a7)
-2. Tap the **three dots** in the top-right corner:  
-   ![Tap the three dots]("for devs"/img2.jpg)
+2. It’ll instantly appear in your **Shortcuts** app, ready to go.
 
-3. Tap **"wallpaper 5"** and select your **current wallpaper**.  
-   ![Select your current wallpaper]("for devs"/img1.jpg)
-4. It’ll instantly appear in your **Shortcuts** app, ready to go.
-
-## 🌇 Step 2: Automate the Sunrise Magic
+## 🌇 Step 2: Automate the Sunset Magic
 1. Open the **Shortcuts** app → **Automation** tab.  
-2. Tap **+**, then select **Time of Day** → switch it to **Sunrise**.  
+2. Tap **+**, then select **Time of Day** → switch it to **Sunset**.  
 3. Enable **Run Immediately**, make it run **Daily**, then tap **Next**.  
 4. Choose **ArtiPop** (or whatever name you gave it).  
 5. Turn off **Ask Before Running**, confirm with **Don’t Ask**.  
@@ -74,9 +66,8 @@ Set it up once. Then forget it. Your screen stays fresh forever.
 
 🎉 Done! Every evening, your iPhone will pull the newest ArtiPop wallpaper and set it automatically. You chill — ArtiPop does the rest.
 
-## 🎨 Prefer later?
-- Just change the trigger time.  
-
+## 🎨 Prefer mornings?Just change the trigger time.  
+- Want to refresh anytime? Tap the shortcut manually for an instant new look.
 
 ## 💡 FAQ
 
@@ -94,3 +85,4 @@ Sure — just tap it inside Shortcuts anytime you want a refresh.
 ✨ Ready for your daily wallpaper glow-up?  
 Tap the link, set it once, and let ArtiPop surprise you every sunset.  
 **Zero apps. Zero effort. Maximum vibe.**
+
