@@ -30,8 +30,10 @@ export async function putState(env, channelId, state) {
 /**
  * Salva l'immagine del giorno: aggiorna `latest`, scrive la copia PERMANENTE
  * nell'archivio per data e i metadati per la pagina.
+ * `archiveOnly`: usato dal backfill per i giorni intermedi (latest e meta
+ * interessano solo per l'ultimo giorno; si risparmiano subrequest, cap free 50).
  */
-export async function putImage(env, channelId, img, info) {
+export async function putImage(env, channelId, img, info, { archiveOnly = false } = {}) {
   const kvMeta = {
     contentType: img.contentType,
     date: info.date,
@@ -40,8 +42,10 @@ export async function putImage(env, channelId, img, info) {
     height: img.height,
   };
 
-  await env.KV.put(latestKey(channelId), img.bytes, { metadata: kvMeta });
   await env.KV.put(archiveKey(channelId, info.date), img.bytes, { metadata: kvMeta });
+  if (archiveOnly) return;
+
+  await env.KV.put(latestKey(channelId), img.bytes, { metadata: kvMeta });
   await env.KV.put(
     metaKey(channelId),
     JSON.stringify({

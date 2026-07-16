@@ -28,5 +28,9 @@
   "triggers": { "crons": ["0 3 * * *"] },
 
   // Log e metriche visibili nella dashboard Cloudflare.
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // Origine pubblica del worker: serve al cron (che non ha una request) per
+  // costruire gli URL d'archivio da passare al resizer esterno.
+  "vars": { "PUBLIC_ORIGIN": "https://artipop.riccardo-dominici.workers.dev" }
 }

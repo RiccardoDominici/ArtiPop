@@ -37,6 +37,20 @@ export const CONFIG = {
   // (nuovo tema dentro l'identità del canale, nuovo seed) per restare sempre fresco.
   ARC_LENGTH_DAYS: 12,
 
+  // --- Continuità visiva (image-conditioned generation) ---
+  // Ogni giorno l'immagine di IERI entra come riferimento (input_image_0) nella
+  // generazione di oggi: FLUX.2 klein mantiene composizione e palette e applica
+  // solo il cambiamento descritto. Il giorno 1 di ogni arco è invece una
+  // generazione pulita (keyframe): le catene di editing restano corte (max 11
+  // passaggi) e la degradazione iterativa non si accumula mai oltre l'arco.
+  //
+  // klein accetta input < 512x512: ridimensioniamo l'immagine d'archivio con il
+  // resizer gratuito images.weserv.nl (il Worker free non può decodificare
+  // immagini in 10ms di CPU). Se il resizer non risponde si torna a txt2img.
+  REF_RESIZER: "https://images.weserv.nl/?url=",
+  REF_WIDTH: 236,   // ~stesso ratio 6:13 dell'output, entrambi i lati < 512
+  REF_HEIGHT: 504,
+
   // Suffisso di composizione aggiunto a ogni prompt: tiene il soggetto centrato,
   // lascia pulita la fascia alta per l'orologio della lock screen, evita testo/watermark.
   WALLPAPER_SUFFIX:

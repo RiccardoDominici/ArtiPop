@@ -165,6 +165,8 @@ export async function evolveStory(env, channel, prevState, dateKey) {
   const dayNumber = dayNumberOf(dateKey);
 
   // Primo giorno in assoluto del canale: si parte dalla firstScene.
+  // Questo giorno è il KEYFRAME dell'arco: generazione pulita, e la sua data
+  // (anchorDate) farà da àncora visiva per tutti i giorni successivi dell'arco.
   if (!prevState || !prevState.scene) {
     const arcTheme = channel.journey[0];
     return {
@@ -176,6 +178,7 @@ export async function evolveStory(env, channel, prevState, dateKey) {
       scene: channel.firstScene,
       seed: fnv1a(`${channel.id}:arc:0`),
       history: [channel.firstScene],
+      anchorDate: dateKey,
     };
   }
 
@@ -214,10 +217,34 @@ export async function evolveStory(env, channel, prevState, dateKey) {
     // Seed stabile per tutto l'arco: composizioni imparentate giorno dopo giorno.
     seed: fnv1a(`${channel.id}:arc:${arcIndex}`),
     history: [scene, ...history].slice(0, 5),
+    // Àncora visiva: il keyframe dell'arco. "Anchor, don't chain" (letteratura
+    // 2025-26 su drift iterativo): ogni giorno si edita il keyframe PULITO, non
+    // l'output di ieri, così la degradazione non si accumula mai.
+    anchorDate: isNewArc ? dateKey : (prevState.anchorDate ?? prevState.lastDate),
   };
 }
 
-/** Prompt finale per il generatore di immagini. */
+/** Prompt per generazione PULITA (keyframe: primo giorno assoluto o nuovo arco). */
 export function buildImagePrompt(channel, scene) {
   return `${scene}. Style: ${channel.style}. Colors: ${channel.palette}. ${CONFIG.WALLPAPER_SUFFIX}`;
+}
+
+/**
+ * Prompt per generazione CON RIFERIMENTO (image 0 = keyframe dell'arco).
+ * FLUX.2 è un editor guidato da istruzioni: si dichiara il delta cumulativo
+ * rispetto all'àncora ("N giorni dopo") e si chiede esplicitamente di
+ * preservare luogo, composizione e inquadratura ("change X / keep Y",
+ * pattern raccomandato dalla prompting guide di Black Forest Labs).
+ */
+export function buildEditPrompt(channel, scene, daysSinceAnchor = 1) {
+  const when =
+    daysSinceAnchor === 0 ? "at the very same moment"
+    : daysSinceAnchor <= 1 ? "one day later"
+    : `${daysSinceAnchor} days later`;
+  return (
+    `This is the exact same place as image 0, seen ${when} in its slow story: ${scene}. ` +
+    `Keep the location, composition, camera angle and framing of image 0 unchanged; ` +
+    `change only the light, weather and the small evolutions described. ` +
+    `Style: ${channel.style}. ${CONFIG.WALLPAPER_SUFFIX}`
+  );
 }

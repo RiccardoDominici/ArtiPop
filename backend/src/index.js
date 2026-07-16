@@ -11,8 +11,8 @@
 // al suo posto — la Shortcut degli utenti non si rompe mai.
 
 import { ACTIVE_CHANNELS, getChannel } from "./channels.js";
-import { evolveStory, buildImagePrompt, todayKey } from "./story.js";
-import { generateImage } from "./generate.js";
+import { evolveStory, buildImagePrompt, buildEditPrompt, todayKey } from "./story.js";
+import { generateImage, fetchReferenceImage } from "./generate.js";
 import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
 import { renderPage } from "./page.js";
 
@@ -45,11 +45,10 @@ async function runChannel(env, channelId, { force = false } = {}) {
   const state = await evolveStory(env, channel, prevState, date);
   console.log(`[run] ${channelId} ${date}: arco ${state.arcIndex} giorno ${state.dayInArc} — "${state.scene}"`);
 
-  // 2. Generazione immagine (catena di fallback interna).
-  const prompt = buildImagePrompt(channel, state.scene);
-  const img = await generateImage(env, prompt, state.seed);
+  // 2-3. Generazione con continuità "anchor, don't chain" (vedi generateDay).
+  const img = await generateDay(env, channel, channelId, state, date);
 
-  // 3. Persistenza: immagine + metadati + stato narrativo.
+  // 4. Persistenza: immagine + metadati + stato narrativo.
   await putImage(env, channelId, img, {
     date,
     scene: state.scene,
@@ -65,6 +64,7 @@ async function runChannel(env, channelId, { force = false } = {}) {
     scene: state.scene,
     arc: `${state.arcIndex}/${state.dayInArc}`,
     model: img.model,
+    continuity: img.usedReference ? "ref-ieri" : "keyframe",
     size: `${img.width}x${img.height}`,
     bytes: img.bytes.length,
   };
@@ -87,20 +87,80 @@ async function backfillChannel(env, channelId, days) {
   for (let i = days - 1; i >= 0; i--) {
     const date = todayKey(new Date(Date.now() - i * 86400000));
     state = await evolveStory(env, channel, state, date);
-    const prompt = buildImagePrompt(channel, state.scene);
-    const img = await generateImage(env, prompt, state.seed);
+
+    // Generazione con continuità "anchor, don't chain" (vedi generateDay);
+    // più tentativi sul resize: l'àncora è stata scritta pochi secondi fa.
+    const img = await generateDay(env, channel, channelId, state, date, 3);
+
+    // Giorni intermedi: solo archivio. L'ultimo giorno scrive anche latest+meta.
     await putImage(env, channelId, img, {
       date,
       scene: state.scene,
       arcTheme: state.arcTheme,
       arcIndex: state.arcIndex,
       dayInArc: state.dayInArc,
+    }, { archiveOnly: i > 0 });
+
+    console.log(`[backfill] ${channelId} ${date}: "${state.scene}" (${img.model}${img.usedReference ? ", ref" : ""})`);
+    results.push({
+      date,
+      scene: state.scene,
+      model: img.model,
+      continuity: img.usedReference ? "ref-ieri" : "keyframe",
+      size: `${img.width}x${img.height}`,
     });
-    await putState(env, channelId, state);
-    console.log(`[backfill] ${channelId} ${date}: "${state.scene}" (${img.model})`);
-    results.push({ date, scene: state.scene, model: img.model, size: `${img.width}x${img.height}` });
   }
+  await putState(env, channelId, state); // una sola scrittura di stato, alla fine
   return results;
+}
+
+
+/**
+ * Genera l'immagine di un giorno secondo la strategia "anchor, don't chain":
+ *  - giorni normali: edit del keyframe dell'arco (immagine pulita, mai catene);
+ *  - keyframe (dayInArc 0): generazione pulita seguita da un AUTO-EDIT ("stesso
+ *    luogo, stesso momento") che riallinea il keyframe alla famiglia visiva
+ *    prodotta dagli edit — senza, il giorno 0 risulterebbe visivamente diverso
+ *    dai giorni 1..N che lo usano come riferimento.
+ * `retries`: tentativi del resize esterno (di più nel backfill, dove l'àncora
+ * è stata scritta pochi secondi fa e deve propagarsi in KV).
+ */
+async function generateDay(env, channel, channelId, state, date, retries = 2) {
+  const refUrl = (d) => `${env.PUBLIC_ORIGIN}/w/${channelId}?date=${d}`;
+
+  // --- Giorno normale: edit dell'àncora dell'arco ---
+  if (state.dayInArc > 0 && state.anchorDate && state.anchorDate !== date) {
+    const refBytes = await fetchReferenceImage(env, refUrl(state.anchorDate), retries);
+    if (!refBytes) console.warn(`[gen] ${channelId}: àncora non scaricabile, genero senza`);
+    const prompt = refBytes
+      ? buildEditPrompt(channel, state.scene, state.dayInArc)
+      : buildImagePrompt(channel, state.scene);
+    return generateImage(env, prompt, state.seed, refBytes);
+  }
+
+  // --- Keyframe: generazione pulita + auto-edit di riallineamento ---
+  const clean = await generateImage(env, buildImagePrompt(channel, state.scene), state.seed);
+  // Pubblica provvisoriamente il keyframe in archivio: serve solo da sorgente
+  // per il resizer esterno (il Worker non può ridimensionare in locale).
+  await putImage(env, channelId, clean, {
+    date, scene: state.scene, arcTheme: state.arcTheme,
+    arcIndex: state.arcIndex, dayInArc: state.dayInArc,
+  }, { archiveOnly: true });
+  const selfRef = await fetchReferenceImage(env, refUrl(date), 3);
+  if (selfRef) {
+    try {
+      const aligned = await generateImage(
+        env, buildEditPrompt(channel, state.scene, 0), state.seed, selfRef
+      );
+      if (aligned.usedReference) {
+        console.log(`[gen] ${channelId}: keyframe riallineato alla famiglia degli edit`);
+        return aligned;
+      }
+    } catch (err) {
+      console.warn(`[gen] ${channelId}: auto-edit keyframe fallito (${err.message}), tengo l'originale`);
+    }
+  }
+  return clean;
 }
 
 /** Fan-out: una richiesta interna per canale (parallela) tramite il binding SELF. */
@@ -226,7 +286,7 @@ export default {
     if (path === "/backfill") {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const ch = url.searchParams.get("ch") || "";
-      const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 2), 14);
+      const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 2), 7);
       try {
         const results = await backfillChannel(env, ch, days);
         return json({ channel: ch, days, results });
@@ -241,6 +301,30 @@ export default {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const results = await fanOutAll(env, { force: url.searchParams.get("force") === "1" });
       return json(results);
+    }
+
+    // ---- Probe editing (admin): /test-edit?ch=X&date=YYYY-MM-DD&scene=... ----
+    // Genera UN'immagine con riferimento a quella archiviata alla data indicata
+    // e la ritorna direttamente (per valutare a occhio la continuità).
+    if (path === "/test-edit") {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      const ch = url.searchParams.get("ch") || "horizon";
+      const refDate = url.searchParams.get("date");
+      const scene = url.searchParams.get("scene") || "the same place, one day later, slightly warmer light";
+      const channel = getChannel(ch);
+      if (!channel || !refDate) return json({ error: "servono ?ch= e ?date=" }, 400);
+      const refBytes = await fetchReferenceImage(
+        env, `${env.PUBLIC_ORIGIN}/w/${ch}?date=${refDate}`, 2
+      );
+      if (!refBytes) return json({ error: "riferimento non scaricabile" }, 502);
+      const img = await generateImage(env, buildEditPrompt(channel, scene), 42, refBytes);
+      return new Response(img.bytes, {
+        headers: {
+          "content-type": img.contentType,
+          "x-artipop-continuity": img.usedReference ? "ref" : "no-ref",
+          "cache-control": "no-store",
+        },
+      });
     }
 
     // ---- Probe risoluzione (admin): /test-size?w=1152&h=2496 ----

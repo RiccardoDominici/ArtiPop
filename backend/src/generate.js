@@ -78,13 +78,50 @@ export async function tryKleinSize(env, prompt, size) {
   return tryKlein(env, prompt, 1, size);
 }
 
-/** Tentativo con FLUX.2 klein: input multipart (vedi changelog Cloudflare 2025-11). */
-async function tryKlein(env, prompt, seed, size) {
+/**
+ * Scarica l'immagine di riferimento (ieri) ridotta a <512px via resizer esterno
+ * gratuito. Ritorna i byte oppure null (in quel caso si genera senza riferimento).
+ * L'URL d'archivio è immutabile e già propagato da ieri: nessun rischio di
+ * leggere una scrittura appena fatta.
+ */
+export async function fetchReferenceImage(env, publicImageUrl, attempts = 2) {
+  // Cache-buster per non farci servire un eventuale errore messo in cache dal resizer.
+  const bust = `&cb=${publicImageUrl.length}`;
+  const url =
+    CONFIG.REF_RESIZER +
+    encodeURIComponent(publicImageUrl) +
+    `&w=${CONFIG.REF_WIDTH}&h=${CONFIG.REF_HEIGHT}&fit=cover&output=jpg` + bust;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.length < 2000) throw new Error("risposta troppo piccola");
+      return bytes;
+    } catch (err) {
+      console.warn(`[generate] resize riferimento tentativo ${attempt} fallito: ${err.message}`);
+      // Il backfill legge un URL scritto pochi secondi fa: piccola attesa tra i
+      // tentativi per dare tempo alla propagazione KV (solo I/O, non CPU).
+      if (attempt < attempts) await new Promise((r) => setTimeout(r, 8000 * attempt));
+    }
+  }
+  return null;
+}
+
+/**
+ * Tentativo con FLUX.2 klein: input multipart (vedi changelog Cloudflare).
+ * Con `refBytes` l'immagine di ieri entra come input_image_0 (deve essere <512x512):
+ * il modello mantiene composizione e palette e applica solo il cambiamento chiesto.
+ */
+async function tryKlein(env, prompt, seed, size, refBytes = null) {
   const form = new FormData();
   form.append("prompt", prompt);
   form.append("width", String(size.width));
   form.append("height", String(size.height));
   if (seed != null) form.append("seed", String(seed));
+  if (refBytes) {
+    form.append("input_image_0", new Blob([refBytes], { type: "image/jpeg" }), "yesterday.jpg");
+  }
 
   // Trucco documentato da Cloudflare: passare il body multipart tramite una Request
   // fittizia per ottenere lo stream e il boundary corretto del content-type.
@@ -133,24 +170,32 @@ async function tryPollinations(prompt, seed, size) {
 
 /**
  * Genera l'immagine del giorno provando l'intera catena di fallback.
- * Ritorna { bytes, contentType, model, width, height }.
+ * `refBytes` (opzionale): immagine di ieri <512px come riferimento di continuità.
+ * Ritorna { bytes, contentType, model, width, height, usedReference }.
  * Lancia un errore solo se OGNI via è fallita.
  */
-export async function generateImage(env, prompt, seed) {
+export async function generateImage(env, prompt, seed, refBytes = null) {
   const errors = [];
 
-  // 1) FLUX.2 klein alle varie risoluzioni.
-  for (const size of CONFIG.IMAGE_SIZES) {
-    try {
-      const t0 = Date.now();
-      const img = await tryKlein(env, prompt, seed, size);
-      console.log(
-        `[generate] klein ok ${size.width}x${size.height} in ${Date.now() - t0}ms (${img.bytes.length} byte)`
-      );
-      return img;
-    } catch (err) {
-      errors.push(`klein ${size.width}x${size.height}: ${err.message}`);
-      console.warn(`[generate] klein ${size.width}x${size.height} fallito: ${err.message}`);
+  // 1) FLUX.2 klein con riferimento (continuità visiva), poi senza.
+  //    Col riferimento si prova solo la risoluzione primaria: un errore lì è
+  //    legato all'input, non all'output, e i subrequest sono contati (cap 50).
+  for (const withRef of refBytes ? [true, false] : [false]) {
+    const sizes = withRef ? [CONFIG.IMAGE_SIZES[0]] : CONFIG.IMAGE_SIZES;
+    for (const size of sizes) {
+      try {
+        const t0 = Date.now();
+        const img = await tryKlein(env, prompt, seed, size, withRef ? refBytes : null);
+        console.log(
+          `[generate] klein${withRef ? "+ref" : ""} ok ${size.width}x${size.height} in ${Date.now() - t0}ms (${img.bytes.length} byte)`
+        );
+        return { ...img, usedReference: withRef };
+      } catch (err) {
+        errors.push(`klein${withRef ? "+ref" : ""} ${size.width}x${size.height}: ${err.message}`);
+        console.warn(
+          `[generate] klein${withRef ? "+ref" : ""} ${size.width}x${size.height} fallito: ${err.message}`
+        );
+      }
     }
   }
 

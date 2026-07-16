@@ -102,15 +102,27 @@ npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
 
 ### La coerenza nel tempo (come è garantita)
 
-1. **Identità fissa**: `style` + `palette` del canale entrano in ogni prompt.
-2. **LLM vincolato**: riceve il tema del capitolo + le ultime 3 scene, con
+1. **Àncora visiva — "anchor, don't chain"** (la garanzia più forte): il primo
+   giorno di ogni arco è un *keyframe* generato pulito; ogni giorno successivo
+   viene generato da FLUX.2 klein **con il keyframe come immagine di
+   riferimento** (`input_image_0`, ridotta <512px via images.weserv.nl) e
+   un'istruzione "stesso luogo, N giorni dopo: cambia solo luce/meteo/piccole
+   evoluzioni". Si edita sempre il keyframe pulito, mai l'output di ieri: la
+   degradazione da editing iterato (visibile dal 2°-3° edit in catena, severa
+   dal 4°-8° — letteratura 2025-26) non si accumula mai. Il keyframe stesso
+   viene "riallineato" con un auto-edit alla famiglia visiva degli edit.
+2. **Identità fissa**: `style` + `palette` del canale entrano in ogni prompt.
+3. **LLM vincolato**: riceve il tema del capitolo + le ultime 3 scene, con
    la regola "stesso luogo, cambia solo 1-2 dettagli".
-3. **Guardia anti-deriva** (`story.js`): la scena proposta è accettata solo se
+4. **Guardia anti-deriva** (`story.js`): la scena proposta è accettata solo se
    resta ancorata al vocabolario del canale/arco, non ripete quasi-identica una
    scena recente e non contiene elementi vietati; altrimenti scatta il fallback
    deterministico (tappa + momento + meteo), coerente per costruzione.
-4. **Seed stabile per arco** (12 giorni): composizioni imparentate; nuovo arco
-   → nuovo seed e nuova tappa del viaggio.
+5. **Seed stabile per arco** (12 giorni): composizioni imparentate; nuovo arco
+   → nuovo keyframe, nuovo seed e nuova tappa del viaggio.
+
+Se il resizer esterno non risponde, quel giorno si genera senza riferimento
+(la storia testuale mantiene comunque la continuità) — nessun blocco.
 
 ### Limiti free tier e cosa fare quando…
 
