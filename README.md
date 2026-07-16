@@ -56,6 +56,11 @@ l'AI riscrive la scena "un giorno dopo" (la luce cambia, il viaggio avanza) e og
 **E se la generazione fallisce?** Resta lo sfondo del giorno prima: la Shortcut
 non si rompe mai.
 
+**Lo sfondo a volte non cambia (iOS 18)?** Su alcuni dispositivi iOS 18 l'azione
+"Imposta sfondo" ha un bug intermittente nelle automazioni
+(`extensionKit error 2`). Workaround collaudato: duplica l'automazione e sfalsala
+di un minuto (es. tramonto e tramonto+1'): se la prima fallisce, la seconda passa.
+
 ## 🛠 Per sviluppatori
 
 Tutto il backend (Cloudflare Worker, ~600 righe commentate) è in

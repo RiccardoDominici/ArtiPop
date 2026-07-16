@@ -109,6 +109,11 @@ ${cards}
       Da quel momento è tutto automatico: ogni sera al tramonto il tuo sfondo cambia,
       e la storia del tuo canale va avanti di un capitolo. 🌇
     </p>
+    <p style="margin-top:.5rem;color:var(--dim);font-size:.8rem">
+      💡 Nell'azione "Imposta sfondo" ricordati di <strong>disattivare "Mostra anteprima"</strong>,
+      altrimenti iOS chiede conferma ogni volta. Se su iOS 18 lo sfondo a volte non cambia
+      (bug noto di Apple), duplica l'automazione sfalsandola di un minuto.
+    </p>
   </section>
 
   <footer>
