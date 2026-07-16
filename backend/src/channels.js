@@ -12,10 +12,47 @@
 
 export const CHANNELS = [
   {
+    id: "atelier",
+    name: "Atelier",
+    emoji: "🎨",
+    active: true,
+    accent: ["#e8b04b", "#a34a2b"],
+    tagline: "Un quadro che si dipinge da solo, pennellata dopo pennellata",
+    taglineEn: "A painting painting itself, brushstroke by brushstroke",
+    mode: "progression",
+    style:
+      "cozy artist studio interior, warm window light, cinematic still-life photography, shallow depth of field",
+    palette: "warm wood tones and cream canvas, the painting's own colors emerging day by day",
+    setting:
+      "a large blank canvas on a wooden easel in a cozy sunlit artist studio, brushes and a palette on a small side table",
+    projects: [
+      { subject: "an oil painting of a mountain landscape at sunrise" },
+      { subject: "an oil painting of a stormy sea with a small lighthouse" },
+      { subject: "an impressionist painting of a red poppy field under summer clouds" },
+      { subject: "a moody watercolor of a rainy city street at dusk" },
+      { subject: "a detailed painting of a red fox sitting in falling snow" },
+      { subject: "a warm painting of a tuscan hillside with cypress trees" },
+    ],
+    stageTemplates: [
+      "the canvas is still blank; a pencil rests on the easel ledge — {s} is about to begin",
+      "the first faint pencil sketch lines of {s} appear on the canvas",
+      "the sketch of {s} is complete; a few new paint tubes lie on the side table",
+      "the first thin wash of background color covers the top of the canvas of {s}",
+      "large soft blocks of underpainting fill half the canvas of {s}",
+      "the whole canvas of {s} is covered in rough underpainting; a used rag hangs on the easel",
+      "the main shapes of {s} are painted with real color and form",
+      "rich details emerge across {s}; the palette on the table is now crowded with mixed colors",
+      "fine details and highlights bring {s} to life; brushes soak in a jar of cloudy water",
+      "deep shadows and glazes give {s} depth; the painting is nearly finished",
+      "the final luminous touches are placed on {s}",
+      "{s} is finished on the easel, glowing in the studio light, brushes resting at last",
+    ],
+  },
+  {
     id: "horizon",
     name: "Horizon",
     emoji: "🏔️",
-    active: true,
+    active: false, // in pausa: si riattiva mettendo true
     accent: ["#7ec8a9", "#2b5f8a"], // gradiente ambient del sito per questo canale
     tagline: "Un viaggio senza fine attraverso i paesaggi della Terra",
     taglineEn: "A never-ending journey through Earth's landscapes",
@@ -43,7 +80,7 @@ export const CHANNELS = [
     id: "neon",
     name: "Neon",
     emoji: "🌃",
-    active: true,
+    active: false, // in pausa: si riattiva mettendo true
     accent: ["#b06ab3", "#4568dc"],
     tagline: "Una megalopoli futura che cresce notte dopo notte",
     taglineEn: "A future megacity growing night after night",
@@ -99,10 +136,38 @@ export const CHANNELS = [
     id: "bloom",
     name: "Bloom",
     emoji: "🌸",
-    active: false, // in pausa: si riattiva mettendo true (riparte al cron successivo)
+    active: true,
     accent: ["#f6a5c0", "#8fd3b6"],
-    tagline: "Un giardino segreto che cambia con le stagioni",
-    taglineEn: "A secret garden drifting through the seasons",
+    tagline: "Una pianta che cresce giorno dopo giorno, dal seme al fiore",
+    taglineEn: "A plant growing day by day, from seed to flower",
+    // Canale A PROGRESSIONE: ogni arco è un "progetto" che si completa in 12
+    // giorni; ogni giorno aggiunge UN cambiamento visibile alla stessa scena.
+    mode: "progression",
+    setting:
+      "a terracotta pot of dark soil on a stone windowsill in soft morning light, blurred garden behind the glass",
+    projects: [
+      { subject: "a single sunflower growing from a seed to a tall full golden bloom" },
+      { subject: "a cherry branch in a glass vase going from bare wood to full pink blossom" },
+      { subject: "a climbing rose slowly colonizing an old wooden trellis with leaves and red roses" },
+      { subject: "a fern unfurling from a tight spiral into wide green fronds" },
+      { subject: "a cactus slowly growing and finally opening one bright pink flower" },
+      { subject: "an amaryllis bulb sending up a stalk that opens into huge red trumpet flowers" },
+    ],
+    // Fallback deterministico: 12 tappe generiche con {s} = soggetto del progetto.
+    stageTemplates: [
+      "the pot of bare dark soil, nothing has sprouted yet — the very beginning of {s}",
+      "a tiny pale green sprout has just broken through the soil of {s}",
+      "the sprout of {s} stands taller, its first two seed leaves open",
+      "{s}: a slim stem rises, the first true leaf unfolding",
+      "{s}: the stem thickens, three or four young leaves catch the light",
+      "{s}: clearly taller now, a healthy cluster of leaves",
+      "{s}: the first tight bud has formed at the top",
+      "{s}: the bud swells, a hint of color showing at its tip",
+      "{s}: the bud has begun to open, first petals visible",
+      "{s}: half open now, the flower's color is unmistakable",
+      "{s}: almost fully open, petals spreading wide",
+      "{s}: in full glorious bloom, complete and radiant",
+    ],
     style:
       "delicate botanical illustration, soft focus macro, dreamy minimalism, gentle bokeh",
     palette: "soft pastels with fresh botanical greens",

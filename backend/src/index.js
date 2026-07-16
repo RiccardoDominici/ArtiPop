@@ -11,7 +11,7 @@
 // al suo posto — la Shortcut degli utenti non si rompe mai.
 
 import { ACTIVE_CHANNELS, getChannel } from "./channels.js";
-import { evolveStory, buildImagePrompt, buildEditPrompt, todayKey } from "./story.js";
+import { evolveStory, buildImagePrompt, buildEditPrompt, buildProgressPrompt, buildCumulativePrompt, todayKey } from "./story.js";
 import { generateImage, fetchReferenceImage } from "./generate.js";
 import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
 import { renderPage } from "./page.js";
@@ -45,7 +45,10 @@ async function runChannel(env, channelId, { force = false } = {}) {
   const state = await evolveStory(env, channel, prevState, date);
   console.log(`[run] ${channelId} ${date}: arco ${state.arcIndex} giorno ${state.dayInArc} — "${state.scene}"`);
 
-  // 2-3. Generazione con continuità "anchor, don't chain" (vedi generateDay).
+  // 2-3. Generazione con continuità (vedi generateDay).
+  if (!state.prevDate && prevState?.lastDate && prevState.lastDate !== date) {
+    state.prevDate = prevState.lastDate;
+  }
   const img = await generateDay(env, channel, channelId, state, date);
 
   // 4. Persistenza: immagine + metadati + stato narrativo.
@@ -128,14 +131,38 @@ async function backfillChannel(env, channelId, days) {
 async function generateDay(env, channel, channelId, state, date, retries = 2) {
   const refUrl = (d) => `${env.PUBLIC_ORIGIN}/w/${channelId}?date=${d}`;
 
-  // --- Giorno normale: edit dell'àncora dell'arco ---
+  // --- Canali a PROGRESSIONE: edit additivo (ieri + àncora di stile) ---
+  if (channel.mode === "progression" && state.dayInArc > 0) {
+    const [refYesterday, refAnchor] = await Promise.all([
+      state.prevDate ? fetchReferenceImage(env, refUrl(state.prevDate), retries) : null,
+      state.anchorDate && state.anchorDate !== state.prevDate
+        ? fetchReferenceImage(env, refUrl(state.anchorDate), retries)
+        : null,
+    ]);
+    if (refYesterday) {
+      // image 0 = ieri (contenuto da preservare + aggiunta di oggi),
+      // image 1 = keyframe (àncora di qualità/stile, anti-drift multi-reference).
+      const prompt = buildProgressPrompt(channel, state.scene);
+      return generateImage(env, prompt, state.seed, [refYesterday, refAnchor]);
+    }
+    if (refAnchor) {
+      // Ieri non recuperabile: si mostra lo stato cumulativo partendo dall'àncora.
+      console.warn(`[gen] ${channelId}: ieri non disponibile, uso solo l'àncora`);
+      const prompt = buildCumulativePrompt(channel, state.scene, state.dayInArc);
+      return generateImage(env, prompt, state.seed, [refAnchor]);
+    }
+    console.warn(`[gen] ${channelId}: nessun riferimento disponibile, genero da zero`);
+    return generateImage(env, buildImagePrompt(channel, state.scene), state.seed);
+  }
+
+  // --- Canali "viaggio": edit dell'àncora dell'arco ---
   if (state.dayInArc > 0 && state.anchorDate && state.anchorDate !== date) {
     const refBytes = await fetchReferenceImage(env, refUrl(state.anchorDate), retries);
     if (!refBytes) console.warn(`[gen] ${channelId}: àncora non scaricabile, genero senza`);
     const prompt = refBytes
       ? buildEditPrompt(channel, state.scene, state.dayInArc)
       : buildImagePrompt(channel, state.scene);
-    return generateImage(env, prompt, state.seed, refBytes);
+    return generateImage(env, prompt, state.seed, refBytes ? [refBytes] : []);
   }
 
   // --- Keyframe: generazione pulita + auto-edit di riallineamento ---
@@ -150,7 +177,7 @@ async function generateDay(env, channel, channelId, state, date, retries = 2) {
   if (selfRef) {
     try {
       const aligned = await generateImage(
-        env, buildEditPrompt(channel, state.scene, 0), state.seed, selfRef
+        env, buildEditPrompt(channel, state.scene, 0), state.seed, [selfRef]
       );
       if (aligned.usedReference) {
         console.log(`[gen] ${channelId}: keyframe riallineato alla famiglia degli edit`);
@@ -317,7 +344,7 @@ export default {
         env, `${env.PUBLIC_ORIGIN}/w/${ch}?date=${refDate}`, 2
       );
       if (!refBytes) return json({ error: "riferimento non scaricabile" }, 502);
-      const img = await generateImage(env, buildEditPrompt(channel, scene), 42, refBytes);
+      const img = await generateImage(env, buildEditPrompt(channel, scene), 42, [refBytes]);
       return new Response(img.bytes, {
         headers: {
           "content-type": img.contentType,

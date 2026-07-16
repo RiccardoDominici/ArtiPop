@@ -113,15 +113,16 @@ export async function fetchReferenceImage(env, publicImageUrl, attempts = 2) {
  * Con `refBytes` l'immagine di ieri entra come input_image_0 (deve essere <512x512):
  * il modello mantiene composizione e palette e applica solo il cambiamento chiesto.
  */
-async function tryKlein(env, prompt, seed, size, refBytes = null) {
+async function tryKlein(env, prompt, seed, size, refs = []) {
   const form = new FormData();
   form.append("prompt", prompt);
   form.append("width", String(size.width));
   form.append("height", String(size.height));
   if (seed != null) form.append("seed", String(seed));
-  if (refBytes) {
-    form.append("input_image_0", new Blob([refBytes], { type: "image/jpeg" }), "yesterday.jpg");
-  }
+  // Riferimenti visivi (max 4, ognuno <512x512): input_image_0, input_image_1, ...
+  refs.forEach((bytes, i) => {
+    form.append(`input_image_${i}`, new Blob([bytes], { type: "image/jpeg" }), `ref${i}.jpg`);
+  });
 
   // Trucco documentato da Cloudflare: passare il body multipart tramite una Request
   // fittizia per ottenere lo stream e il boundary corretto del content-type.
@@ -174,18 +175,19 @@ async function tryPollinations(prompt, seed, size) {
  * Ritorna { bytes, contentType, model, width, height, usedReference }.
  * Lancia un errore solo se OGNI via è fallita.
  */
-export async function generateImage(env, prompt, seed, refBytes = null) {
+export async function generateImage(env, prompt, seed, refs = []) {
   const errors = [];
+  refs = (refs || []).filter(Boolean);
 
-  // 1) FLUX.2 klein con riferimento (continuità visiva), poi senza.
-  //    Col riferimento si prova solo la risoluzione primaria: un errore lì è
+  // 1) FLUX.2 klein con riferimenti (continuità visiva), poi senza.
+  //    Coi riferimenti si prova solo la risoluzione primaria: un errore lì è
   //    legato all'input, non all'output, e i subrequest sono contati (cap 50).
-  for (const withRef of refBytes ? [true, false] : [false]) {
+  for (const withRef of refs.length ? [true, false] : [false]) {
     const sizes = withRef ? [CONFIG.IMAGE_SIZES[0]] : CONFIG.IMAGE_SIZES;
     for (const size of sizes) {
       try {
         const t0 = Date.now();
-        const img = await tryKlein(env, prompt, seed, size, withRef ? refBytes : null);
+        const img = await tryKlein(env, prompt, seed, size, withRef ? refs : []);
         console.log(
           `[generate] klein${withRef ? "+ref" : ""} ok ${size.width}x${size.height} in ${Date.now() - t0}ms (${img.bytes.length} byte)`
         );

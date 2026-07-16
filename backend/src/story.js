@@ -162,6 +162,10 @@ function deterministicScene(channel, arcTheme, dayNumber) {
  * Ritorna il nuovo stato completo, pronto da salvare in KV.
  */
 export async function evolveStory(env, channel, prevState, dateKey) {
+  // I canali a progressione hanno un motore dedicato (piano fisso di 12 tappe).
+  if (channel.mode === "progression") {
+    return evolveProgression(env, channel, prevState, dateKey);
+  }
   const dayNumber = dayNumberOf(dateKey);
 
   // Primo giorno in assoluto del canale: si parte dalla firstScene.
@@ -222,6 +226,127 @@ export async function evolveStory(env, channel, prevState, dateKey) {
     // l'output di ieri, così la degradazione non si accumula mai.
     anchorDate: isNewArc ? dateKey : (prevState.anchorDate ?? prevState.lastDate),
   };
+}
+
+
+/* =====================  CANALI A PROGRESSIONE  =====================
+   Un arco = un "progetto" (un quadro che si dipinge, una pianta che cresce)
+   che si completa in esattamente 12 giorni. All'inizio dell'arco si scrive un
+   PIANO di 12 tappe (LLM, con fallback ai template del canale): ogni giorno
+   mostra la tappa corrispondente — un cambiamento visibile e cumulativo,
+   mentre il resto della scena resta fermo. */
+
+/** Applica {s} = soggetto ai template deterministici del canale. */
+function stagesFromTemplates(channel, subject) {
+  return channel.stageTemplates.map((t) => t.replaceAll("{s}", subject));
+}
+
+/** Chiede all'LLM un piano di 12 tappe visive; null se non utilizzabile. */
+async function makePlanWithLLM(env, channel, subject) {
+  const sys =
+    "You plan a slow visual story told in 12 daily images of the SAME fixed scene. " +
+    "Reply with EXACTLY 12 numbered lines. Each line: one clearly visible new change " +
+    "(something appears, grows or gets completed), purely visual, max 18 words. " +
+    "Line 1 = the very beginning (almost nothing yet). Line 12 = complete. " +
+    "No text in the scene, no people, no violence.";
+  const usr =
+    `Scene (never changes): ${channel.setting}. ` +
+    `Project that progresses day by day: ${subject}. ` +
+    `Write the 12 daily steps.`;
+  for (const model of CONFIG.TEXT_MODELS) {
+    try {
+      const res = await env.AI.run(model, {
+        messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
+        max_tokens: 600,
+        temperature: 0.7,
+      });
+      const lines = String(res?.response || "")
+        .split(/\n+/)
+        .map((l) => l.replace(/^\s*\d+[\).\:\-]?\s*/, "").trim())
+        .filter((l) => l.length >= 8 && l.length <= 160);
+      if (lines.length >= 10) {
+        console.log(`[story] piano di progressione scritto da ${model} (${lines.length} tappe)`);
+        return lines.slice(0, 12);
+      }
+      console.warn(`[story] piano LLM non valido da ${model} (${lines.length} righe utili)`);
+    } catch (err) {
+      console.warn(`[story] piano LLM fallito con ${model}: ${err.message}`);
+    }
+  }
+  return null;
+}
+
+/** Evoluzione per canali a progressione: piano fisso, una tappa al giorno. */
+async function evolveProgression(env, channel, prevState, dateKey) {
+  const dayNumber = dayNumberOf(dateKey);
+  const stagesCount = channel.stageTemplates.length; // 12
+
+  const startArc = async (arcIndex) => {
+    const project = channel.projects[arcIndex % channel.projects.length];
+    // Piano = template curati del canale (deterministici, descrivono esplicitamente
+    // il progetto che avanza). Il planner LLM (makePlanWithLLM) è disattivato:
+    // nei test produceva piani fuori bersaglio (oggetti di contorno invece del
+    // progetto). Riattivabile qui quando ci sarà un validatore più severo.
+    const plan = stagesFromTemplates(channel, project.subject);
+    void makePlanWithLLM; // referenza per evitare warning di funzione inutilizzata
+    return {
+      lastDate: dateKey,
+      dayNumber,
+      arcIndex,
+      dayInArc: 0,
+      arcTheme: project.subject,
+      plan,
+      scene: `${channel.setting}, ${plan[0]}`,
+      seed: fnv1a(`${channel.id}:arc:${arcIndex}`),
+      anchorDate: dateKey,
+    };
+  };
+
+  // Primo giorno in assoluto del canale.
+  if (!prevState || !prevState.scene) return startArc(0);
+
+  const elapsed = Math.max(1, dayNumber - (prevState.dayNumber ?? dayNumber - 1));
+  let dayInArc = (prevState.dayInArc ?? 0) + elapsed;
+
+  // Progetto completato: si apre il successivo (nuovo keyframe, nuova àncora).
+  if (dayInArc >= stagesCount) return startArc((prevState.arcIndex ?? 0) + 1);
+
+  const plan = Array.isArray(prevState.plan) && prevState.plan.length >= 10
+    ? prevState.plan
+    : stagesFromTemplates(channel, prevState.arcTheme ?? channel.projects[0].subject);
+
+  return {
+    ...prevState,
+    lastDate: dateKey,
+    dayNumber,
+    dayInArc,
+    plan,
+    scene: plan[Math.min(dayInArc, plan.length - 1)],
+    prevDate: prevState.lastDate, // data di ieri: serve come riferimento visivo
+  };
+}
+
+/**
+ * Prompt di EDIT ADDITIVO per canali a progressione:
+ * image 0 = ieri (contenuto da preservare), image 1 = keyframe (qualità/stile).
+ */
+export function buildProgressPrompt(channel, stageText) {
+  return (
+    `Image 0 is yesterday's state of this scene. Today one visible change happens: ${stageText}. ` +
+    `Add ONLY this change on top of image 0. Every other part of image 0 stays exactly identical: ` +
+    `same viewpoint, same framing, same objects, same light, same colors. ` +
+    `Match the crisp clean quality of image 1. ${CONFIG.WALLPAPER_SUFFIX}`
+  );
+}
+
+/** Variante con la sola àncora (se l'immagine di ieri non è recuperabile). */
+export function buildCumulativePrompt(channel, stageText, dayInArc) {
+  return (
+    `Image 0 is this scene at its very beginning. Show the same exact scene ${dayInArc} days later ` +
+    `in its story, when: ${stageText}. All earlier progress has already happened. ` +
+    `Keep the viewpoint, framing and light of image 0 identical. ` +
+    `Style: ${channel.style}. ${CONFIG.WALLPAPER_SUFFIX}`
+  );
 }
 
 /** Prompt per generazione PULITA (keyframe: primo giorno assoluto o nuovo arco). */
