@@ -112,7 +112,7 @@ ${cards}
   </section>
 
   <footer>
-    ArtiPop v3 — generato ogni giorno alle 05:00 (Europa/Roma) da FLUX.2 su Cloudflare Workers AI ·
+    ArtiPop v3 — un'immagine nuova ogni notte, generata da FLUX.2 su Cloudflare Workers AI ·
     <a href="/api/channels">API</a>
   </footer>
 </main>

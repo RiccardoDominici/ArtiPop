@@ -1,88 +1,63 @@
-# Daily Wallpaper Magic (No App Required)
+# 🌅 ArtiPop — Un wallpaper nuovo ogni giorno, che evolve
 
-Tired of waking up to the same wallpaper every day? ArtiPop does the creative heavy lifting for you. All you have to do is tap a link, add one shortcut, and let your iPhone refresh your background at sunset, every single day. Zero apps to install, zero effort, maximum vibe.
+Ogni sera al tramonto il tuo iPhone cambia sfondo da solo, con un'immagine
+generata dall'AI **quella notte stessa**. E non è mai un'immagine a caso:
+ogni canale è un **viaggio che evolve giorno dopo giorno** — la valle alpina di
+ieri oggi è un po' più in alto sul sentiero, la città neon ha acceso nuove insegne.
 
-## How It Works
-- ArtiPop generates a brand-new, high-quality background every day.
-- Your iPhone grabs the latest image automatically via Apple Shortcuts.
-- At sunset, the shortcut updates your wallpaper so your screen always matches the mood.
+**Gratis. Senza app. Senza account.** Solo una Shortcut.
 
-Sound good? Let's set it up in under five minutes.
+👉 **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)** — guarda i canali di oggi
 
-## Step 1: Grab the Shortcut
-1. On your iPhone, tap this link: [Download the ArtiPop Daily Wallpaper shortcut](https://www.icloud.com/shortcuts/d9b45db329b94088ab198a8b0a5ae6a7)
+## 🎨 I canali
 
-The shortcut now lives in your Shortcuts library, ready to run.
+Ogni canale è un mondo con la sua storia. Scegli quello che ti somiglia:
 
-## Step 2: Automate the Sunset Magic
-1. Open the Shortcuts app and tap the **Automation** tab.
-2. Tap the **+** button .
-3. Select **Time of Day**, switch it to **Sunset**, Tap **Run Immediately** and make sure it runs **Daily**. Tap **Next**.
-5. Choose **ArtiPop** (or the name you gave it).
-6. Disable **Ask Before Running** and confirm with **Don't Ask**.
-7. Tap **Done**.
+| Canale | Il viaggio | URL |
+|---|---|---|
+| 🏔️ **Horizon** | i paesaggi della Terra, dall'alba delle Alpi ai deserti | `/w/horizon` |
+| 🌃 **Neon** | una megalopoli futura che cresce notte dopo notte | `/w/neon` |
+| 🪐 **Cosmos** | una traversata interstellare, un giorno alla volta | `/w/cosmos` |
+| 🌸 **Bloom** | un giardino segreto attraverso le stagioni | `/w/bloom` |
+| 🌊 **Depths** | una discesa lenta negli abissi dell'oceano | `/w/depths` |
+| 🎨 **Aurora** | forme e colori astratti in metamorfosi | `/w/aurora` |
+| 🎲 **Random** | ogni giorno un canale diverso | `/w/random` |
 
-That's it. Every evening your iPhone will fetch the newest ArtiPop wallpaper and set it automatically. You enjoy a fresh backdrop; we handle the rest.
+Tutti gli URL iniziano con `https://artipop.riccardo-dominici.workers.dev`.
 
-## Want to Customize It?
-- Prefer mornings? Change the trigger to any time you like.
+## 📲 Attivalo in 2 minuti
 
-## FAQ
-**Do I need to install an app?**  
-Nope. Everything runs through Apple's built-in Shortcuts app.
+1. **Crea la Shortcut** (una volta sola). Apri **Comandi rapidi** sull'iPhone →
+   **+** → aggiungi due azioni:
+   - **Ottieni contenuto da URL** → incolla l'URL del tuo canale
+     (es. `https://artipop.riccardo-dominici.workers.dev/w/horizon`)
+   - **Imposta sfondo** → scegli quale sfondo aggiornare e **disattiva l'anteprima**
+2. **Automatizzala.** Tab **Automazioni** → **+** → **Ora del giorno** →
+   **Tramonto** → **Esegui immediatamente** (senza chiedere) → scegli la tua Shortcut.
+3. **Fine.** Da stasera il tuo sfondo cambia da solo, ogni sera, per sempre.
 
-**Will it ask me for permission every day?**  
-Not if you disable "Ask Before Running" during automation setup.
+> 💡 Preferisci la mattina? Imposta l'automazione su **Alba** o su un orario fisso.
+> Vuoi uno sfondo nuovo subito? Tocca la Shortcut manualmente.
 
-**Can I run it manually?**  
-Absolutely: just tap the shortcut inside the Shortcuts app whenever you want a fresh wallpaper.
+## ❓ FAQ
 
-Ready for effortless daily glow-ups? Tap the shortcut link, set the automation, and let ArtiPop surprise you at sundown. Your lock screen will never be boring again.
+**Quanto costa?** Niente. Il backend gira sul piano gratuito di Cloudflare e
+i modelli AI rientrano nel budget gratuito giornaliero. Nessun abbonamento, mai.
 
-# 🌅 ArtiPop Daily Wallpaper — Free & Fully Automatic
+**Devo installare un'app?** No. Basta l'app Comandi rapidi già presente su iOS.
 
-Bored of the same old wallpaper every morning? ArtiPop gives your iPhone a daily glow-up — **no apps, no subscriptions, no effort.**  
-Just add one free shortcut, and your wallpaper will change **automatically at sunset** every day. Totally hands-free, totally free.
+**Mi chiederà conferma ogni giorno?** No, se disattivi "Chiedi prima di eseguire"
+nell'automazione.
 
-## 💫 How It Works
-- ArtiPop creates a **brand-new, high-quality wallpaper** every day.
-- Your iPhone fetches it automatically using **Apple Shortcuts**.
-- At **sunset**, your wallpaper updates — no taps, no reminders, pure magic.
+**Che cosa significa "evolve"?** Ogni canale ha una storia persistente: ogni notte
+l'AI riscrive la scena "un giorno dopo" (la luce cambia, il viaggio avanza) e ogni
+12 giorni si apre un capitolo nuovo. Stesso mondo, sempre diverso.
 
-Set it up once. Then forget it. Your screen stays fresh forever.
+**E se la generazione fallisce?** Resta lo sfondo del giorno prima: la Shortcut
+non si rompe mai.
 
-## ⚡️ Step 1: Get the Shortcut (Free)
-1. On your iPhone, tap this link:  
-   [Download the ArtiPop Daily Wallpaper Shortcut](https://www.icloud.com/shortcuts/d9b45db329b94088ab198a8b0a5ae6a7)
-2. It’ll instantly appear in your **Shortcuts** app, ready to go.
+## 🛠 Per sviluppatori
 
-## 🌇 Step 2: Automate the Sunset Magic
-1. Open the **Shortcuts** app → **Automation** tab.  
-2. Tap **+**, then select **Time of Day** → switch it to **Sunset**.  
-3. Enable **Run Immediately**, make it run **Daily**, then tap **Next**.  
-4. Choose **ArtiPop** (or whatever name you gave it).  
-5. Turn off **Ask Before Running**, confirm with **Don’t Ask**.  
-6. Tap **Done**.
-
-🎉 Done! Every evening, your iPhone will pull the newest ArtiPop wallpaper and set it automatically. You chill — ArtiPop does the rest.
-
-## 🎨 Prefer mornings?Just change the trigger time.  
-- Want to refresh anytime? Tap the shortcut manually for an instant new look.
-
-## 💡 FAQ
-
-**💰 Is it free?**  
-Yep — 100% free, no sign-ups, no app installs.
-
-**📱 Do I need to approve it every day?**  
-Nope. Once “Ask Before Running” is disabled, it’s fully automatic.
-
-**🌈 Can I run it manually too?**  
-Sure — just tap it inside Shortcuts anytime you want a refresh.
-
----
-
-✨ Ready for your daily wallpaper glow-up?  
-Tap the link, set it once, and let ArtiPop surprise you every sunset.  
-**Zero apps. Zero effort. Maximum vibe.**
-
+Tutto il backend (Cloudflare Worker, ~600 righe commentate) è in
+[`backend/`](backend/README.md): architettura, costi, deploy e come
+aggiungere un canale in 10 righe.
