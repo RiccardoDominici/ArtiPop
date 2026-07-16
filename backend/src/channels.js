@@ -15,6 +15,8 @@ export const CHANNELS = [
     id: "horizon",
     name: "Horizon",
     emoji: "🏔️",
+    active: true,
+    accent: ["#7ec8a9", "#2b5f8a"], // gradiente ambient del sito per questo canale
     tagline: "Un viaggio senza fine attraverso i paesaggi della Terra",
     taglineEn: "A never-ending journey through Earth's landscapes",
     style:
@@ -41,6 +43,8 @@ export const CHANNELS = [
     id: "neon",
     name: "Neon",
     emoji: "🌃",
+    active: true,
+    accent: ["#b06ab3", "#4568dc"],
     tagline: "Una megalopoli futura che cresce notte dopo notte",
     taglineEn: "A future megacity growing night after night",
     style:
@@ -67,6 +71,8 @@ export const CHANNELS = [
     id: "cosmos",
     name: "Cosmos",
     emoji: "🪐",
+    active: false, // in pausa: si riattiva mettendo true (riparte al cron successivo)
+    accent: ["#5b4b8a", "#1a1a40"],
     tagline: "Una traversata interstellare, un giorno alla volta",
     taglineEn: "An interstellar crossing, one day at a time",
     style:
@@ -93,6 +99,8 @@ export const CHANNELS = [
     id: "bloom",
     name: "Bloom",
     emoji: "🌸",
+    active: false, // in pausa: si riattiva mettendo true (riparte al cron successivo)
+    accent: ["#f6a5c0", "#8fd3b6"],
     tagline: "Un giardino segreto che cambia con le stagioni",
     taglineEn: "A secret garden drifting through the seasons",
     style:
@@ -119,6 +127,8 @@ export const CHANNELS = [
     id: "depths",
     name: "Depths",
     emoji: "🌊",
+    active: false, // in pausa: si riattiva mettendo true (riparte al cron successivo)
+    accent: ["#2193b0", "#0b3954"],
     tagline: "Una discesa lenta negli abissi dell'oceano",
     taglineEn: "A slow descent into the ocean's abyss",
     style:
@@ -145,6 +155,8 @@ export const CHANNELS = [
     id: "aurora",
     name: "Aurora",
     emoji: "🎨",
+    active: false, // in pausa: si riattiva mettendo true (riparte al cron successivo)
+    accent: ["#f7b733", "#fc4a67"],
     tagline: "Forme e colori astratti in lenta metamorfosi",
     taglineEn: "Abstract shapes and colors in slow metamorphosis",
     style:
@@ -168,6 +180,11 @@ export const CHANNELS = [
     weathers: ["flowing gently", "almost still", "in slow rotation", "dissolving at the edges", "sharpening into focus", "breathing in and out"],
   },
 ];
+
+/** Solo i canali attivi: il cron genera e il sito mostra soltanto questi.
+ * I canali con active:false restano definiti (e il loro archivio resta in KV):
+ * per riattivarli basta rimettere active:true e rideployare. */
+export const ACTIVE_CHANNELS = CHANNELS.filter((c) => c.active);
 
 /** Ritorna il canale con l'id dato, oppure undefined. */
 export function getChannel(id) {

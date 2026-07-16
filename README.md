@@ -7,66 +7,48 @@ ieri oggi è un po' più in alto sul sentiero, la città neon ha acceso nuove in
 
 **Gratis. Senza app. Senza account.** Solo una Shortcut.
 
-👉 **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)** — guarda i canali di oggi
+👉 **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)**
+— sfoglia i canali (swipe!), guarda la preview sulla lock screen e l'archivio del viaggio
 
-## 🎨 I canali
-
-Ogni canale è un mondo con la sua storia. Scegli quello che ti somiglia:
+## 🎨 I canali attivi
 
 | Canale | Il viaggio | URL |
 |---|---|---|
 | 🏔️ **Horizon** | i paesaggi della Terra, dall'alba delle Alpi ai deserti | `/w/horizon` |
 | 🌃 **Neon** | una megalopoli futura che cresce notte dopo notte | `/w/neon` |
-| 🪐 **Cosmos** | una traversata interstellare, un giorno alla volta | `/w/cosmos` |
-| 🌸 **Bloom** | un giardino segreto attraverso le stagioni | `/w/bloom` |
-| 🌊 **Depths** | una discesa lenta negli abissi dell'oceano | `/w/depths` |
-| 🎨 **Aurora** | forme e colori astratti in metamorfosi | `/w/aurora` |
-| 🎲 **Random** | ogni giorno un canale diverso | `/w/random` |
+| 🎲 **Random** | ogni giorno un canale a sorpresa | `/w/random` |
 
 Tutti gli URL iniziano con `https://artipop.riccardo-dominici.workers.dev`.
+Altri quattro canali (🪐 Cosmos, 🌸 Bloom, 🌊 Depths, 🎨 Aurora) sono già pronti
+nel codice, in pausa: si attivano con una riga.
 
 ## 📲 Attivalo in 2 minuti
 
-1. **Crea la Shortcut** (una volta sola). Apri **Comandi rapidi** sull'iPhone →
-   **+** → aggiungi due azioni:
-   - **Ottieni contenuto da URL** → incolla l'URL del tuo canale
-     (es. `https://artipop.riccardo-dominici.workers.dev/w/horizon`)
-   - **Imposta sfondo** → scegli quale sfondo aggiornare e **disattiva l'anteprima**
-2. **Automatizzala.** Tab **Automazioni** → **+** → **Ora del giorno** →
-   **Tramonto** → **Esegui immediatamente** (senza chiedere) → scegli la tua Shortcut.
-3. **Fine.** Da stasera il tuo sfondo cambia da solo, ogni sera, per sempre.
+1. **Copia il link** del tuo canale dal sito.
+2. **Comandi rapidi** → nuovo comando con 2 azioni: *Ottieni contenuto da URL*
+   (incolla il link) + *Imposta sfondo* (**disattiva "Mostra anteprima"**).
+3. **Automazioni** → *Ora del giorno* → **Tramonto** → *Esegui immediatamente*.
 
-> 💡 Preferisci la mattina? Imposta l'automazione su **Alba** o su un orario fisso.
-> Vuoi uno sfondo nuovo subito? Tocca la Shortcut manualmente.
+Passo-passo dettagliato, FAQ e soluzioni ai problemi: **[GUIDA.md](GUIDA.md)**.
 
-## ❓ FAQ
+## 🧠 Come funziona
 
-**Quanto costa?** Niente. Il backend gira sul piano gratuito di Cloudflare e
-i modelli AI rientrano nel budget gratuito giornaliero. Nessun abbonamento, mai.
+- Ogni notte un cron su **Cloudflare Workers** (piano free) fa avanzare la
+  storia di ogni canale: un LLM riscrive la scena "un giorno dopo", con una
+  guardia anti-deriva che garantisce coerenza strutturale nel tempo.
+- L'immagine è generata da **FLUX.2 klein-4b** (Workers AI) a 960x2048.
+- **Niente va perso**: ogni wallpaper finisce in un archivio permanente,
+  consultabile dal sito ("Il viaggio finora") o via `…/w/horizon?date=YYYY-MM-DD`.
+- Se una generazione fallisce resta l'immagine di ieri: la Shortcut non si
+  rompe mai.
+- Tutto dentro i limiti gratuiti: ~500 neuroni/giorno su 10.000, nessun costo
+  possibile nemmeno per sbaglio.
 
-**Devo installare un'app?** No. Basta l'app Comandi rapidi già presente su iOS.
+## 🛠 Per sviluppatori e maintainer
 
-**Mi chiederà conferma ogni giorno?** No, se disattivi "Chiedi prima di eseguire"
-nell'automazione.
-
-**Che cosa significa "evolve"?** Ogni canale ha una storia persistente: ogni notte
-l'AI riscrive la scena "un giorno dopo" (la luce cambia, il viaggio avanza) e ogni
-12 giorni si apre un capitolo nuovo. Stesso mondo, sempre diverso.
-
-**E se la generazione fallisce?** Resta lo sfondo del giorno prima: la Shortcut
-non si rompe mai.
-
-**Lo sfondo a volte non cambia (iOS 18)?** Su alcuni dispositivi iOS 18 l'azione
-"Imposta sfondo" ha un bug intermittente nelle automazioni
-(`extensionKit error 2`). Workaround collaudato: duplica l'automazione e sfalsala
-di un minuto (es. tramonto e tramonto+1'): se la prima fallisce, la seconda passa.
-
-## 🛠 Per sviluppatori
-
-Tutto il backend (Cloudflare Worker, ~600 righe commentate) è in
-[`backend/`](backend/README.md): architettura, costi, deploy e come
-aggiungere un canale in 10 righe.
-
-In [`shortcut/`](shortcut/README.md) ci sono i file `.shortcut` firmati
-pronti per ogni canale (sperimentali, da testare su device) e la pipeline
-per rigenerarli.
+- **[GUIDA.md](GUIDA.md)** — guida completa: uso, gestione, operazioni comuni,
+  limiti free tier e cosa fare quando l'archivio cresce.
+- **[backend/README.md](backend/README.md)** — architettura del Worker
+  (~700 righe commentate), costi in neuroni, deploy, endpoint admin.
+- **[shortcut/README.md](shortcut/README.md)** — file `.shortcut` firmati per
+  canale (sperimentali) e pipeline per rigenerarli.

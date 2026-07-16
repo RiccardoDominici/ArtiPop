@@ -10,10 +10,10 @@
 // Robustezza: se la generazione di un canale fallisce, l'immagine precedente resta
 // al suo posto — la Shortcut degli utenti non si rompe mai.
 
-import { CHANNELS, getChannel } from "./channels.js";
+import { ACTIVE_CHANNELS, getChannel } from "./channels.js";
 import { evolveStory, buildImagePrompt, todayKey } from "./story.js";
 import { generateImage } from "./generate.js";
-import { getState, putState, putImage, getImage, getMeta } from "./storage.js";
+import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
 import { renderPage } from "./page.js";
 
 /** Confronto sicuro della chiave admin (query ?key= oppure header x-artipop-key). */
@@ -31,6 +31,7 @@ function isAuthorized(request, env) {
 async function runChannel(env, channelId, { force = false } = {}) {
   const channel = getChannel(channelId);
   if (!channel) throw new Error(`canale sconosciuto: ${channelId}`);
+  if (!channel.active) throw new Error(`canale in pausa: ${channelId}`);
 
   const date = todayKey();
   const prevState = await getState(env, channelId);
@@ -72,13 +73,13 @@ async function runChannel(env, channelId, { force = false } = {}) {
 /** Fan-out: una richiesta interna per canale (parallela) tramite il binding SELF. */
 async function fanOutAll(env, { force = false } = {}) {
   const results = await Promise.allSettled(
-    CHANNELS.map((ch) =>
+    ACTIVE_CHANNELS.map((ch) =>
       env.SELF.fetch(`https://artipop.internal/run/${ch.id}${force ? "?force=1" : ""}`, {
         headers: { "x-artipop-key": env.ADMIN_KEY || "" },
       }).then(async (r) => ({ status: r.status, body: await r.json() }))
     )
   );
-  return CHANNELS.map((ch, i) => {
+  return ACTIVE_CHANNELS.map((ch, i) => {
     const r = results[i];
     return r.status === "fulfilled"
       ? { channel: ch.id, ...r.value }
@@ -118,25 +119,26 @@ export default {
       let target = chId;
       if (chId === "random") {
         const day = Math.floor(Date.parse(todayKey()) / 86400000);
-        target = CHANNELS[day % CHANNELS.length].id;
+        target = ACTIVE_CHANNELS[day % ACTIVE_CHANNELS.length].id;
       }
 
       if (!getChannel(target)) {
-        return json({ error: "canale sconosciuto", channels: CHANNELS.map((c) => c.id).concat("random") }, 404);
+        return json({ error: "canale sconosciuto", channels: ACTIVE_CHANNELS.map((c) => c.id).concat("random") }, 404);
       }
 
-      // ?d=0..6 → archivio del giorno della settimana (0=domenica).
-      const d = url.searchParams.get("d");
-      const dow = d !== null && /^[0-6]$/.test(d) ? Number(d) : null;
+      // ?date=YYYY-MM-DD → una data specifica dall'archivio permanente.
+      const dateParam = url.searchParams.get("date");
+      const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : null;
 
-      const img = await getImage(env, target, dow);
+      const img = await getImage(env, target, date);
       if (!img) return json({ error: "immagine non ancora generata, riprova tra poco" }, 404);
 
       return new Response(img.stream, {
         headers: {
           "content-type": img.meta.contentType || "image/png",
-          // Niente cache: la Shortcut deve sempre ricevere l'immagine più recente.
-          "cache-control": "no-store, must-revalidate",
+          // latest: mai in cache (la Shortcut vuole sempre il più recente);
+          // archivio per data: immutabile, cache lunga.
+          "cache-control": date ? "public, max-age=604800, immutable" : "no-store, must-revalidate",
           "x-artipop-date": img.meta.date || "",
           "x-artipop-model": img.meta.model || "",
         },
@@ -145,18 +147,31 @@ export default {
 
     // ---- API JSON: stato di tutti i canali ----
     if (path === "/api/channels") {
-      const metas = await Promise.all(CHANNELS.map((c) => getMeta(env, c.id)));
+      const metas = await Promise.all(ACTIVE_CHANNELS.map((c) => getMeta(env, c.id)));
       return json({
-        channels: CHANNELS.map((c, i) => ({
+        channels: ACTIVE_CHANNELS.map((c, i) => ({
           id: c.id,
           name: c.name,
           emoji: c.emoji,
+          accent: c.accent,
           tagline: c.tagline,
           taglineEn: c.taglineEn,
           url: `${url.origin}/w/${c.id}`,
           today: metas[i],
         })),
       });
+    }
+
+    // ---- API archivio: date disponibili per un canale (più recente per prima) ----
+    const archMatch = path.match(/^\/api\/archive\/([a-z]+)$/);
+    if (archMatch) {
+      if (!getChannel(archMatch[1])) return json({ error: "canale sconosciuto" }, 404);
+      const limit = Math.min(Number(url.searchParams.get("limit")) || 60, 365);
+      const dates = await listArchiveDates(env, archMatch[1], limit);
+      return json(
+        { channel: archMatch[1], dates },
+        200
+      );
     }
 
     // ---- Generazione manuale/interna di un canale: /run/<canale>?[force=1] ----
@@ -198,13 +213,13 @@ export default {
     }
 
     // ---- Healthcheck ----
-    if (path === "/health") return json({ ok: true, channels: CHANNELS.length });
+    if (path === "/health") return json({ ok: true, activeChannels: ACTIVE_CHANNELS.map((c) => c.id) });
 
     // ---- Landing page ----
     if (path === "/" || path === "/index.html") {
       const metas = {};
       await Promise.all(
-        CHANNELS.map(async (c) => {
+        ACTIVE_CHANNELS.map(async (c) => {
           metas[c.id] = await getMeta(env, c.id);
         })
       );
