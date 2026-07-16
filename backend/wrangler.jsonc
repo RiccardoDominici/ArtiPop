@@ -1,0 +1,32 @@
+// Configurazione Cloudflare Worker per ArtiPop v3.
+// Deploy: npx wrangler deploy   (dalla cartella backend/)
+{
+  "name": "artipop",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+
+  // Serve su https://artipop.<account>.workers.dev (gratuito, HTTPS incluso)
+  "workers_dev": true,
+
+  // Storage chiave-valore: stato della storia di ogni canale + immagini del giorno.
+  // Piano free: 1 GB, 100k letture/giorno, 1k scritture/giorno — ampiamente sufficiente.
+  "kv_namespaces": [
+    { "binding": "KV", "id": "1209455c5d09479ba4051e9e8777c67a" }
+  ],
+
+  // Workers AI: generazione immagini (FLUX.2 klein) e testo (llama) — free tier 10k neuroni/giorno.
+  "ai": { "binding": "AI" },
+
+  // Binding verso se stesso: il cron fa "fan-out" di una richiesta per canale,
+  // così ogni canale gira in una invocazione separata con il proprio budget CPU
+  // (il piano free ha limiti CPU per singola invocazione).
+  "services": [
+    { "binding": "SELF", "service": "artipop" }
+  ],
+
+  // Generazione automatica giornaliera alle 03:00 UTC (ore prima di qualsiasi tramonto in Europa).
+  "triggers": { "crons": ["0 3 * * *"] },
+
+  // Log e metriche visibili nella dashboard Cloudflare.
+  "observability": { "enabled": true }
+}

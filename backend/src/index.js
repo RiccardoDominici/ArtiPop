@@ -1,0 +1,221 @@
+// ArtiPop v3 — Worker Cloudflare.
+//
+// Due responsabilità:
+//   1. `scheduled` (cron giornaliero): per ogni canale, fa una richiesta interna a
+//      /run/<canale> tramite il binding SELF, così ogni canale gira in una invocazione
+//      separata (budget CPU indipendente sul piano free) e in parallelo.
+//   2. `fetch` (HTTP): serve le immagini (/w/<canale>), la landing page (/),
+//      l'API JSON (/api/channels) e gli endpoint di generazione protetti (/run/...).
+//
+// Robustezza: se la generazione di un canale fallisce, l'immagine precedente resta
+// al suo posto — la Shortcut degli utenti non si rompe mai.
+
+import { CHANNELS, getChannel } from "./channels.js";
+import { evolveStory, buildImagePrompt, todayKey } from "./story.js";
+import { generateImage } from "./generate.js";
+import { getState, putState, putImage, getImage, getMeta } from "./storage.js";
+import { renderPage } from "./page.js";
+
+/** Confronto sicuro della chiave admin (query ?key= oppure header x-artipop-key). */
+function isAuthorized(request, env) {
+  if (!env.ADMIN_KEY) return false; // senza secret configurato, gli endpoint admin sono chiusi
+  const url = new URL(request.url);
+  const provided = request.headers.get("x-artipop-key") || url.searchParams.get("key") || "";
+  return provided === env.ADMIN_KEY;
+}
+
+/**
+ * Genera (se serve) l'immagine di oggi per un canale.
+ * Idempotente: se l'immagine di oggi esiste già e non è richiesto `force`, non fa nulla.
+ */
+async function runChannel(env, channelId, { force = false } = {}) {
+  const channel = getChannel(channelId);
+  if (!channel) throw new Error(`canale sconosciuto: ${channelId}`);
+
+  const date = todayKey();
+  const prevState = await getState(env, channelId);
+
+  if (!force && prevState?.lastDate === date) {
+    console.log(`[run] ${channelId}: già generato per ${date}, salto`);
+    return { channel: channelId, date, skipped: true };
+  }
+
+  // 1. La storia avanza di un giorno (LLM con fallback deterministico).
+  const state = await evolveStory(env, channel, prevState, date);
+  console.log(`[run] ${channelId} ${date}: arco ${state.arcIndex} giorno ${state.dayInArc} — "${state.scene}"`);
+
+  // 2. Generazione immagine (catena di fallback interna).
+  const prompt = buildImagePrompt(channel, state.scene);
+  const img = await generateImage(env, prompt, state.seed);
+
+  // 3. Persistenza: immagine + metadati + stato narrativo.
+  await putImage(env, channelId, img, {
+    date,
+    scene: state.scene,
+    arcTheme: state.arcTheme,
+    arcIndex: state.arcIndex,
+    dayInArc: state.dayInArc,
+  });
+  await putState(env, channelId, state);
+
+  return {
+    channel: channelId,
+    date,
+    scene: state.scene,
+    arc: `${state.arcIndex}/${state.dayInArc}`,
+    model: img.model,
+    size: `${img.width}x${img.height}`,
+    bytes: img.bytes.length,
+  };
+}
+
+/** Fan-out: una richiesta interna per canale (parallela) tramite il binding SELF. */
+async function fanOutAll(env, { force = false } = {}) {
+  const results = await Promise.allSettled(
+    CHANNELS.map((ch) =>
+      env.SELF.fetch(`https://artipop.internal/run/${ch.id}${force ? "?force=1" : ""}`, {
+        headers: { "x-artipop-key": env.ADMIN_KEY || "" },
+      }).then(async (r) => ({ status: r.status, body: await r.json() }))
+    )
+  );
+  return CHANNELS.map((ch, i) => {
+    const r = results[i];
+    return r.status === "fulfilled"
+      ? { channel: ch.id, ...r.value }
+      : { channel: ch.id, error: String(r.reason) };
+  });
+}
+
+/** Risposta JSON con status. */
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+export default {
+  /** Cron giornaliero: genera tutti i canali. */
+  async scheduled(event, env, ctx) {
+    console.log(`[cron] avvio generazione giornaliera (${new Date().toISOString()})`);
+    ctx.waitUntil(
+      fanOutAll(env).then((results) => {
+        console.log(`[cron] completato: ${JSON.stringify(results)}`);
+      })
+    );
+  },
+
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // ---- Immagine del giorno: /w/<canale> (accetta anche .jpg/.png in coda) ----
+    const wMatch = path.match(/^\/w\/([a-z]+)(?:\.(?:jpg|jpeg|png))?$/);
+    if (wMatch) {
+      const chId = wMatch[1];
+
+      // Canale "random": ogni giorno un canale diverso, deterministico per data.
+      let target = chId;
+      if (chId === "random") {
+        const day = Math.floor(Date.parse(todayKey()) / 86400000);
+        target = CHANNELS[day % CHANNELS.length].id;
+      }
+
+      if (!getChannel(target)) {
+        return json({ error: "canale sconosciuto", channels: CHANNELS.map((c) => c.id).concat("random") }, 404);
+      }
+
+      // ?d=0..6 → archivio del giorno della settimana (0=domenica).
+      const d = url.searchParams.get("d");
+      const dow = d !== null && /^[0-6]$/.test(d) ? Number(d) : null;
+
+      const img = await getImage(env, target, dow);
+      if (!img) return json({ error: "immagine non ancora generata, riprova tra poco" }, 404);
+
+      return new Response(img.stream, {
+        headers: {
+          "content-type": img.meta.contentType || "image/png",
+          // Niente cache: la Shortcut deve sempre ricevere l'immagine più recente.
+          "cache-control": "no-store, must-revalidate",
+          "x-artipop-date": img.meta.date || "",
+          "x-artipop-model": img.meta.model || "",
+        },
+      });
+    }
+
+    // ---- API JSON: stato di tutti i canali ----
+    if (path === "/api/channels") {
+      const metas = await Promise.all(CHANNELS.map((c) => getMeta(env, c.id)));
+      return json({
+        channels: CHANNELS.map((c, i) => ({
+          id: c.id,
+          name: c.name,
+          emoji: c.emoji,
+          tagline: c.tagline,
+          taglineEn: c.taglineEn,
+          url: `${url.origin}/w/${c.id}`,
+          today: metas[i],
+        })),
+      });
+    }
+
+    // ---- Generazione manuale/interna di un canale: /run/<canale>?[force=1] ----
+    const runMatch = path.match(/^\/run\/([a-z]+)$/);
+    if (runMatch) {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      try {
+        const result = await runChannel(env, runMatch[1], {
+          force: url.searchParams.get("force") === "1",
+        });
+        return json(result);
+      } catch (err) {
+        console.error(`[run] ${runMatch[1]} fallito: ${err.message}`);
+        return json({ error: err.message }, 500);
+      }
+    }
+
+    // ---- Generazione manuale di tutti i canali: /run-all?[force=1] ----
+    if (path === "/run-all") {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      const results = await fanOutAll(env, { force: url.searchParams.get("force") === "1" });
+      return json(results);
+    }
+
+    // ---- Probe risoluzione (admin): /test-size?w=1152&h=2496 ----
+    // Verifica se il modello primario accetta una data risoluzione, senza toccare KV.
+    if (path === "/test-size") {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      const w = Number(url.searchParams.get("w"));
+      const h = Number(url.searchParams.get("h"));
+      if (!w || !h) return json({ error: "servono ?w= e ?h=" }, 400);
+      try {
+        const { tryKleinSize } = await import("./generate.js");
+        const img = await tryKleinSize(env, "a simple gradient test", { width: w, height: h });
+        return json({ ok: true, size: `${w}x${h}`, bytes: img.bytes.length });
+      } catch (err) {
+        return json({ ok: false, size: `${w}x${h}`, error: err.message });
+      }
+    }
+
+    // ---- Healthcheck ----
+    if (path === "/health") return json({ ok: true, channels: CHANNELS.length });
+
+    // ---- Landing page ----
+    if (path === "/" || path === "/index.html") {
+      const metas = {};
+      await Promise.all(
+        CHANNELS.map(async (c) => {
+          metas[c.id] = await getMeta(env, c.id);
+        })
+      );
+      return new Response(renderPage(metas, url.origin, todayKey()), {
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "public, max-age=300", // la pagina può stare in cache 5 minuti
+        },
+      });
+    }
+
+    return json({ error: "not found" }, 404);
+  },
+};
