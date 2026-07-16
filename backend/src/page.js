@@ -500,14 +500,23 @@ function renderStrip(chId) {
       \`<img src="\${srcFor(chId, d, isToday)}" loading="lazy" decoding="async" alt="\${d}" draggable="false" />\` +
       \`<span class="tdate">\${isToday ? "oggi" : new Date(d + "T00:00:00")
         .toLocaleDateString("it-IT", { day: "numeric", month: "short" })}</span>\`;
+    btn.dataset.date = d;
     btn.addEventListener("click", () => { stopPlayback(); previewDay(chId, d, isToday); });
     stripEl.appendChild(btn);
   });
-  // Il tasto ▶ ha senso solo con almeno 2 giorni di viaggio.
+  // Il tasto ▶/⏸ ha senso solo con almeno 2 giorni di viaggio.
   playEl.hidden = dates.length < 2;
+  // Anteprima "stile GIF": il timelapse parte da solo (salvo motion ridotto).
+  if (dates.length >= 2 && !playing && !prefersStill) startPlayback();
 }
 
-/* Un tap su una miniatura: quel giorno appare nel mockup della card in cima. */
+/* Evidenzia nella pellicola il giorno mostrato nel mockup (senza ricostruire il DOM). */
+function highlightStrip(date) {
+  stripEl.querySelectorAll(".thumb").forEach((t) =>
+    t.classList.toggle("on", t.dataset.date === date));
+}
+
+/* Mostra un giorno nel mockup della card in cima (crossfade). */
 function previewDay(chId, date, isToday) {
   const top = deckEl.querySelector(".card.top .wall");
   if (!top) return;
@@ -517,34 +526,43 @@ function previewDay(chId, date, isToday) {
   const pre = new Image();
   pre.onload = () => { top.src = src; top.style.opacity = 1; };
   pre.src = src;
-  renderStrip(chId);
+  highlightStrip(date);
 }
 
-/* ---------- ▶ riproduci il viaggio: timelapse dei giorni nel mockup ---------- */
+/* ---------- timelapse "GIF" del viaggio nel mockup ---------- */
+const prefersStill = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let playTimer = null;
+let playing = false;
+
 function stopPlayback() {
+  playing = false;
   if (playTimer) { clearTimeout(playTimer); playTimer = null; }
   playEl.classList.remove("playing");
   playEl.textContent = "▶ riproduci";
 }
-playEl.addEventListener("click", () => {
-  if (playTimer) { stopPlayback(); return; }
+
+function startPlayback() {
   const chId = CHANNELS[order[0]].id;
   const dates = (archiveCache[chId] || []).slice().reverse(); // dal più vecchio a oggi
   if (dates.length < 2) return;
+  playing = true;
   playEl.classList.add("playing");
   playEl.textContent = "⏸ pausa";
+  // Preload di tutti i frame: dopo il primo giro il loop è fluido (cache immutabile).
+  dates.forEach((d) => { const im = new Image(); im.src = srcFor(chId, d, d === TODAY); });
   let i = 0;
   const step = () => {
-    if (CHANNELS[order[0]].id !== chId) { stopPlayback(); return; } // card cambiata
+    if (!playing || CHANNELS[order[0]].id !== chId) { stopPlayback(); return; } // card cambiata
     const d = dates[i];
     previewDay(chId, d, d === TODAY);
-    i++;
-    if (i < dates.length) playTimer = setTimeout(step, 900);
-    else playTimer = setTimeout(stopPlayback, 900); // finito: resta su oggi
+    const isLast = i === dates.length - 1;
+    i = (i + 1) % dates.length; // loop infinito, come una GIF
+    playTimer = setTimeout(step, isLast ? 2000 : 900); // su "oggi" si ferma un po' di più
   };
   step();
-});
+}
+
+playEl.addEventListener("click", () => (playing ? stopPlayback() : startPlayback()));
 
 /* ---------- copia link ---------- */
 document.getElementById("copyUrl").addEventListener("click", async () => {

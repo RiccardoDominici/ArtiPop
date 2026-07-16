@@ -70,6 +70,39 @@ async function runChannel(env, channelId, { force = false } = {}) {
   };
 }
 
+/**
+ * Backfill: simula `days` giorni consecutivi di storia FINO A OGGI, come se il
+ * canale girasse da una settimana. Riparte da zero (stato azzerato): giorno 1 =
+ * oggi-(days-1) con la firstScene, poi un'evoluzione al giorno; ogni immagine
+ * viene archiviata sotto la sua data passata e l'ultima diventa il "latest".
+ * Un'invocazione per canale (LLM+klein+KV ≈ 6 subrequest/giorno, cap free 50).
+ */
+async function backfillChannel(env, channelId, days) {
+  const channel = getChannel(channelId);
+  if (!channel) throw new Error(`canale sconosciuto: ${channelId}`);
+  if (!channel.active) throw new Error(`canale in pausa: ${channelId}`);
+
+  let state = null; // reset: la storia riparte dal capitolo 1
+  const results = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = todayKey(new Date(Date.now() - i * 86400000));
+    state = await evolveStory(env, channel, state, date);
+    const prompt = buildImagePrompt(channel, state.scene);
+    const img = await generateImage(env, prompt, state.seed);
+    await putImage(env, channelId, img, {
+      date,
+      scene: state.scene,
+      arcTheme: state.arcTheme,
+      arcIndex: state.arcIndex,
+      dayInArc: state.dayInArc,
+    });
+    await putState(env, channelId, state);
+    console.log(`[backfill] ${channelId} ${date}: "${state.scene}" (${img.model})`);
+    results.push({ date, scene: state.scene, model: img.model, size: `${img.width}x${img.height}` });
+  }
+  return results;
+}
+
 /** Fan-out: una richiesta interna per canale (parallela) tramite il binding SELF. */
 async function fanOutAll(env, { force = false } = {}) {
   const results = await Promise.allSettled(
@@ -185,6 +218,20 @@ export default {
         return json(result);
       } catch (err) {
         console.error(`[run] ${runMatch[1]} fallito: ${err.message}`);
+        return json({ error: err.message }, 500);
+      }
+    }
+
+    // ---- Backfill storico (admin): /backfill?ch=<canale>&days=7 ----
+    if (path === "/backfill") {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      const ch = url.searchParams.get("ch") || "";
+      const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 2), 14);
+      try {
+        const results = await backfillChannel(env, ch, days);
+        return json({ channel: ch, days, results });
+      } catch (err) {
+        console.error(`[backfill] ${ch} fallito: ${err.message}`);
         return json({ error: err.message }, 500);
       }
     }
