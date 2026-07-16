@@ -175,20 +175,38 @@ export function renderPage(metas, origin, dateKey) {
   .btn.ghost { background: var(--card); border: 1px solid var(--card-border); color: var(--text); backdrop-filter: blur(14px); }
   .btn.ghost:hover { background: rgba(255,255,255,.11); }
 
-  /* ---------- galleria/viaggio ---------- */
+  /* ---------- galleria/viaggio: pellicola di miniature ---------- */
   section.journey { margin-top: 1.6rem; text-align: center; }
-  .journey h3 { font-size: .82rem; font-weight: 650; color: var(--dim); text-transform: uppercase; letter-spacing: .12em; margin-bottom: .7rem; }
-  .chips { display: flex; gap: .5rem; overflow-x: auto; padding: .2rem .4rem .6rem; max-width: fit-content; margin-inline: auto; scrollbar-width: none; }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip {
-    flex: 0 0 auto; border-radius: 999px; padding: .5rem .95rem;
-    background: var(--card); border: 1px solid var(--card-border);
-    color: var(--text); font-size: .8rem; font-weight: 550; cursor: pointer;
-    transition: all .2s ease; backdrop-filter: blur(10px);
+  .journey .jhead { display: flex; align-items: center; justify-content: center; gap: .8rem; margin-bottom: .8rem; }
+  .journey h3 { font-size: .82rem; font-weight: 650; color: var(--dim); text-transform: uppercase; letter-spacing: .12em; }
+  .playbtn {
+    border: 1px solid var(--card-border); background: var(--card); color: var(--text);
+    border-radius: 999px; padding: .4rem .9rem; font-size: .78rem; font-weight: 650;
+    cursor: pointer; transition: all .2s ease; backdrop-filter: blur(10px);
   }
-  .chip:hover { background: rgba(255,255,255,.12); }
-  .chip.on { background: linear-gradient(100deg, var(--a1), var(--a2)); border-color: transparent; color: #fff; }
-  .chip.today-chip { font-weight: 700; }
+  .playbtn:hover { background: rgba(255,255,255,.12); }
+  .playbtn.playing { background: linear-gradient(100deg, var(--a1), var(--a2)); border-color: transparent; color: #fff; }
+  .strip {
+    display: flex; gap: .6rem; overflow-x: auto; padding: .2rem .4rem .6rem;
+    max-width: min(560px, 92vw); margin-inline: auto; scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+  .strip::-webkit-scrollbar { display: none; }
+  .thumb {
+    flex: 0 0 auto; width: 64px; aspect-ratio: 6 / 13;
+    border-radius: 12px; overflow: hidden; position: relative;
+    border: 2px solid var(--card-border); background: var(--card);
+    cursor: pointer; padding: 0; scroll-snap-align: center;
+    transition: transform .2s ease, border-color .25s ease;
+  }
+  .thumb:hover { transform: translateY(-3px); }
+  .thumb.on { border-color: var(--a1); box-shadow: 0 4px 18px rgba(0,0,0,.4); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .tdate {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: .9rem .2rem .25rem;
+    background: linear-gradient(transparent, rgba(0,0,0,.75));
+    color: #fff; font-size: .58rem; font-weight: 700; letter-spacing: .02em;
+  }
 
   /* ---------- setup ---------- */
   section.setup { margin-top: 3.4rem; }
@@ -256,8 +274,11 @@ export function renderPage(metas, origin, dateKey) {
     </div>
 
     <section class="journey">
-      <h3>Il viaggio finora</h3>
-      <div class="chips" id="chips"><span class="hint">carico l'archivio…</span></div>
+      <div class="jhead">
+        <h3>Il viaggio finora</h3>
+        <button class="playbtn" id="play" hidden>▶ riproduci</button>
+      </div>
+      <div class="strip" id="strip"><span class="hint">carico l'archivio…</span></div>
     </section>
   </div>
 
@@ -312,7 +333,8 @@ const TODAY = ${JSON.stringify(dateKey)};
 
 const deckEl = document.getElementById("deck");
 const dotsEl = document.getElementById("dots");
-const chipsEl = document.getElementById("chips");
+const stripEl = document.getElementById("strip");
+const playEl = document.getElementById("play");
 const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
@@ -439,52 +461,90 @@ function tickClock() {
 }
 setInterval(tickClock, 10_000);
 
-/* ---------- galleria del viaggio (archivio permanente) ---------- */
+/* ---------- galleria del viaggio (archivio permanente) ----------
+   Pellicola di miniature: un mini-telefono per ogni giorno archiviato.
+   Le immagini d'archivio hanno cache immutabile, quindi dopo la prima
+   visita le miniature sono gratis; loading=lazy carica solo le visibili. */
 async function loadArchive(chId) {
-  chipsEl.innerHTML = '<span class="hint">carico l\\'archivio…</span>';
+  stripEl.innerHTML = '<span class="hint">carico l\\'archivio…</span>';
+  playEl.hidden = true;
   try {
     if (!archiveCache[chId]) {
-      const res = await fetch(\`/api/archive/\${chId}?limit=21\`);
+      const res = await fetch(\`/api/archive/\${chId}?limit=30\`);
       archiveCache[chId] = (await res.json()).dates || [];
     }
-    renderChips(chId);
+    renderStrip(chId);
   } catch {
-    chipsEl.innerHTML = '<span class="hint">archivio non disponibile</span>';
+    stripEl.innerHTML = '<span class="hint">archivio non disponibile</span>';
   }
 }
 
-function renderChips(chId) {
+function srcFor(chId, date, isToday) {
+  return isToday ? \`/w/\${chId}?v=\${TODAY}\` : \`/w/\${chId}?date=\${date}\`;
+}
+
+function renderStrip(chId) {
   if (CHANNELS[order[0]].id !== chId) return; // nel frattempo l'utente ha cambiato card
   const dates = archiveCache[chId];
   if (!dates || dates.length === 0) {
-    chipsEl.innerHTML = '<span class="hint">il viaggio inizia oggi ✨</span>';
+    stripEl.innerHTML = '<span class="hint">il viaggio inizia oggi ✨</span>';
     return;
   }
-  chipsEl.innerHTML = "";
+  stripEl.innerHTML = "";
   dates.forEach((d) => {
-    const chip = document.createElement("button");
     const isToday = d === TODAY;
-    chip.className = "chip" + (isToday ? " today-chip" : "") +
-      ((previewDate ?? TODAY) === d ? " on" : "");
-    chip.textContent = isToday ? "oggi" : new Date(d + "T00:00:00")
-      .toLocaleDateString("it-IT", { day: "numeric", month: "short" });
-    chip.addEventListener("click", () => previewDay(chId, d, isToday));
-    chipsEl.appendChild(chip);
+    const btn = document.createElement("button");
+    btn.className = "thumb" + ((previewDate ?? TODAY) === d ? " on" : "");
+    btn.title = d;
+    btn.innerHTML =
+      \`<img src="\${srcFor(chId, d, isToday)}" loading="lazy" decoding="async" alt="\${d}" draggable="false" />\` +
+      \`<span class="tdate">\${isToday ? "oggi" : new Date(d + "T00:00:00")
+        .toLocaleDateString("it-IT", { day: "numeric", month: "short" })}</span>\`;
+    btn.addEventListener("click", () => { stopPlayback(); previewDay(chId, d, isToday); });
+    stripEl.appendChild(btn);
   });
+  // Il tasto ▶ ha senso solo con almeno 2 giorni di viaggio.
+  playEl.hidden = dates.length < 2;
 }
 
-/* Un tap su una data: quel giorno appare nel mockup della card in cima. */
+/* Un tap su una miniatura: quel giorno appare nel mockup della card in cima. */
 function previewDay(chId, date, isToday) {
   const top = deckEl.querySelector(".card.top .wall");
   if (!top) return;
   previewDate = isToday ? null : date;
   top.style.opacity = 0;
-  const src = isToday ? \`/w/\${chId}?v=\${TODAY}\` : \`/w/\${chId}?date=\${date}\`;
+  const src = srcFor(chId, date, isToday);
   const pre = new Image();
   pre.onload = () => { top.src = src; top.style.opacity = 1; };
   pre.src = src;
-  renderChips(chId);
+  renderStrip(chId);
 }
+
+/* ---------- ▶ riproduci il viaggio: timelapse dei giorni nel mockup ---------- */
+let playTimer = null;
+function stopPlayback() {
+  if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+  playEl.classList.remove("playing");
+  playEl.textContent = "▶ riproduci";
+}
+playEl.addEventListener("click", () => {
+  if (playTimer) { stopPlayback(); return; }
+  const chId = CHANNELS[order[0]].id;
+  const dates = (archiveCache[chId] || []).slice().reverse(); // dal più vecchio a oggi
+  if (dates.length < 2) return;
+  playEl.classList.add("playing");
+  playEl.textContent = "⏸ pausa";
+  let i = 0;
+  const step = () => {
+    if (CHANNELS[order[0]].id !== chId) { stopPlayback(); return; } // card cambiata
+    const d = dates[i];
+    previewDay(chId, d, d === TODAY);
+    i++;
+    if (i < dates.length) playTimer = setTimeout(step, 900);
+    else playTimer = setTimeout(stopPlayback, 900); // finito: resta su oggi
+  };
+  step();
+});
 
 /* ---------- copia link ---------- */
 document.getElementById("copyUrl").addEventListener("click", async () => {
