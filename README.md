@@ -66,3 +66,7 @@ di un minuto (es. tramonto e tramonto+1'): se la prima fallisce, la seconda pass
 Tutto il backend (Cloudflare Worker, ~600 righe commentate) è in
 [`backend/`](backend/README.md): architettura, costi, deploy e come
 aggiungere un canale in 10 righe.
+
+In [`shortcut/`](shortcut/README.md) ci sono i file `.shortcut` firmati
+pronti per ogni canale (sperimentali, da testare su device) e la pipeline
+per rigenerarli.
