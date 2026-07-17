@@ -323,6 +323,50 @@ export default {
       }
     }
 
+    // ---- Rigenerazione chirurgica di UN giorno: /regen-day?ch=X&date=YYYY-MM-DD ----
+    // Utile quando un singolo frame esce male (la generazione non è
+    // perfettamente deterministica): ricostruisce lo stato di quel giorno dal
+    // piano salvato e rigenera solo quell'immagine, senza toccare il resto.
+    if (path === "/regen-day") {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      const ch = url.searchParams.get("ch") || "";
+      const date = url.searchParams.get("date") || "";
+      const channel = getChannel(ch);
+      if (!channel || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "servono ?ch= e ?date=" }, 400);
+      const state = await getState(env, ch);
+      if (!state?.anchorDate || !Array.isArray(state.plan)) {
+        return json({ error: "stato non compatibile (serve un canale a progressione già attivo)" }, 400);
+      }
+      const dayInArc =
+        Math.floor(Date.parse(date + "T00:00:00Z") / 86400000) -
+        Math.floor(Date.parse(state.anchorDate + "T00:00:00Z") / 86400000);
+      if (dayInArc < 0 || dayInArc >= state.plan.length) {
+        return json({ error: `data fuori dall'arco corrente (àncora ${state.anchorDate})` }, 400);
+      }
+      const prevDate = todayKey(new Date(Date.parse(date + "T12:00:00Z") - 86400000));
+      const dayState = {
+        ...state,
+        dayInArc,
+        prevDate: dayInArc > 0 ? prevDate : null,
+        scene: dayInArc === 0
+          ? `${channel.setting}, ${state.plan[0]}`
+          : state.plan[Math.min(dayInArc, state.plan.length - 1)],
+      };
+      try {
+        const img = await generateDay(env, channel, ch, dayState, date, 3);
+        await putImage(env, ch, img, {
+          date,
+          scene: dayState.scene,
+          arcTheme: state.arcTheme,
+          arcIndex: state.arcIndex,
+          dayInArc,
+        }, { archiveOnly: date !== state.lastDate });
+        return json({ channel: ch, date, dayInArc, model: img.model, size: `${img.width}x${img.height}` });
+      } catch (err) {
+        return json({ error: err.message }, 500);
+      }
+    }
+
     // ---- Generazione manuale di tutti i canali: /run-all?[force=1] ----
     if (path === "/run-all") {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);

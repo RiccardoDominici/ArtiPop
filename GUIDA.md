@@ -20,14 +20,14 @@ al tramonto**. Gratis, senza app e senza account.
 Vai su **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)**,
 sfoglia le card (swipe!) e copia il link del canale che preferisci:
 
-| Canale | Il viaggio | URL |
+| Canale | Cosa succede, giorno dopo giorno | URL |
 |---|---|---|
-| 🏔️ **Horizon** | i paesaggi della Terra, dall'alba delle Alpi ai deserti | `…/w/horizon` |
-| 🌃 **Neon** | una megalopoli futura che cresce notte dopo notte | `…/w/neon` |
+| 🎨 **Atelier** | un quadro si dipinge da solo, dalla tela bianca all'opera finita in 12 giorni | `…/w/atelier` |
+| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura, un po' ogni giorno | `…/w/bloom` |
 | 🎲 **Random** | ogni giorno un canale a sorpresa | `…/w/random` |
 
-(altri canali — Cosmos, Bloom, Depths, Aurora — sono già pronti nel codice e
-verranno attivati in futuro)
+(i canali "viaggio" — Horizon, Neon, Cosmos, Depths, Aurora — restano nel
+codice in pausa, riattivabili con una riga)
 
 ### Passo 2 — Crea la Shortcut (una volta sola)
 
@@ -99,6 +99,22 @@ npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
 | Cambiare l'orario di generazione | `triggers.crons` in `backend/wrangler.jsonc` (ora in UTC) |
 | Verificare una risoluzione del modello | `…/test-size?w=960&h=2048&key=<ADMIN_KEY>` |
 | Vedere i consumi AI | dash.cloudflare.com → AI → Workers AI (neuroni/giorno) |
+
+### I canali a progressione (come funzionano)
+
+Un arco = un **progetto** che si completa in esattamente 12 giorni (un quadro,
+una pianta): il piano delle 12 tappe è deterministico e curato in
+`channels.js` (`stageTemplates`, con `{s}` = nome breve del progetto).
+Ogni giorno l'immagine è un **edit additivo**: klein riceve
+`input_image_0` = ieri (contenuto da preservare + la tappa di oggi) e
+`input_image_1` = keyframe dell'arco (àncora di qualità), con l'istruzione
+"aggiungi SOLO questo cambiamento, tutto il resto resta identico".
+Lezioni imparate (verificate empiricamente, non toccare senza motivo):
+- le tappe iniziali NON devono nominare il risultato finale, o il modello lo
+  disegna subito;
+- il resizer esterno va chiamato con un nonce nell'URL sorgente, o le
+  rigenerazioni ricevono miniature stantie dalla sua cache;
+- se un singolo giorno esce male: `/regen-day?ch=X&date=YYYY-MM-DD&key=…`.
 
 ### La coerenza nel tempo (come è garantita)
 

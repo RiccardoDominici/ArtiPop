@@ -12,15 +12,17 @@ ieri oggi è un po' più in alto sul sentiero, la città neon ha acceso nuove in
 
 ## 🎨 I canali attivi
 
-| Canale | Il viaggio | URL |
+| Canale | Cosa succede, giorno dopo giorno | URL |
 |---|---|---|
-| 🏔️ **Horizon** | i paesaggi della Terra, dall'alba delle Alpi ai deserti | `/w/horizon` |
-| 🌃 **Neon** | una megalopoli futura che cresce notte dopo notte | `/w/neon` |
+| 🎨 **Atelier** | un quadro si dipinge da solo: tela bianca → schizzo → colore → opera finita in 12 giorni, poi una tela nuova | `/w/atelier` |
+| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura nello stesso vaso, poi si semina la successiva | `/w/bloom` |
 | 🎲 **Random** | ogni giorno un canale a sorpresa | `/w/random` |
 
 Tutti gli URL iniziano con `https://artipop.riccardo-dominici.workers.dev`.
-Altri quattro canali (🪐 Cosmos, 🌸 Bloom, 🌊 Depths, 🎨 Aurora) sono già pronti
-nel codice, in pausa: si attivano con una riga.
+Ogni giorno cambia UN pezzo della scena (una pennellata, una foglia nuova) e il
+resto resta identico: non è un'immagine diversa, è la stessa storia che avanza.
+Altri canali "viaggio" (🏔️ Horizon, 🌃 Neon, 🪐 Cosmos, 🌊 Depths, 🎨 Aurora)
+sono pronti nel codice, in pausa: si attivano con una riga.
 
 ## 📲 Attivalo in 2 minuti
 
@@ -34,8 +36,10 @@ Passo-passo dettagliato, FAQ e soluzioni ai problemi: **[GUIDA.md](GUIDA.md)**.
 ## 🧠 Come funziona
 
 - Ogni notte un cron su **Cloudflare Workers** (piano free) fa avanzare la
-  storia di ogni canale: un LLM riscrive la scena "un giorno dopo", con una
-  guardia anti-deriva che garantisce coerenza strutturale nel tempo.
+  storia di ogni canale: un arco = un progetto di 12 giorni (piano di tappe
+  curate), e l'immagine di oggi è un **edit additivo** di quella di ieri
+  (FLUX.2 klein con doppio riferimento: ieri = contenuto da preservare,
+  keyframe dell'arco = àncora di qualità) — cambia solo il pezzo del giorno.
 - L'immagine è generata da **FLUX.2 klein-4b** (Workers AI) a 960x2048.
 - **Niente va perso**: ogni wallpaper finisce in un archivio permanente,
   consultabile dal sito ("Il viaggio finora") o via `…/w/horizon?date=YYYY-MM-DD`.

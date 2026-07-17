@@ -22,30 +22,38 @@ export const CHANNELS = [
     mode: "progression",
     style:
       "cozy artist studio interior, warm window light, cinematic still-life photography, shallow depth of field",
-    palette: "warm wood tones and cream canvas, the painting's own colors emerging day by day",
+    palette: "warm wood tones and cream white canvas",
     setting:
       "a large blank canvas on a wooden easel in a cozy sunlit artist studio, brushes and a palette on a small side table",
+    // `subject` descrive il progetto completo (solo per i metadati);
+    // `noun` è il riferimento BREVE usato nelle tappe. Le prime tappe non
+    // menzionano affatto il soggetto: se il prompt nomina il risultato finale
+    // ("dipinto di montagne"), il modello lo disegna subito (leak verificato).
+    // `noun` = il soggetto come SCENA (senza la parola "painting"): entra fin
+    // dallo schizzo, con guardie esplicite ("solo contorni", "niente colore",
+    // "chiaramente incompiuto") che impediscono al modello di completare
+    // l'opera in anticipo.
     projects: [
-      { subject: "an oil painting of a mountain landscape at sunrise" },
-      { subject: "an oil painting of a stormy sea with a small lighthouse" },
-      { subject: "an impressionist painting of a red poppy field under summer clouds" },
-      { subject: "a moody watercolor of a rainy city street at dusk" },
-      { subject: "a detailed painting of a red fox sitting in falling snow" },
-      { subject: "a warm painting of a tuscan hillside with cypress trees" },
+      { subject: "an oil painting of a mountain landscape at sunrise", noun: "the mountain lake scene" },
+      { subject: "an oil painting of a stormy sea with a lighthouse", noun: "the stormy sea and lighthouse scene" },
+      { subject: "an impressionist painting of a red poppy field", noun: "the red poppy field scene" },
+      { subject: "a moody watercolor of a rainy city street at dusk", noun: "the rainy city street scene" },
+      { subject: "a detailed painting of a red fox in falling snow", noun: "the red fox in the snow scene" },
+      { subject: "a warm painting of a tuscan hillside with cypresses", noun: "the tuscan hillside scene" },
     ],
     stageTemplates: [
-      "the canvas is still blank; a pencil rests on the easel ledge — {s} is about to begin",
-      "the first faint pencil sketch lines of {s} appear on the canvas",
-      "the sketch of {s} is complete; a few new paint tubes lie on the side table",
-      "the first thin wash of background color covers the top of the canvas of {s}",
-      "large soft blocks of underpainting fill half the canvas of {s}",
-      "the whole canvas of {s} is covered in rough underpainting; a used rag hangs on the easel",
-      "the main shapes of {s} are painted with real color and form",
-      "rich details emerge across {s}; the palette on the table is now crowded with mixed colors",
-      "fine details and highlights bring {s} to life; brushes soak in a jar of cloudy water",
-      "deep shadows and glazes give {s} depth; the painting is nearly finished",
-      "the final luminous touches are placed on {s}",
-      "{s} is finished on the easel, glowing in the studio light, brushes resting at last",
+      "the canvas is COMPLETELY BLANK: pure white, untouched, nothing painted or drawn on it at all",
+      "a few faint pencil lines begin to sketch {s} on the canvas, which is still mostly blank white",
+      "the complete light pencil sketch of {s} covers the canvas: thin graphite outlines only, no paint at all",
+      "a first pale wash of color fills the sky area of the sketched {s}; the rest is still pencil on white",
+      "soft blocks of muted underpainting cover the upper half of {s}; the lower half is still bare sketch",
+      "the whole canvas shows the rough underpainting of {s}: blurry approximate colors, clearly unfinished",
+      "the main forms of {s} are now painted with real color, though details are still missing",
+      "richer color and the first fine details appear across {s}; some edges still rough",
+      "fine details and highlights sharpen {s}; it looks close to finished",
+      "deep shadows and warm glazes give {s} real depth",
+      "the final luminous highlights complete {s}",
+      "{s} is finished: a complete, detailed painting glowing on the easel",
     ],
   },
   {
@@ -146,27 +154,28 @@ export const CHANNELS = [
     setting:
       "a terracotta pot of dark soil on a stone windowsill in soft morning light, blurred garden behind the glass",
     projects: [
-      { subject: "a single sunflower growing from a seed to a tall full golden bloom" },
-      { subject: "a cherry branch in a glass vase going from bare wood to full pink blossom" },
-      { subject: "a climbing rose slowly colonizing an old wooden trellis with leaves and red roses" },
-      { subject: "a fern unfurling from a tight spiral into wide green fronds" },
-      { subject: "a cactus slowly growing and finally opening one bright pink flower" },
-      { subject: "an amaryllis bulb sending up a stalk that opens into huge red trumpet flowers" },
+      { subject: "a sunflower growing from seed to golden bloom", noun: "the sunflower" },
+      { subject: "a cherry branch blossoming in a glass vase", noun: "the cherry blossoms" },
+      { subject: "a climbing rose colonizing a wooden trellis", noun: "the red roses" },
+      { subject: "a fern unfurling from a tight spiral", noun: "the fern fronds" },
+      { subject: "a cactus opening one bright pink flower", noun: "the pink cactus flower" },
+      { subject: "an amaryllis opening huge red trumpet flowers", noun: "the red amaryllis flowers" },
     ],
-    // Fallback deterministico: 12 tappe generiche con {s} = soggetto del progetto.
+    // Tappe deterministiche. Le prime NON nominano il fiore: nominare il
+    // risultato finale fa comparire subito la fioritura completa (leak verificato).
     stageTemplates: [
-      "the pot of bare dark soil, nothing has sprouted yet — the very beginning of {s}",
-      "a tiny pale green sprout has just broken through the soil of {s}",
-      "the sprout of {s} stands taller, its first two seed leaves open",
-      "{s}: a slim stem rises, the first true leaf unfolding",
-      "{s}: the stem thickens, three or four young leaves catch the light",
-      "{s}: clearly taller now, a healthy cluster of leaves",
-      "{s}: the first tight bud has formed at the top",
-      "{s}: the bud swells, a hint of color showing at its tip",
-      "{s}: the bud has begun to open, first petals visible",
-      "{s}: half open now, the flower's color is unmistakable",
-      "{s}: almost fully open, petals spreading wide",
-      "{s}: in full glorious bloom, complete and radiant",
+      "the pot holds only bare dark soil: completely empty, nothing has sprouted at all",
+      "a tiny pale green sprout has just broken through the soil, barely a centimeter tall",
+      "the small sprout stands slightly taller, its two round seed leaves now open",
+      "a slim green stem rises a few centimeters, the first true leaf unfolding",
+      "the young plant is taller, with three or four small green leaves",
+      "the plant stands tall and leafy, about half of its final height",
+      "a small tight green bud has formed at the top of the tall stem",
+      "the bud has swollen, a first hint of the color of {s} visible at its tip",
+      "the bud is beginning to open, the very first petals of {s} unfurling",
+      "{s} is half open, the color now bright and unmistakable",
+      "{s} is almost fully open, petals spreading wide",
+      "{s} in full glorious bloom at the top of the plant, complete and radiant",
     ],
     style:
       "delicate botanical illustration, soft focus macro, dreamy minimalism, gentle bokeh",

@@ -85,12 +85,16 @@ export async function tryKleinSize(env, prompt, size) {
  * leggere una scrittura appena fatta.
  */
 export async function fetchReferenceImage(env, publicImageUrl, attempts = 2) {
-  // Cache-buster per non farci servire un eventuale errore messo in cache dal resizer.
-  const bust = `&cb=${publicImageUrl.length}`;
+  // Nonce nell'URL SORGENTE: il resizer cachea per URL completo, e senza nonce
+  // una rigenerazione della stessa data riceverebbe la miniatura VECCHIA messa
+  // in cache alla generazione precedente (bug reale osservato nei backfill
+  // ripetuti: riferimenti stantii → progressioni caotiche).
+  const sep = publicImageUrl.includes("?") ? "&" : "?";
+  const freshUrl = `${publicImageUrl}${sep}v=${Date.now()}`;
   const url =
     CONFIG.REF_RESIZER +
-    encodeURIComponent(publicImageUrl) +
-    `&w=${CONFIG.REF_WIDTH}&h=${CONFIG.REF_HEIGHT}&fit=cover&output=jpg` + bust;
+    encodeURIComponent(freshUrl) +
+    `&w=${CONFIG.REF_WIDTH}&h=${CONFIG.REF_HEIGHT}&fit=cover&output=jpg`;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(20000) });

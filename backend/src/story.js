@@ -236,9 +236,12 @@ export async function evolveStory(env, channel, prevState, dateKey) {
    mostra la tappa corrispondente — un cambiamento visibile e cumulativo,
    mentre il resto della scena resta fermo. */
 
-/** Applica {s} = soggetto ai template deterministici del canale. */
-function stagesFromTemplates(channel, subject) {
-  return channel.stageTemplates.map((t) => t.replaceAll("{s}", subject));
+/** Applica {s} = nome breve del progetto ai template deterministici del canale.
+ *  Si usa il `noun` (es. "the sunflower"), MAI il subject completo: nominare il
+ *  risultato finale nelle prime tappe fa generare subito il progetto completo. */
+function stagesFromTemplates(channel, project) {
+  const name = project.noun ?? project.subject;
+  return channel.stageTemplates.map((t) => t.replaceAll("{s}", name));
 }
 
 /** Chiede all'LLM un piano di 12 tappe visive; null se non utilizzabile. */
@@ -287,7 +290,7 @@ async function evolveProgression(env, channel, prevState, dateKey) {
     // il progetto che avanza). Il planner LLM (makePlanWithLLM) è disattivato:
     // nei test produceva piani fuori bersaglio (oggetti di contorno invece del
     // progetto). Riattivabile qui quando ci sarà un validatore più severo.
-    const plan = stagesFromTemplates(channel, project.subject);
+    const plan = stagesFromTemplates(channel, project);
     void makePlanWithLLM; // referenza per evitare warning di funzione inutilizzata
     return {
       lastDate: dateKey,
@@ -313,7 +316,7 @@ async function evolveProgression(env, channel, prevState, dateKey) {
 
   const plan = Array.isArray(prevState.plan) && prevState.plan.length >= 10
     ? prevState.plan
-    : stagesFromTemplates(channel, prevState.arcTheme ?? channel.projects[0].subject);
+    : stagesFromTemplates(channel, channel.projects[(prevState.arcIndex ?? 0) % channel.projects.length]);
 
   return {
     ...prevState,
@@ -335,6 +338,7 @@ export function buildProgressPrompt(channel, stageText) {
     `Image 0 is yesterday's state of this scene. Today one visible change happens: ${stageText}. ` +
     `Add ONLY this change on top of image 0. Every other part of image 0 stays exactly identical: ` +
     `same viewpoint, same framing, same objects, same light, same colors. ` +
+    `The change affects only its own subject; the rest of the scene remains a realistic photograph. ` +
     `Match the crisp clean quality of image 1. ${CONFIG.WALLPAPER_SUFFIX}`
   );
 }
