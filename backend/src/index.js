@@ -11,7 +11,7 @@
 // al suo posto — la Shortcut degli utenti non si rompe mai.
 
 import { ACTIVE_CHANNELS, getChannel } from "./channels.js";
-import { evolveStory, buildImagePrompt, buildEditPrompt, buildProgressPrompt, buildCumulativePrompt, todayKey } from "./story.js";
+import { evolveStory, buildImagePrompt, buildEditPrompt, buildProgressPrompt, buildCumulativePrompt, buildCumulativeListPrompt, todayKey } from "./story.js";
 import { generateImage, fetchReferenceImage } from "./generate.js";
 import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
 import { renderPage } from "./page.js";
@@ -131,6 +131,22 @@ async function backfillChannel(env, channelId, days) {
 async function generateDay(env, channel, channelId, state, date, retries = 2) {
   const refUrl = (d) => `${env.PUBLIC_ORIGIN}/w/${channelId}?date=${d}`;
 
+  // --- Progressione "anchor-cumulative": sempre e solo il keyframe come base ---
+  if (channel.mode === "progression" && channel.refMode === "anchor-cumulative" && state.dayInArc > 0) {
+    const refAnchor = await fetchReferenceImage(env, refUrl(state.anchorDate), retries);
+    if (refAnchor) {
+      const project = channel.projects[(state.arcIndex ?? 0) % channel.projects.length];
+      const name = project.noun ?? project.subject;
+      const items = channel.stageSummaries
+        .slice(1, state.dayInArc + 1)
+        .filter(Boolean)
+        .map((t) => t.replaceAll("{s}", name));
+      return generateImage(env, buildCumulativeListPrompt(channel, items), state.seed, [refAnchor]);
+    }
+    console.warn(`[gen] ${channelId}: àncora non disponibile, genero da zero`);
+    return generateImage(env, buildImagePrompt(channel, state.scene), state.seed);
+  }
+
   // --- Canali a PROGRESSIONE: edit additivo (ieri + àncora di stile) ---
   if (channel.mode === "progression" && state.dayInArc > 0) {
     const [refYesterday, refAnchor] = await Promise.all([
@@ -226,7 +242,7 @@ export default {
     );
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -330,6 +346,10 @@ export default {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const ch = url.searchParams.get("ch") || "";
       const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 2), 7);
+      // SINCRONO di proposito: la richiesta aperta tiene vivo il worker per
+      // tutta la durata (minuti). Con waitUntil il runtime termina il lavoro
+      // dopo ~30-60s dalla risposta (verificato: backfill morti a 2/7 giorni).
+      // Il client deve restare connesso; in caso di disconnessione, rilanciare.
       try {
         const results = await backfillChannel(env, ch, days);
         return json({ channel: ch, days, results });

@@ -336,10 +336,26 @@ async function evolveProgression(env, channel, prevState, dateKey) {
 export function buildProgressPrompt(channel, stageText) {
   return (
     `Image 0 is yesterday's state of this scene. Today one visible change happens: ${stageText}. ` +
-    `Add ONLY this change on top of image 0. Every other part of image 0 stays exactly identical: ` +
+    `Add ONLY this change on top of image 0, and make it CLEARLY VISIBLE at a glance ` +
+    `when compared with image 0. Every other part of image 0 stays exactly identical: ` +
     `same viewpoint, same framing, same objects, same light, same colors. ` +
     `The change affects only its own subject; the rest of the scene remains a realistic photograph. ` +
     `Match the crisp clean quality of image 1. ${CONFIG.WALLPAPER_SUFFIX}`
+  );
+}
+
+/**
+ * Prompt CUMULATIVO dall'àncora (refMode "anchor-cumulative"): image 0 è la
+ * scena vuota del keyframe; si chiede la stessa scena con TUTTI gli oggetti
+ * accumulati fino a oggi. Ogni giorno è a 1 solo edit dal keyframe pulito:
+ * niente accumulo di artefatti, per costruzione.
+ */
+export function buildCumulativeListPrompt(channel, items) {
+  return (
+    `Image 0 shows this scene completely empty. Show the EXACT same scene from the same ` +
+    `viewpoint, now containing all of these, each clearly visible: ${items.join("; ")}. ` +
+    `Keep the furniture, wall, window light and framing of image 0 identical. ` +
+    `${CONFIG.WALLPAPER_SUFFIX}`
   );
 }
 

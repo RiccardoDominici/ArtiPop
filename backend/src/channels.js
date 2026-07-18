@@ -12,10 +12,107 @@
 
 export const CHANNELS = [
   {
+    id: "studio",
+    name: "Studio",
+    emoji: "📚",
+    active: true,
+    accent: ["#c98d5a", "#4a6b5d"],
+    tagline: "Una scrivania vuota che si riempie di vita, un oggetto al giorno",
+    taglineEn: "An empty desk filling with life, one object a day",
+    mode: "progression",
+    // "anchor-cumulative": ogni giorno si edita il KEYFRAME pulito (mai ieri)
+    // con la lista cumulativa degli oggetti fin lì — le scene fotorealistiche
+    // lisce accumulano macchie a ogni edit in catena (verificato due volte).
+    refMode: "anchor-cumulative",
+    stageSummaries: [
+      "",
+      "a small warm desk lamp, switched off, on the back corner",
+      "the desk lamp switched ON casting warm light, and a stack of two old books beside it",
+      "a small potted green plant on the opposite corner",
+      "a steaming ceramic cup near the front edge",
+      "an open blank notebook with a pen across it, in the middle",
+      "a taller stack of books, and a small framed landscape print leaning against the wall",
+      "{s} in the place of honor at the center back",
+      "a few small objects related to {s} neatly around it",
+      "a string of tiny warm fairy lights glowing on the wall above",
+      "a lit candle and a second tiny plant in the last corners",
+      "every object in its place, cozy and warmly lit",
+    ],
+    // Sfondo LISCIO di proposito: le texture fini (intonaco, pietra) accumulano
+    // artefatti a ogni edit della catena (corruzione delle alte frequenze,
+    // verificata empiricamente sul muro testurizzato della prima versione).
+    style:
+      "cozy interior still-life photography, warm soft window light, clean minimal background, shallow depth of field",
+    palette: "warm wood, cream and amber tones",
+    setting:
+      "a sturdy wooden desk against a smooth plain warm-cream wall with no texture, seen straight on from the front, soft window light from the left",
+    // Ogni arco la scrivania appartiene a qualcuno di diverso: il `noun` è
+    // l'oggetto-firma che arriva a metà arco.
+    projects: [
+      { subject: "a writer's desk coming to life", noun: "a vintage typewriter" },
+      { subject: "a botanist's desk coming to life", noun: "a glass terrarium with small ferns" },
+      { subject: "a traveler's desk coming to life", noun: "an old globe and a leather journal" },
+      { subject: "a musician's desk coming to life", noun: "a wooden violin resting on a small stand" },
+      { subject: "an astronomer's desk coming to life", noun: "a small brass telescope" },
+      { subject: "a painter's desk coming to life", noun: "a wooden paint box with tubes and brushes" },
+    ],
+    stageTemplates: [
+      "the wooden desk is completely empty and clean: bare desktop, bare wall, nothing on it at all",
+      "a small warm desk lamp now sits on the back corner of the empty desk, switched off",
+      "the lamp is now on, casting warm light; a small stack of two old books has appeared beside it",
+      "a small potted green plant now sits on the opposite corner of the desk",
+      "a steaming ceramic cup has appeared near the front edge of the desk",
+      "an open blank notebook with a pen across it now lies in the middle of the desk",
+      "a few more books have joined the stack, and a small framed landscape print leans against the wall",
+      "{s} now takes the place of honor at the center back of the desk",
+      "a few small objects related to {s} are scattered neatly around it",
+      "a string of tiny warm fairy lights now glows on the wall above the desk",
+      "a lit candle and a second tiny plant fill the last empty corners",
+      "the desk is complete: cozy, lived-in and warmly lit, every object in its place",
+    ],
+  },
+  {
+    id: "island",
+    name: "Isola",
+    emoji: "🏝️",
+    active: true,
+    accent: ["#7ec8e3", "#f2b878"],
+    tagline: "Un'isola fluttuante che prende vita, un pezzo al giorno",
+    taglineEn: "A floating island coming alive, one piece a day",
+    mode: "progression",
+    style:
+      "whimsical fantasy illustration, painterly, soft volumetric light, sense of gentle wonder",
+    palette: "soft sky pastels with warm golden accents",
+    setting:
+      "a small floating island drifting in a vast soft pastel sky above distant clouds, seen from slightly below",
+    projects: [
+      { subject: "a floating island growing a cottage", noun: "a tiny stone cottage with a red roof" },
+      { subject: "a floating island growing a lighthouse", noun: "a small white-and-red lighthouse" },
+      { subject: "a floating island growing a windmill", noun: "a little wooden windmill" },
+      { subject: "a floating island growing a greenhouse", noun: "a small glass greenhouse" },
+      { subject: "a floating island growing a tea house", noun: "a tiny wooden tea house with paper windows" },
+      { subject: "a floating island growing a bell tower", noun: "a slender stone bell tower" },
+    ],
+    stageTemplates: [
+      "the floating island is bare grey rock: no plants, no structures, nothing on it at all",
+      "the first patches of green moss and grass have appeared on the rocky surface",
+      "soft grass now covers most of the island, with a few small white wildflowers",
+      "a young leafy tree has sprouted near the island's center",
+      "a thin waterfall now pours from the island's edge, dissolving into mist below",
+      "two more trees and some bushes have grown; the island looks lush and green",
+      "the first wooden foundations of {s} have appeared among the grass",
+      "{s} is half built, its structure clearly taking shape",
+      "{s} is complete, standing charmingly among the trees",
+      "warm light now glows from {s}, and a little stone path leads to it",
+      "small birds circle the island and tiny paper lanterns hang from the trees",
+      "the island is complete and alive, glowing softly in the golden-hour sky",
+    ],
+  },
+  {
     id: "atelier",
     name: "Atelier",
     emoji: "🎨",
-    active: true,
+    active: false, // in pausa su richiesta (l'archivio resta)
     accent: ["#e8b04b", "#a34a2b"],
     tagline: "Un quadro che si dipinge da solo, pennellata dopo pennellata",
     taglineEn: "A painting painting itself, brushstroke by brushstroke",
@@ -163,19 +260,23 @@ export const CHANNELS = [
     ],
     // Tappe deterministiche. Le prime NON nominano il fiore: nominare il
     // risultato finale fa comparire subito la fioritura completa (leak verificato).
+    // Ogni tappa dichiara un cambiamento QUANTIFICATO ("raddoppiato",
+    // "metà dell'altezza finale"): senza numeri il modello, istruito a
+    // preservare tutto, riproduce ieri quasi identico (feedback utente:
+    // "i pezzi nuovi compaiono ogni 3 giorni").
     stageTemplates: [
       "the pot holds only bare dark soil: completely empty, nothing has sprouted at all",
-      "a tiny pale green sprout has just broken through the soil, barely a centimeter tall",
-      "the small sprout stands slightly taller, its two round seed leaves now open",
-      "a slim green stem rises a few centimeters, the first true leaf unfolding",
-      "the young plant is taller, with three or four small green leaves",
-      "the plant stands tall and leafy, about half of its final height",
-      "a small tight green bud has formed at the top of the tall stem",
-      "the bud has swollen, a first hint of the color of {s} visible at its tip",
-      "the bud is beginning to open, the very first petals of {s} unfurling",
-      "{s} is half open, the color now bright and unmistakable",
-      "{s} is almost fully open, petals spreading wide",
-      "{s} in full glorious bloom at the top of the plant, complete and radiant",
+      "a tiny pale green sprout has just broken through the soil, barely one centimeter tall",
+      "the sprout has DOUBLED in height since yesterday, its two round seed leaves now open wide",
+      "the plant is clearly taller than yesterday: a slim stem with the first true leaf unfolded",
+      "the plant has grown again by half: four small green leaves now catch the light",
+      "a growth spurt: the plant now reaches HALF of its final height, with many leaves",
+      "the plant is now almost at full height; a small tight green bud has formed at the top",
+      "the bud has DOUBLED in size overnight, a first hint of the color of {s} at its tip",
+      "the bud is opening: the very first petals of {s} are clearly unfurling",
+      "{s} is now HALF open, the bright color unmistakable",
+      "{s} is fully open, petals spread wide",
+      "{s} in full glorious bloom, larger and more radiant than yesterday",
     ],
     style:
       "delicate botanical illustration, soft focus macro, dreamy minimalism, gentle bokeh",

@@ -14,8 +14,9 @@ ieri oggi è un po' più in alto sul sentiero, la città neon ha acceso nuove in
 
 | Canale | Cosa succede, giorno dopo giorno | URL |
 |---|---|---|
-| 🎨 **Atelier** | un quadro si dipinge da solo: tela bianca → schizzo → colore → opera finita in 12 giorni, poi una tela nuova | `/w/atelier` |
-| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura nello stesso vaso, poi si semina la successiva | `/w/bloom` |
+| 🏝️ **Isola** | un'isola fluttuante prende vita: roccia nuda → prato → alberi → cascata → una casetta con le luci accese | `/w/island` |
+| 📚 **Studio** | una scrivania vuota si riempie di vita, un oggetto al giorno | `/w/studio` |
+| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura nello stesso vaso | `/w/bloom` |
 | 🎲 **Random** | ogni giorno un canale a sorpresa | `/w/random` |
 
 Tutti gli URL iniziano con `https://artipop.riccardo-dominici.workers.dev`.
@@ -28,7 +29,8 @@ sono pronti nel codice, in pausa: si attivano con una riga.
 
 Shortcut già pronte, con l'URL del canale dentro — scarica, apri, importa:
 
-**[🎨 Atelier](https://artipop.riccardo-dominici.workers.dev/s/atelier.shortcut)** ·
+**[🏝️ Isola](https://artipop.riccardo-dominici.workers.dev/s/island.shortcut)** ·
+**[📚 Studio](https://artipop.riccardo-dominici.workers.dev/s/studio.shortcut)** ·
 **[🌸 Bloom](https://artipop.riccardo-dominici.workers.dev/s/bloom.shortcut)** ·
 **[🎲 Random](https://artipop.riccardo-dominici.workers.dev/s/random.shortcut)**
 

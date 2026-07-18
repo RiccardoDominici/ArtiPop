@@ -269,8 +269,7 @@ export function renderPage(metas, origin, dateKey) {
     <p class="hint" id="hint">↔ trascina la card o usa le frecce</p>
 
     <div class="actions">
-      <a class="btn primary" id="dlShortcut" href="/s/atelier.shortcut" download>⬇️ Scarica la Shortcut</a>
-      <button class="btn ghost" id="copyUrl">📋 Copia solo il link</button>
+      <a class="btn primary" id="dlShortcut" href="/s/bloom.shortcut" download>⬇️ Scarica la Shortcut</a>
       <a class="btn ghost" href="#setup">Come si attiva</a>
     </div>
     <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
@@ -285,38 +284,50 @@ export function renderPage(metas, origin, dateKey) {
   </div>
 
   <section class="setup" id="setup">
-    <h2>Attivalo in 2 minuti</h2>
-    <p class="sub">Una volta sola. Poi è tutto automatico, per sempre.</p>
+    <h2>Come si imposta lo sfondo</h2>
+    <p class="sub">Tre passi, una volta sola. Poi cambia da solo ogni sera, per sempre.</p>
     <div class="steps">
       <div class="step">
         <div class="n">1</div>
-        <h4>Copia il link del tuo canale</h4>
-        <p>Sfoglia le card qui sopra, scegli il viaggio che ti somiglia e tocca
-        <em>Copia il link</em>. Indeciso? C'è anche <code id="randomUrl">/w/random</code>: un canale diverso ogni giorno.</p>
+        <h4>Scarica e importa la Shortcut</h4>
+        <p>Scegli il canale sfogliando le card e tocca
+        <strong>⬇️ Scarica la Shortcut</strong>. Apri il file scaricato:
+        si apre <strong>Comandi rapidi</strong> → tocca
+        <strong>Aggiungi comando</strong>.<br><br>
+        🔒 Se iOS la blocca: vai in <em>Impostazioni → Scorciatoie</em> e attiva
+        <strong>Consenti scorciatoie non attendibili</strong>
+        (se non vedi la voce, esegui prima una scorciatoia qualsiasi), poi
+        riapri il file.</p>
       </div>
       <div class="step">
         <div class="n">2</div>
-        <h4>Scarica e importa la Shortcut</h4>
-        <p>Tocca <em>⬇️ Scarica la Shortcut</em> qui sopra e apri il file:
-        si importa in <strong>Comandi rapidi</strong>. Se iOS la blocca, attiva
-        <em>Impostazioni → Scorciatoie → Consenti scorciatoie non attendibili</em>.
-        Poi apri l'azione <em>Imposta sfondo</em> e <strong>disattiva
-        "Mostra anteprima"</strong>. (In alternativa creala a mano: 2 azioni —
-        <em>Ottieni contenuto da URL</em> + <em>Imposta sfondo</em>.)</p>
+        <h4>Sistema l'azione "Imposta sfondo"</h4>
+        <p>In Comandi rapidi tieni premuto sulla Shortcut → <em>Modifica</em>.
+        Nell'azione <strong>Imposta sfondo</strong>:<br>
+        ① scegli quale sfondo aggiornare (<em>Schermata di blocco</em>,
+        <em>Home</em> o entrambe);<br>
+        ② <strong>spegni "Mostra anteprima"</strong> — obbligatorio, altrimenti
+        iOS chiederà conferma ogni sera.<br><br>
+        ▶️ Ora tocca la Shortcut per provarla: lo sfondo deve cambiare subito.</p>
       </div>
       <div class="step">
         <div class="n">3</div>
-        <h4>Automatizza al tramonto</h4>
-        <p><strong>Automazioni</strong> → <strong>+</strong> → <em>Ora del giorno</em> →
-        <strong>Tramonto</strong> → <em>Esegui immediatamente</em> → scegli la tua
-        Shortcut. Fatto: da stasera cambia da solo.</p>
+        <h4>Rendila automatica al tramonto</h4>
+        <p>Sempre in Comandi rapidi: tab <strong>Automazioni</strong> →
+        <strong>+</strong> → <em>Ora del giorno</em> →
+        scegli <strong>Tramonto</strong> → ripeti <strong>Ogni giorno</strong> →
+        seleziona <strong>Esegui immediatamente</strong> → <em>Avanti</em> →
+        scegli la tua Shortcut ArtiPop → <em>Fine</em>.<br><br>
+        🌇 Da stasera il tuo sfondo cambia da solo, e ogni giorno la storia
+        avanza di un pezzetto.</p>
       </div>
     </div>
     <p class="note">
-      💡 Su alcuni iPhone con iOS 18 l'azione "Imposta sfondo" ha un bug intermittente nelle
-      automazioni: se capita, duplica l'automazione sfalsandola di un minuto.
-      Ogni notte l'immagine è nuova e la storia del canale avanza di un capitolo —
-      niente va perso: l'archivio del viaggio resta consultabile qui.
+      💡 Preferisci la mattina? Nell'automazione scegli <em>Alba</em> o un orario fisso.
+      Su alcuni iPhone con iOS 18 l'azione "Imposta sfondo" ha un bug intermittente
+      nelle automazioni: se capita, duplica l'automazione sfalsandola di un minuto
+      (tramonto e tramonto +1'). Gli sfondi passati non si perdono mai:
+      sono qui sotto, in "Il viaggio finora".
     </p>
   </section>
 
@@ -569,26 +580,6 @@ function startPlayback() {
 }
 
 playEl.addEventListener("click", () => (playing ? stopPlayback() : startPlayback()));
-
-/* ---------- copia link ---------- */
-document.getElementById("copyUrl").addEventListener("click", async () => {
-  const url = ORIGIN + "/w/" + CHANNELS[order[0]].id;
-  try {
-    await navigator.clipboard.writeText(url);
-    toast("Link copiato: " + url.replace("https://", ""));
-  } catch {
-    toast(url); // fallback: almeno lo mostra
-  }
-});
-document.getElementById("randomUrl").textContent = ORIGIN.replace("https://", "") + "/w/random";
-
-let toastTimer;
-function toast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
-}
 
 buildDeck();
 </script>

@@ -22,7 +22,8 @@ sfoglia le card (swipe!) e copia il link del canale che preferisci:
 
 | Canale | Cosa succede, giorno dopo giorno | URL |
 |---|---|---|
-| 🎨 **Atelier** | un quadro si dipinge da solo, dalla tela bianca all'opera finita in 12 giorni | `…/w/atelier` |
+| 🏝️ **Isola** | un'isola fluttuante prende vita, un pezzo al giorno | `…/w/island` |
+| 📚 **Studio** | una scrivania vuota si riempie di vita, un oggetto al giorno | `…/w/studio` |
 | 🌸 **Bloom** | una pianta cresce dal seme alla fioritura, un po' ogni giorno | `…/w/bloom` |
 | 🎲 **Random** | ogni giorno un canale a sorpresa | `…/w/random` |
 
