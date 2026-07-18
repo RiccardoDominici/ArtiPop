@@ -24,12 +24,28 @@ resto resta identico: non è un'immagine diversa, è la stessa storia che avanza
 Altri canali "viaggio" (🏔️ Horizon, 🌃 Neon, 🪐 Cosmos, 🌊 Depths, 🎨 Aurora)
 sono pronti nel codice, in pausa: si attivano con una riga.
 
+## ⬇️ Scarica la Shortcut
+
+Shortcut già pronte, con l'URL del canale dentro — scarica, apri, importa:
+
+**[🎨 Atelier](https://artipop.riccardo-dominici.workers.dev/s/atelier.shortcut)** ·
+**[🌸 Bloom](https://artipop.riccardo-dominici.workers.dev/s/bloom.shortcut)** ·
+**[🎲 Random](https://artipop.riccardo-dominici.workers.dev/s/random.shortcut)**
+
+> Se iOS blocca l'import: *Impostazioni → Scorciatoie → Consenti scorciatoie non
+> attendibili* (il toggle appare dopo aver eseguito una scorciatoia qualsiasi).
+> Dopo l'import, apri l'azione *Imposta sfondo* e **disattiva "Mostra anteprima"**.
+>
+> ⚠️ Il vecchio link iCloud del README precedente puntava al backend AWS dismesso:
+> non usarlo, scaricava immagini che non si aggiornano più.
+
 ## 📲 Attivalo in 2 minuti
 
-1. **Copia il link** del tuo canale dal sito.
-2. **Comandi rapidi** → nuovo comando con 2 azioni: *Ottieni contenuto da URL*
-   (incolla il link) + *Imposta sfondo* (**disattiva "Mostra anteprima"**).
-3. **Automazioni** → *Ora del giorno* → **Tramonto** → *Esegui immediatamente*.
+1. **Scarica la Shortcut** del tuo canale (link qui sopra, o dal sito) e importala.
+   Preferisci farla a mano? 2 azioni: *Ottieni contenuto da URL* (incolla il link
+   del canale) + *Imposta sfondo* (**disattiva "Mostra anteprima"**).
+2. **Automazioni** → *Ora del giorno* → **Tramonto** → *Esegui immediatamente*.
+3. Fine: da stasera cambia da solo.
 
 Passo-passo dettagliato, FAQ e soluzioni ai problemi: **[GUIDA.md](GUIDA.md)**.
 

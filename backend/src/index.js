@@ -265,6 +265,22 @@ export default {
       });
     }
 
+    // ---- Download diretto della Shortcut firmata: /s/<canale>.shortcut ----
+    // File .shortcut firmati con `shortcuts sign --mode anyone` (vedi cartella
+    // shortcut/ del repo), caricati in KV con `wrangler kv key put shortcut:<id>`.
+    const sMatch = path.match(/^\/s\/([a-z]+)\.shortcut$/);
+    if (sMatch) {
+      const file = await env.KV.get(`shortcut:${sMatch[1]}`, { type: "stream" });
+      if (!file) return json({ error: "shortcut non disponibile per questo canale" }, 404);
+      return new Response(file, {
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-disposition": `attachment; filename="ArtiPop-${sMatch[1]}.shortcut"`,
+          "cache-control": "public, max-age=3600",
+        },
+      });
+    }
+
     // ---- API JSON: stato di tutti i canali ----
     if (path === "/api/channels") {
       const metas = await Promise.all(ACTIVE_CHANNELS.map((c) => getMeta(env, c.id)));

@@ -13,7 +13,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 BASE_URL="https://artipop.riccardo-dominici.workers.dev/w"
-CHANNELS=(horizon neon cosmos bloom depths aurora random)
+CHANNELS=(atelier bloom random)
 OUT_DIR="dist"
 
 mkdir -p "$OUT_DIR"

@@ -269,9 +269,11 @@ export function renderPage(metas, origin, dateKey) {
     <p class="hint" id="hint">↔ trascina la card o usa le frecce</p>
 
     <div class="actions">
-      <button class="btn primary" id="copyUrl">📋 Copia il link del canale</button>
+      <a class="btn primary" id="dlShortcut" href="/s/atelier.shortcut" download>⬇️ Scarica la Shortcut</a>
+      <button class="btn ghost" id="copyUrl">📋 Copia solo il link</button>
       <a class="btn ghost" href="#setup">Come si attiva</a>
     </div>
+    <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
 
     <section class="journey">
       <div class="jhead">
@@ -294,11 +296,13 @@ export function renderPage(metas, origin, dateKey) {
       </div>
       <div class="step">
         <div class="n">2</div>
-        <h4>Crea la Shortcut</h4>
-        <p>Apri <strong>Comandi rapidi</strong> → <strong>+</strong> → aggiungi
-        <em>Ottieni contenuto da URL</em> (incolla il link) e poi
-        <em>Imposta sfondo</em>. Nell'azione Imposta sfondo <strong>disattiva
-        "Mostra anteprima"</strong>.</p>
+        <h4>Scarica e importa la Shortcut</h4>
+        <p>Tocca <em>⬇️ Scarica la Shortcut</em> qui sopra e apri il file:
+        si importa in <strong>Comandi rapidi</strong>. Se iOS la blocca, attiva
+        <em>Impostazioni → Scorciatoie → Consenti scorciatoie non attendibili</em>.
+        Poi apri l'azione <em>Imposta sfondo</em> e <strong>disattiva
+        "Mostra anteprima"</strong>. (In alternativa creala a mano: 2 azioni —
+        <em>Ottieni contenuto da URL</em> + <em>Imposta sfondo</em>.)</p>
       </div>
       <div class="step">
         <div class="n">3</div>
@@ -391,6 +395,8 @@ function updateChrome() {
   const ch = CHANNELS[order[0]];
   document.documentElement.style.setProperty("--a1", ch.accent[0]);
   document.documentElement.style.setProperty("--a2", ch.accent[1]);
+  // Il bottone di download segue sempre il canale della card in cima.
+  document.getElementById("dlShortcut").href = \`/s/\${ch.id}.shortcut\`;
   dotsEl.innerHTML = CHANNELS.map((c) =>
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
   previewDate = null;
