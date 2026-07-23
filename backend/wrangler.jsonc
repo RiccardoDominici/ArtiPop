@@ -17,6 +17,13 @@
   // Workers AI: generazione immagini (FLUX.2 klein) e testo (llama) — free tier 10k neuroni/giorno.
   "ai": { "binding": "AI" },
 
+  // Cloudflare Images: ridimensionamento in-memory, SENZA passare da un URL pubblico.
+  // Serve per misurare un'immagine CANDIDATA (non ancora pubblicata) prima di
+  // decidere se accettarla. Il piano free include 5.000 trasformazioni uniche/mese;
+  // il nostro consumo e' ~3 flussi x ~5/giorno ≈ 450/mese.
+  // Se il binding non fosse disponibile si ricade sul resizer esterno (vedi metrics.js).
+  "images": { "binding": "IMAGES" },
+
   // Binding verso se stesso: il cron fa "fan-out" di una richiesta per canale,
   // così ogni canale gira in una invocazione separata con il proprio budget CPU
   // (il piano free ha limiti CPU per singola invocazione).

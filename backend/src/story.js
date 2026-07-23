@@ -1,25 +1,27 @@
-// Evoluzione giornaliera della "storia" di un canale.
+// EVOLUZIONE DELLA STORIA di un flusso, giorno per giorno.
 //
-// Ogni canale ha uno stato persistente in KV:
-//   { dayNumber, arcIndex, dayInArc, arcTheme, scene, seed, lastDate, history }
+// Un arco dura esattamente CONFIG.ARC_LENGTH_DAYS giorni (7). Il settimo giorno
+// la storia chiude e l'ottavo il flusso pesca un CONCEPT NUOVO dalla libreria:
+// mondo nuovo, stile nuovo, soggetto nuovo. Non si riprende mai il concept di
+// prima — è la differenza centrale rispetto alla versione precedente, dove un
+// canale restava un'isola per sempre e cambiava solo l'edificio.
 //
-// Ogni giorno la scena evolve leggermente (stesso mondo, il tempo passa, il viaggio
-// avanza di qualche passo). Ogni ARC_LENGTH_DAYS giorni si apre un nuovo arco:
-// nuovo tema (dalla lista `journey` del canale) e nuovo seed.
+// Due principi guidano la scelta di cosa mostrare ogni giorno:
 //
-// COERENZA STRUTTURALE — il sistema ha tre livelli di garanzia, in cascata:
-//   1. Identità fissa nel prompt immagine: `style` + `palette` del canale entrano in
-//      OGNI prompt, quindi anche una scena "creativa" resta nel look del canale.
-//   2. LLM vincolato: riceve tema dell'arco + ultime scene, con regole esplicite
-//      ("stesso luogo, cambia solo 1-2 dettagli") e poca libertà.
-//   3. Validazione anti-deriva: la scena proposta dall'LLM viene ACCETTATA solo se
-//      resta ancorata al vocabolario del canale/arco e non è un duplicato; in caso
-//      contrario si usa la composizione deterministica (tappa + momento + meteo),
-//      che è coerente per costruzione. Il canale non può "fare quello che gli pare".
+//   1. NIENTE LINGUAGGIO DA CALENDARIO NEL PROMPT. Il modello non sa e non deve
+//      sapere che giorno è. Riceve l'immagine di ieri e la descrizione di cosa
+//      cambia. Il calendario è affar nostro, non suo.
+//
+//   2. IL PIANO SI ADATTA A CIÒ CHE SI VEDE. Quale tappa mostrare oggi si
+//      decide guardando a che punto è arrivata davvero l'immagine di ieri
+//      (vedi vision.js), non contando i giorni. Se ieri è rimasta indietro si
+//      recupera; se ha corso avanti non si sta fermi a guardare.
 
 import { CONFIG } from "./config.js";
+import { poolFor } from "./channels.js";
+import { getConcept } from "./concepts.js";
 
-/** Hash FNV-1a → intero positivo stabile: seed riproducibile per canale+arco. */
+/** Hash FNV-1a → intero positivo stabile: seed riproducibile per flusso+arco. */
 function fnv1a(str) {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
@@ -39,369 +41,280 @@ export function todayKey(now = new Date()) {
   }).format(now);
 }
 
-/** Giorni interi trascorsi dall'epoch per una data YYYY-MM-DD (per indici deterministici). */
+/** Giorni interi trascorsi dall'epoch per una data YYYY-MM-DD. */
 export function dayNumberOf(dateKey) {
   return Math.floor(Date.parse(dateKey + "T00:00:00Z") / 86400000);
 }
 
-/** Parole "di contenuto" (>3 lettere) di un testo, minuscole, senza punteggiatura. */
-function contentWords(text) {
-  return new Set(
-    String(text)
-      .toLowerCase()
-      .replace(/[^a-zà-ù\s-]/g, " ")
-      .split(/[\s-]+/)
-      .filter((w) => w.length > 3)
+/* ===================== SCELTA DEL CONCEPT SETTIMANALE ===================== */
+
+/**
+ * Pesca il concept del nuovo arco fra quelli dell'indole del flusso, evitando
+ * quelli usati di recente. Quando il serbatoio si esaurisce si riparte da capo,
+ * escludendo solo l'ultimo visto: così non capita mai lo stesso concept due
+ * settimane di fila, nemmeno al giro di boa.
+ */
+export function pickConcept(channel, prevState, arcIndex) {
+  const pool = poolFor(channel);
+  if (pool.length === 0) throw new Error(`flusso ${channel.id}: nessun concept disponibile`);
+
+  const usati = Array.isArray(prevState?.usati) ? prevState.usati : [];
+  const liberi = pool.filter((c) => !usati.includes(c.id));
+  const ultimo = usati[usati.length - 1];
+  const scelti = liberi.length > 0 ? liberi : pool.filter((c) => c.id !== ultimo);
+  const candidati = scelti.length > 0 ? scelti : pool;
+
+  const concept = candidati[fnv1a(`${channel.id}:arc:${arcIndex}`) % candidati.length];
+
+  // Memoria dei visti: si tiene una finestra lunga quanto il serbatoio meno uno,
+  // così resta sempre almeno un concept libero da pescare.
+  const nuoviUsati = [...usati.filter((id) => id !== concept.id), concept.id]
+    .slice(-Math.max(1, pool.length - 1));
+
+  console.log(
+    `[story] ${channel.id}: nuovo concept "${concept.id}" (${concept.famiglia.id}) — ` +
+    `${liberi.length} liberi su ${pool.length}`
   );
+  return { concept, usati: nuoviUsati };
 }
 
-/** Pulisce la risposta dell'LLM: una riga, senza virgolette/markdown, lunghezza sana. */
-function sanitizeScene(text) {
-  if (typeof text !== "string") return null;
-  let t = text
-    .replace(/[\r\n]+/g, " ")
-    .replace(/^["'\s`*#>-]+|["'\s`*]+$/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  t = t.replace(/^(scene|description|today|tomorrow)\s*[:\-]\s*/i, "").trim();
-  if (t.length < 15 || t.length > 400) return null;
-  return t;
+/* ===================== SCELTA DELLA TAPPA DI OGGI ===================== */
+
+/**
+ * Quale tappa mostrare oggi, sapendo a che tappa è arrivata davvero ieri.
+ *
+ * Il passo si ricalcola ogni giorno spalmando le tappe che mancano sui giorni
+ * che restano: è questo che garantisce che l'arco chiuda sempre in tempo anche
+ * se qualche giorno è andato storto, senza mai concentrare tutto il recupero in
+ * un salto solo. L'ultimo giorno la tappa finale è obbligatoria, comunque siano
+ * andati i sei prima.
+ */
+export function targetStage(prevStage, dayInArc, ultimaTappa) {
+  if (dayInArc >= ultimaTappa) return ultimaTappa;
+  const giorniRimasti = ultimaTappa - dayInArc + 1; // oggi compreso
+  const tappeRimaste = ultimaTappa - prevStage;
+  const passo = Math.max(1, Math.ceil(tappeRimaste / giorniRimasti));
+  return Math.min(ultimaTappa, prevStage + passo);
 }
 
 /**
- * Guardia anti-deriva: la scena proposta è accettabile solo se
- *   a. condivide almeno una parola di contenuto con l'ancora del canale/arco
- *      (tema dell'arco + stile del canale + scena di ieri), e
- *   b. non è identica (o quasi) a una delle scene recenti, e
- *   c. non contiene elementi vietati per un wallpaper (testo, watermark, persone note).
- * Ritorna true se la scena è coerente.
+ * La tappa di oggi, tenendo conto di COM'È ANDATA IERI (vedi metrics.classify).
+ *
+ * È qui che l'anello si chiude. Prima il piano avanzava di una tappa al giorno
+ * qualunque cosa mostrasse l'immagine, e gli scarti si accumulavano finché non
+ * si scaricavano tutti insieme: da lì venivano sia i giorni identici sia i
+ * salti bruschi. Ora:
+ *
+ *   - se ieri non ha saldato la sua tappa, oggi la si RIPETE (con più forza)
+ *     invece di passare oltre lasciando un buco;
+ *   - se ieri è corso avanti, oggi si SALTA una tappa, o i giorni successivi
+ *     non avrebbero più niente da mostrare;
+ *   - in ogni caso non si può restare così indietro da non chiudere in tempo:
+ *     il vincolo di recupero ha sempre l'ultima parola, e il settimo giorno la
+ *     tappa finale è obbligatoria.
+ *
+ * La ripetizione non può incastrarsi: dopo un giorno ripetuto il calendario
+ * avanza comunque, quindi la condizione `prevStage >= dayInArc` diventa falsa
+ * e la tappa successiva riparte per forza.
  */
-function isCoherent(scene, channel, arcTheme, history) {
-  const sceneWords = contentWords(scene);
-
-  // (a) ancoraggio: overlap col vocabolario di canale+arco+ieri
-  const anchor = contentWords(`${arcTheme} ${channel.style} ${history[0] ?? ""}`);
-  let overlap = 0;
-  for (const w of sceneWords) if (anchor.has(w)) overlap++;
-  if (overlap === 0) return false;
-
-  // (b) anti-ristagno: non ripetere quasi-identica una scena recente
-  for (const past of history) {
-    const pastWords = contentWords(past);
-    if (pastWords.size === 0) continue;
-    let same = 0;
-    for (const w of sceneWords) if (pastWords.has(w)) same++;
-    const similarity = same / Math.max(sceneWords.size, 1);
-    if (similarity > 0.85) return false;
-  }
-
-  // (c) contenuti vietati nel wallpaper
-  if (/\b(text|watermark|logo|signature|caption|lyrics)\b/i.test(scene)) return false;
-
-  return true;
-}
-
-/** Prova i modelli testo in ordine; ritorna la scena evoluta o null se tutti falliscono. */
-async function evolveWithLLM(env, channel, arcTheme, history, isNewArc) {
-  const recent = history.slice(0, 3);
-  const system =
-    "You continue a slow visual story told through one phone wallpaper per day. " +
-    "You write a single, concise, purely visual scene description. " +
-    "Hard rules: stay in the SAME world and place type; keep the same color mood; " +
-    "no readable text in the scene, no faces, no violence. " +
-    "Reply with ONLY the description, one line, max 35 words.";
-
-  const user = isNewArc
-    ? `World identity: ${channel.style}. Palette: ${channel.palette}. ` +
-      `A new chapter begins, theme: "${arcTheme}". The previous chapter ended with: "${recent[0] ?? channel.firstScene}". ` +
-      `Write the OPENING scene of the new chapter: a fresh place, same world and style.`
-    : `World identity: ${channel.style}. Palette: ${channel.palette}. Chapter theme: "${arcTheme}". ` +
-      `The last days were:\n` +
-      recent.map((s, i) => `- ${i === 0 ? "yesterday" : `${i + 1} days ago`}: "${s}"`).join("\n") +
-      `\nWrite TODAY's scene: the same place one day later. The journey advances a few steps; ` +
-      `change EXACTLY 1 or 2 details (light, weather, vantage point). Keep everything else identical.`;
-
-  for (const model of CONFIG.TEXT_MODELS) {
-    try {
-      const res = await env.AI.run(model, {
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        max_tokens: 120,
-        temperature: 0.8,
-      });
-      const scene = sanitizeScene(res?.response);
-      if (!scene) {
-        console.warn(`[story] ${channel.id}: risposta non valida da ${model}`);
-        continue;
-      }
-      if (!isCoherent(scene, channel, arcTheme, history)) {
-        console.warn(`[story] ${channel.id}: scena RIFIUTATA dalla guardia anti-deriva: "${scene}"`);
-        continue;
-      }
-      console.log(`[story] ${channel.id}: scena evoluta con ${model}`);
-      return scene;
-    } catch (err) {
-      console.warn(`[story] ${channel.id}: ${model} fallito: ${err.message}`);
-    }
-  }
-  return null;
-}
-
-/** Fallback deterministico: scena composta da tappa + momento + meteo, sempre diversa
- *  e coerente per costruzione (usa solo vocabolario del canale). */
-function deterministicScene(channel, arcTheme, dayNumber) {
-  const moment = channel.moments[dayNumber % channel.moments.length];
-  const weather = channel.weathers[(dayNumber + 2) % channel.weathers.length];
-  return `${arcTheme}, ${moment}, ${weather}`;
+export function nextStage(prevStage, dayInArc, ultimaTappa, esito) {
+  if (dayInArc >= ultimaTappa) return ultimaTappa;
+  const recupero = targetStage(prevStage, dayInArc, ultimaTappa);
+  if (esito === "troppo") return Math.min(ultimaTappa, Math.max(recupero, prevStage + 2));
+  if (esito === "poco" && prevStage >= dayInArc) return prevStage;
+  return recupero;
 }
 
 /**
- * Calcola lo stato di oggi a partire da quello di ieri (o inizializza il canale).
- * Ritorna il nuovo stato completo, pronto da salvare in KV.
+ * Le frasi che descrivono il cambiamento di oggi, alla "dose" richiesta.
+ *
+ * La dose è il modo in cui il cancello corregge il tiro senza mai uscire dal
+ * registro descrittivo: se il cambiamento è stato troppo debole si aggiunge
+ * roba della tappa successiva, se è stato troppo violento si tiene solo la
+ * prima frase. Nessun "cambia di più" rivolto al modello: cambia la DESCRIZIONE,
+ * non un'esortazione.
  */
-export async function evolveStory(env, channel, prevState, dateKey) {
-  // I canali a progressione hanno un motore dedicato (piano fisso di 12 tappe).
-  if (channel.mode === "progression") {
-    return evolveProgression(env, channel, prevState, dateKey);
+export function clausesFor(concept, stage, dose = 0, extraIndex = null) {
+  const tappe = concept.tappe;
+  const ultima = tappe.length - 1;
+
+  // Storia già conclusa ma restano giorni: si aggiunge un dettaglio in più.
+  if (extraIndex !== null && concept.extra.length > 0) {
+    return [concept.extra[extraIndex % concept.extra.length]];
   }
+
+  const base = tappe[Math.min(stage, ultima)];
+  if (dose <= -1) return [base[0]];
+  if (dose === 0) return [...base];
+
+  const succ = tappe[Math.min(stage + 1, ultima)];
+  if (stage >= ultima || !succ) {
+    // Non c'è una tappa dopo: si rinforza con un dettaglio extra.
+    return concept.extra.length ? [...base, concept.extra[0]] : [...base];
+  }
+  return dose === 1 ? [...base, succ[0]] : [...base, ...succ];
+}
+
+/* ===================== STATO DEL GIORNO ===================== */
+
+/**
+ * Apre un arco nuovo: concept nuovo, keyframe pulito, seed nuovo.
+ * `arcIndex` cresce all'infinito e serve solo a variare la pescata.
+ */
+function startArc(channel, prevState, dateKey, arcIndex) {
+  const { concept, usati } = pickConcept(channel, prevState, arcIndex);
   const dayNumber = dayNumberOf(dateKey);
-
-  // Primo giorno in assoluto del canale: si parte dalla firstScene.
-  // Questo giorno è il KEYFRAME dell'arco: generazione pulita, e la sua data
-  // (anchorDate) farà da àncora visiva per tutti i giorni successivi dell'arco.
-  if (!prevState || !prevState.scene) {
-    const arcTheme = channel.journey[0];
-    return {
-      lastDate: dateKey,
-      dayNumber,
-      arcIndex: 0,
-      dayInArc: 0,
-      arcTheme,
-      scene: channel.firstScene,
-      seed: fnv1a(`${channel.id}:arc:0`),
-      history: [channel.firstScene],
-      anchorDate: dateKey,
-    };
-  }
-
-  // Giorni trascorsi dall'ultima generazione (di norma 1; di più se il cron ha saltato).
-  const elapsed = Math.max(1, dayNumber - (prevState.dayNumber ?? dayNumber - 1));
-  let dayInArc = (prevState.dayInArc ?? 0) + elapsed;
-  let arcIndex = prevState.arcIndex ?? 0;
-  let arcTheme = prevState.arcTheme ?? channel.journey[0];
-
-  // Nuovo arco: capitolo successivo del viaggio, nuovo seed per composizioni fresche.
-  const isNewArc = dayInArc >= CONFIG.ARC_LENGTH_DAYS;
-  if (isNewArc) {
-    arcIndex += 1;
-    dayInArc = 0;
-    arcTheme = channel.journey[arcIndex % channel.journey.length];
-  }
-
-  // Storico recente (più recente per primo) per continuità e guardia anti-deriva.
-  const history = Array.isArray(prevState.history)
-    ? prevState.history.slice(0, 5)
-    : [prevState.scene];
-
-  const llmScene = await evolveWithLLM(env, channel, arcTheme, history, isNewArc);
-  const scene = llmScene ?? deterministicScene(channel, arcTheme, dayNumber);
-  if (!llmScene) {
-    console.warn(`[story] ${channel.id}: uso il fallback deterministico`);
-  }
-
   return {
     lastDate: dateKey,
     dayNumber,
     arcIndex,
-    dayInArc,
-    arcTheme,
-    scene,
-    // Seed stabile per tutto l'arco: composizioni imparentate giorno dopo giorno.
-    seed: fnv1a(`${channel.id}:arc:${arcIndex}`),
-    history: [scene, ...history].slice(0, 5),
-    // Àncora visiva: il keyframe dell'arco. "Anchor, don't chain" (letteratura
-    // 2025-26 su drift iterativo): ogni giorno si edita il keyframe PULITO, non
-    // l'output di ieri, così la degradazione non si accumula mai.
-    anchorDate: isNewArc ? dateKey : (prevState.anchorDate ?? prevState.lastDate),
+    dayInArc: 0,
+    conceptId: concept.id,
+    stage: 0,
+    scene: `${concept.setting}. ${concept.tappe[0].join(". ")}`,
+    seed: fnv1a(`${channel.id}:${concept.id}:${arcIndex}`),
+    anchorDate: dateKey,
+    prevDate: null,
+    usati,
+    extraIndex: null,
+    dosePartenza: 0,
+    esitoPrec: null,
   };
 }
 
-
-/* =====================  CANALI A PROGRESSIONE  =====================
-   Un arco = un "progetto" (un'isola che prende vita, una pianta che cresce)
-   che si completa in esattamente CONFIG.ARC_LENGTH_DAYS giorni (7). Il PIANO
-   dell'arco sono le tappe curate del canale (`stageTemplates`): ogni giorno
-   mostra la tappa corrispondente — un cambiamento visibile e cumulativo,
-   mentre il resto della scena resta fermo. Finito il settimo giorno si cambia
-   BASE: nuovo progetto, nuovo keyframe pulito, nuovo seed. */
-
-/** Applica {s} = nome breve del progetto ai template deterministici del canale.
- *  Si usa il `noun` (es. "the sunflower"), MAI il subject completo: nominare il
- *  risultato finale nelle prime tappe fa generare subito il progetto completo. */
-function stagesFromTemplates(channel, project) {
-  const name = project.noun ?? project.subject;
-  return channel.stageTemplates
-    .slice(0, CONFIG.ARC_LENGTH_DAYS) // il piano non può essere più lungo del ciclo
-    .map((t) => t.replaceAll("{s}", name));
-}
-
-/** Chiede all'LLM un piano di ARC_LENGTH_DAYS tappe visive; null se non utilizzabile. */
-async function makePlanWithLLM(env, channel, subject) {
-  const n = CONFIG.ARC_LENGTH_DAYS;
-  const sys =
-    `You plan a slow visual story told in ${n} daily images of the SAME fixed scene. ` +
-    `Reply with EXACTLY ${n} numbered lines. Each line: one clearly visible new change ` +
-    "(something appears, grows or gets completed), purely visual, max 18 words. " +
-    `Line 1 = the very beginning (almost nothing yet). Line ${n} = complete. ` +
-    "No text in the scene, no people, no violence.";
-  const usr =
-    `Scene (never changes): ${channel.setting}. ` +
-    `Project that progresses day by day: ${subject}. ` +
-    `Write the ${n} daily steps.`;
-  for (const model of CONFIG.TEXT_MODELS) {
-    try {
-      const res = await env.AI.run(model, {
-        messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
-        max_tokens: 600,
-        temperature: 0.7,
-      });
-      const lines = String(res?.response || "")
-        .split(/\n+/)
-        .map((l) => l.replace(/^\s*\d+[\).\:\-]?\s*/, "").trim())
-        .filter((l) => l.length >= 8 && l.length <= 160);
-      if (lines.length >= n) {
-        console.log(`[story] piano di progressione scritto da ${model} (${lines.length} tappe)`);
-        return lines.slice(0, n);
-      }
-      console.warn(`[story] piano LLM non valido da ${model} (${lines.length} righe utili)`);
-    } catch (err) {
-      console.warn(`[story] piano LLM fallito con ${model}: ${err.message}`);
-    }
-  }
-  return null;
-}
-
-/** Evoluzione per canali a progressione: piano fisso, una tappa al giorno. */
-async function evolveProgression(env, channel, prevState, dateKey) {
+/**
+ * Calcola lo stato di oggi a partire da quello di ieri.
+ *
+ * `esito` è come è andato ieri secondo le misure ("ok" | "poco" | "troppo" |
+ * "forma" | null). Con `null` il piano avanza a calendario, cioè esattamente il
+ * comportamento della versione precedente: è il ripiego per il primo giorno di
+ * un arco e per quando la misura non è disponibile.
+ */
+export function evolveStory(channel, prevState, dateKey, esito = null) {
   const dayNumber = dayNumberOf(dateKey);
-  // Il ciclo di vita è quello configurato (7 giorni); le tappe del canale devono
-  // essere esattamente tante (invariante verificata in channels.js). Il min()
-  // protegge comunque da un canale mal configurato: meglio un arco più corto
-  // che un indice fuori dal piano.
-  const stagesCount = Math.min(channel.stageTemplates.length, CONFIG.ARC_LENGTH_DAYS);
 
-  const startArc = async (arcIndex) => {
-    const project = channel.projects[arcIndex % channel.projects.length];
-    // Piano = template curati del canale (deterministici, descrivono esplicitamente
-    // il progetto che avanza). Il planner LLM (makePlanWithLLM) è disattivato:
-    // nei test produceva piani fuori bersaglio (oggetti di contorno invece del
-    // progetto). Riattivabile qui quando ci sarà un validatore più severo.
-    const plan = stagesFromTemplates(channel, project);
-    void makePlanWithLLM; // referenza per evitare warning di funzione inutilizzata
-    return {
-      lastDate: dateKey,
-      dayNumber,
-      arcIndex,
-      dayInArc: 0,
-      arcTheme: project.subject,
-      plan,
-      scene: `${channel.setting}, ${plan[0]}`,
-      seed: fnv1a(`${channel.id}:arc:${arcIndex}`),
-      anchorDate: dateKey,
-    };
-  };
-
-  // Primo giorno in assoluto del canale.
-  if (!prevState || !prevState.scene) return startArc(0);
+  // Primo giorno in assoluto del flusso.
+  if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, 0);
 
   const elapsed = Math.max(1, dayNumber - (prevState.dayNumber ?? dayNumber - 1));
-  let dayInArc = (prevState.dayInArc ?? 0) + elapsed;
+  const dayInArc = (prevState.dayInArc ?? 0) + elapsed;
 
-  // Progetto completato: si apre il successivo (nuovo keyframe, nuova àncora).
-  if (dayInArc >= stagesCount) return startArc((prevState.arcIndex ?? 0) + 1);
+  // Arco concluso (o superato perché il cron ha saltato dei giorni): si cambia
+  // mondo. Non si "recuperano" i giorni persi di un arco finito: la settimana
+  // successiva comincia comunque da un keyframe pulito.
+  if (dayInArc >= CONFIG.ARC_LENGTH_DAYS) {
+    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1);
+  }
 
-  // Il piano salvato vale solo se ha ESATTAMENTE la lunghezza del ciclo attuale:
-  // così, se si cambia la durata dell'arco (o le tappe di un canale), i piani
-  // vecchi rimasti in KV vengono ricostruiti dai template invece di essere
-  // riusati con la lunghezza sbagliata.
-  const plan = Array.isArray(prevState.plan) && prevState.plan.length === stagesCount
-    ? prevState.plan
-    : stagesFromTemplates(channel, channel.projects[(prevState.arcIndex ?? 0) % channel.projects.length]);
+  const concept = getConcept(prevState.conceptId);
+  if (!concept) {
+    // Il concept è sparito dalla libreria (rinominato o rimosso): invece di
+    // rompersi, il flusso apre un arco nuovo.
+    console.warn(`[story] ${channel.id}: concept "${prevState.conceptId}" non più in libreria, riparto`);
+    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1);
+  }
+
+  const ultimaTappa = concept.tappe.length - 1;
+  const tappaIeri = prevState.stage ?? dayInArc - 1;
+  const stage = nextStage(tappaIeri, dayInArc, ultimaTappa, esito);
+
+  // Storia arrivata in fondo con giorni ancora da coprire: si passa ai dettagli
+  // in più, uno al giorno, invece di ripubblicare la stessa scena.
+  const bloccata = stage === ultimaTappa && tappaIeri >= ultimaTappa;
+  const extraIndex = bloccata ? (prevState.extraIndex ?? -1) + 1 : null;
+
+  // Se ieri e' rimasto in debito, oggi si riparte gia' con una dose piu' alta:
+  // ripetere la stessa descrizione com'era servirebbe a poco.
+  const dosePartenza = esito === "poco" ? 1 : esito === "troppo" ? -1 : 0;
+
+  if (esito && esito !== "ok") {
+    console.log(
+      `[story] ${channel.id}: ieri "${esito}" → ` +
+      (stage === tappaIeri
+        ? `oggi si RIPETE la tappa ${stage + 1} con piu' forza`
+        : `oggi tappa ${stage + 1} (ieri era ${tappaIeri + 1})`)
+    );
+  }
 
   return {
     ...prevState,
     lastDate: dateKey,
     dayNumber,
     dayInArc,
-    plan,
-    scene: plan[Math.min(dayInArc, plan.length - 1)],
-    prevDate: prevState.lastDate, // data di ieri: serve come riferimento visivo
+    stage,
+    extraIndex,
+    dosePartenza,
+    esitoPrec: esito ?? null,
+    scene: clausesFor(concept, stage, 0, extraIndex).join(". "),
+    prevDate: prevState.lastDate,
+    // seed e anchorDate restano quelli dell'arco
   };
 }
 
-/**
- * Prompt di EDIT ADDITIVO per canali a progressione:
- * image 0 = ieri (contenuto da preservare), image 1 = keyframe (qualità/stile).
- */
-export function buildProgressPrompt(channel, stageText) {
+/* ===================== COSTRUZIONE DEI PROMPT =====================
+   Regola unica: il prompt DESCRIVE. Non nomina mai giorni, tappe, numeri di
+   sequenza né "rispetto a ieri è passato tanto tempo". L'unico riferimento
+   consentito è all'immagine che il modello ha davvero davanti (image 0), e le
+   uniche frasi non descrittive sono i vincoli di formato del wallpaper. */
+
+/** Keyframe: generazione pulita, senza riferimenti. Descrizione assoluta. */
+export function buildKeyframePrompt(concept) {
   return (
-    `Image 0 is yesterday's state of this scene. Today one visible change happens: ${stageText}. ` +
-    `Add ONLY this change on top of image 0, and make it CLEARLY VISIBLE at a glance ` +
-    `when compared with image 0. Every other part of image 0 stays exactly identical: ` +
-    `same viewpoint, same framing, same objects, same light, same colors. ` +
-    `The change affects only its own subject; the rest of the scene remains a realistic photograph. ` +
-    `Match the crisp clean quality of image 1. ${CONFIG.WALLPAPER_SUFFIX}`
+    `${concept.tappe[0].join(". ")}. This is the scene: ${concept.setting}. ` +
+    `Style: ${concept.style}. Colors: ${concept.palette}. ${CONFIG.WALLPAPER_SUFFIX}`
   );
 }
 
 /**
- * Prompt CUMULATIVO dall'àncora (refMode "anchor-cumulative"): image 0 è la
- * scena vuota del keyframe; si chiede la stessa scena con TUTTI gli oggetti
- * accumulati fino a oggi. Ogni giorno è a 1 solo edit dal keyframe pulito:
- * niente accumulo di artefatti, per costruzione.
+ * Giorno normale: image 0 = ieri, image 1 (facoltativa) = keyframe dell'arco.
+ *
+ * Sparisce la contraddizione della versione precedente, che chiedeva insieme
+ * "cambia SOLO questo, tutto il resto identico" e "rendilo CHIARAMENTE VISIBILE
+ * a colpo d'occhio": due ordini opposti che il modello risolveva a caso, un
+ * giorno congelandosi e un giorno ridisegnando mezza scena. Ora la visibilità
+ * non si implora nel prompt — si misura dopo, e se non basta si rigenera.
  */
-export function buildCumulativeListPrompt(channel, items) {
+export function buildDailyPrompt(concept, clauses, hasKeyframe) {
   return (
-    `Image 0 shows this scene completely empty. Show the EXACT same scene from the same ` +
-    `viewpoint, now containing all of these, each clearly visible: ${items.join("; ")}. ` +
-    `Keep the furniture, wall, window light and framing of image 0 identical. ` +
-    `${CONFIG.WALLPAPER_SUFFIX}`
+    `Image 0 is this exact scene. Now: ${clauses.join(". ")}. ` +
+    `Keep unchanged from image 0: ${concept.famiglia.conserva}. ` +
+    (hasKeyframe ? `Match the crisp clean quality of image 1. ` : "") +
+    CONFIG.WALLPAPER_SUFFIX
   );
-}
-
-/** Variante con la sola àncora (se l'immagine di ieri non è recuperabile). */
-export function buildCumulativePrompt(channel, stageText, dayInArc) {
-  return (
-    `Image 0 is this scene at its very beginning. Show the same exact scene ${dayInArc} days later ` +
-    `in its story, when: ${stageText}. All earlier progress has already happened. ` +
-    `Keep the viewpoint, framing and light of image 0 identical. ` +
-    `Style: ${channel.style}. ${CONFIG.WALLPAPER_SUFFIX}`
-  );
-}
-
-/** Prompt per generazione PULITA (keyframe: primo giorno assoluto o nuovo arco). */
-export function buildImagePrompt(channel, scene) {
-  return `${scene}. Style: ${channel.style}. Colors: ${channel.palette}. ${CONFIG.WALLPAPER_SUFFIX}`;
 }
 
 /**
- * Prompt per generazione CON RIFERIMENTO (image 0 = keyframe dell'arco).
- * FLUX.2 è un editor guidato da istruzioni: si dichiara il delta cumulativo
- * rispetto all'àncora ("N giorni dopo") e si chiede esplicitamente di
- * preservare luogo, composizione e inquadratura ("change X / keep Y",
- * pattern raccomandato dalla prompting guide di Black Forest Labs).
+ * Riallineamento del keyframe.
+ *
+ * Il primo giorno di un arco nasce da testo puro; tutti i giorni successivi
+ * nascono invece da un editing di un'immagine. Sono due processi diversi e si
+ * vede: senza questo passaggio il giorno 1 stona rispetto ai suoi stessi
+ * seguiti. Qui si rigenera il keyframe partendo da se stesso, così entra nella
+ * stessa "famiglia visiva" degli altri sei giorni. La descrizione resta quella
+ * della scena, senza chiedere alcun cambiamento.
  */
-export function buildEditPrompt(channel, scene, daysSinceAnchor = 1) {
-  const when =
-    daysSinceAnchor === 0 ? "at the very same moment"
-    : daysSinceAnchor <= 1 ? "one day later"
-    : `${daysSinceAnchor} days later`;
+export function buildRealignPrompt(concept) {
   return (
-    `This is the exact same place as image 0, seen ${when} in its slow story: ${scene}. ` +
-    `Keep the location, composition, camera angle and framing of image 0 unchanged; ` +
-    `change only the light, weather and the small evolutions described. ` +
-    `Style: ${channel.style}. ${CONFIG.WALLPAPER_SUFFIX}`
+    `Image 0 is this exact scene: ${concept.setting}. ${concept.tappe[0].join(". ")}. ` +
+    `Show the same scene with the same viewpoint, framing, light and colours, ` +
+    `rendered with crisp clean detail. ` +
+    `Style: ${concept.style}. Colors: ${concept.palette}. ${CONFIG.WALLPAPER_SUFFIX}`
+  );
+}
+
+/**
+ * Ripiego per quando l'immagine di ieri non è recuperabile: si riparte dal
+ * keyframe e si descrive lo stato cumulativo raggiunto, sempre senza contare
+ * giorni.
+ */
+export function buildCumulativePrompt(concept, stage) {
+  const fin_qui = concept.tappe
+    .slice(1, stage + 1)
+    .flat()
+    .join("; ");
+  return (
+    `Image 0 shows this scene at its beginning. Show the EXACT same scene, same ` +
+    `viewpoint and same framing, in which all of the following are now true: ${fin_qui}. ` +
+    `Style: ${concept.style}. ${CONFIG.WALLPAPER_SUFFIX}`
   );
 }

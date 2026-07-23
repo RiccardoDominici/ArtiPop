@@ -32,6 +32,10 @@ export function renderPage(metas, origin, dateKey) {
     accent: c.accent,
     tagline: c.tagline,
     scene: metas[c.id]?.scene || null,
+    // Il concept della settimana in corso: da questa versione un flusso non è
+    // più un tema fisso, quindi va detto all'utente COSA sta guardando adesso.
+    concept: metas[c.id]?.conceptNome || null,
+    giorno: Number.isInteger(metas[c.id]?.dayInArc) ? metas[c.id].dayInArc + 1 : null,
     date: metas[c.id]?.date || dateKey,
   }));
 
@@ -274,7 +278,7 @@ export function renderPage(metas, origin, dateKey) {
            a salvare il file in silenzio nei Download. Senza, il tap NAVIGA sul
            file e iOS propone di aprirlo — un passaggio in meno prima di
            Comandi rapidi. -->
-      <a class="btn primary" id="dlShortcut" href="/s/bloom.shortcut">⬇️ Scarica la Shortcut</a>
+      <a class="btn primary" id="dlShortcut" href="/s/natura.shortcut">⬇️ Scarica la Shortcut</a>
       <a class="btn ghost" href="#setup">Come si attiva</a>
     </div>
     <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
@@ -377,7 +381,7 @@ function cardHTML(ch) {
     <div class="cinfo">
       <h2>\${ch.emoji} \${ch.name}</h2>
       <div class="tag">\${ch.tagline}</div>
-      <div class="scene">\${ch.scene ? "<b>Oggi:</b> " + ch.scene : "in preparazione…"}</div>
+      <div class="scene">\${ch.concept ? "<b>Questa settimana:</b> " + ch.concept + (ch.giorno ? " — giorno " + ch.giorno + " di 7" : "") + "<br>" : ""}\${ch.scene ? ch.scene : "in preparazione…"}</div>
     </div>\`;
 }
 

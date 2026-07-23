@@ -52,7 +52,7 @@ const PROBLEMI = [
       <em>Impostazioni → Sfondo</em> aggiungine uno nuovo qualsiasi — finisce in fondo alla
       galleria e da lì in poi sarà quello aggiornato ogni giorno. Se invece preferisci
       lasciare la scelta a iOS, scarica la
-      <a href="/s/island-base.shortcut">versione base della Shortcut</a>, che non aggancia
+      <a href="/s/natura-base.shortcut">versione base della Shortcut</a>, che non aggancia
       nessuna scheda e aggiorna lo sfondo attivo.`,
   },
   {
@@ -127,7 +127,7 @@ const FAQ = [
     q: "Che fine fanno gli sfondi vecchi?",
     a: `Restano in archivio per sempre. Sulla home, in "Il viaggio finora", puoi rivedere e
       riscaricare ogni giorno passato; ogni immagine ha anche un suo indirizzo diretto, del
-      tipo <code>/w/island?date=2026-07-16</code>.`,
+      tipo <code>/w/natura?date=2026-07-16</code>.`,
   },
   {
     q: "A che ora viene generato lo sfondo del giorno?",

@@ -46,14 +46,14 @@ export async function putImage(env, channelId, img, info, { archiveOnly = false 
   if (archiveOnly) return;
 
   await env.KV.put(latestKey(channelId), img.bytes, { metadata: kvMeta });
+  // I metadati alimentano il sito e le diagnosi: si passa `info` per intero
+  // (contiene concept, famiglia, tappa e misure del collaudo) invece di
+  // riscriverne a mano un sottoinsieme, che a ogni campo nuovo andava
+  // aggiornato qui e veniva puntualmente dimenticato.
   await env.KV.put(
     metaKey(channelId),
     JSON.stringify({
-      date: info.date,
-      scene: info.scene,
-      arcTheme: info.arcTheme,
-      arcIndex: info.arcIndex,
-      dayInArc: info.dayInArc,
+      ...info,
       model: img.model,
       width: img.width,
       height: img.height,

@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 BASE_URL="https://artipop.riccardo-dominici.workers.dev/w"
-CHANNELS=(studio island bloom random)
+CHANNELS=(natura citta quiete random)
 OUT_DIR="dist"
 
 mkdir -p "$OUT_DIR"

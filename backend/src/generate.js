@@ -1,13 +1,20 @@
-// Generazione dell'immagine del giorno, con catena di fallback per non fermarsi mai:
+// Generazione dell'immagine del giorno.
 //
-//   1. Workers AI @cf/black-forest-labs/flux-2-klein-4b  (qualità FLUX.2, ~290 neuroni)
-//      → tenta le risoluzioni di CONFIG.IMAGE_SIZES in ordine decrescente
-//   2. Workers AI @cf/black-forest-labs/flux-1-schnell    (~90 neuroni, max 1024px)
-//   3. Pollinations.ai (gratuito senza chiavi, risoluzione ridotta — ultima spiaggia)
+// Due livelli:
+//   - `generateImage`: prova la catena di fallback finché una via funziona
+//       1. flux-2-klein-4b (qualità FLUX.2, con riferimenti visivi)
+//       2. flux-1-schnell (economico, senza riferimenti)
+//       3. Pollinations (gratuito senza chiavi, ultima spiaggia)
+//   - `generateWithGate`: genera, MISURA quanto è cambiato rispetto a ieri e
+//       rigenera se il cambiamento è fuori dal profilo del concept. Esauriti i
+//       tentativi pubblica il candidato più vicino al bersaglio.
 //
-// Se TUTTO fallisce, il chiamante mantiene l'immagine di ieri: la Shortcut non si rompe mai.
+// Se tutto fallisce, il chiamante mantiene l'immagine di ieri: la Shortcut degli
+// utenti non si rompe mai.
 
 import { CONFIG } from "./config.js";
+import { getImage } from "./storage.js";
+import { fingerprintFromBytes, compare, verdict, occupancy, formatMeasures } from "./metrics.js";
 
 /** Decodifica base64 → Uint8Array (atob è nativo e veloce nei Workers). */
 function base64ToBytes(b64) {
@@ -19,28 +26,12 @@ function base64ToBytes(b64) {
 
 /** Legge interamente un ReadableStream in Uint8Array. */
 async function streamToBytes(stream) {
-  const chunks = [];
-  let total = 0;
-  const reader = stream.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    total += value.length;
-  }
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) {
-    out.set(c, off);
-    off += c.length;
-  }
-  return out;
+  return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
 /**
- * Normalizza l'output dei modelli immagine di Workers AI, che a seconda del modello
- * può essere: { image: base64 }, una stringa base64, o un ReadableStream binario.
- * Ritorna { bytes: Uint8Array, contentType }.
+ * Normalizza l'output dei modelli immagine di Workers AI, che a seconda del
+ * modello può essere { image: base64 }, una stringa base64 o uno stream binario.
  */
 async function normalizeImageOutput(out) {
   if (out && typeof out === "object" && typeof out.image === "string") {
@@ -73,49 +64,53 @@ function sniffBytes(bytes) {
   return "image/png";
 }
 
-/** Probe pubblico (usato da /test-size): un tentativo klein a una risoluzione precisa. */
-export async function tryKleinSize(env, prompt, size) {
-  return tryKlein(env, prompt, 1, size);
-}
+/* ===================== RIFERIMENTI VISIVI ===================== */
 
 /**
- * Scarica l'immagine di riferimento (ieri) ridotta a <512px via resizer esterno
- * gratuito. Ritorna i byte oppure null (in quel caso si genera senza riferimento).
- * L'URL d'archivio è immutabile e già propagato da ieri: nessun rischio di
- * leggere una scrittura appena fatta.
+ * Rimpicciolisce un'immagine alla misura che il modello accetta come
+ * riferimento (klein pretende input sotto i 512 px per lato).
+ *
+ * Si usa il binding Images, che lavora sui byte in memoria. La versione
+ * precedente appaltava questo lavoro a un ridimensionatore esterno passandogli
+ * un URL pubblico, con due difetti concreti: dipendeva da un servizio di terzi
+ * e la sua cache per URL restituiva miniature vecchie alle rigenerazioni (bug
+ * reale, che produceva progressioni caotiche). Ora il giro di rete non c'è più.
  */
-export async function fetchReferenceImage(env, publicImageUrl, attempts = 2) {
-  // Nonce nell'URL SORGENTE: il resizer cachea per URL completo, e senza nonce
-  // una rigenerazione della stessa data riceverebbe la miniatura VECCHIA messa
-  // in cache alla generazione precedente (bug reale osservato nei backfill
-  // ripetuti: riferimenti stantii → progressioni caotiche).
-  const sep = publicImageUrl.includes("?") ? "&" : "?";
-  const freshUrl = `${publicImageUrl}${sep}v=${Date.now()}`;
-  const url =
-    CONFIG.REF_RESIZER +
-    encodeURIComponent(freshUrl) +
-    `&w=${CONFIG.REF_WIDTH}&h=${CONFIG.REF_HEIGHT}&fit=cover&output=jpg`;
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      if (bytes.length < 2000) throw new Error("risposta troppo piccola");
-      return bytes;
-    } catch (err) {
-      console.warn(`[generate] resize riferimento tentativo ${attempt} fallito: ${err.message}`);
-      // Il backfill legge un URL scritto pochi secondi fa: piccola attesa tra i
-      // tentativi per dare tempo alla propagazione KV (solo I/O, non CPU).
-      if (attempt < attempts) await new Promise((r) => setTimeout(r, 8000 * attempt));
-    }
+async function resizeForModel(env, source) {
+  if (!env.IMAGES) return null;
+  try {
+    const stream = source instanceof ReadableStream ? source : new Response(source).body;
+    const out = await env.IMAGES.input(stream)
+      .transform({ width: CONFIG.REF_WIDTH, height: CONFIG.REF_HEIGHT, fit: "cover" })
+      .output({ format: "image/jpeg", quality: 90 });
+    return new Uint8Array(await out.response().arrayBuffer());
+  } catch (err) {
+    console.warn(`[generate] ridimensionamento riferimento fallito: ${err.message}`);
+    return null;
   }
-  return null;
 }
 
 /**
- * Tentativo con FLUX.2 klein: input multipart (vedi changelog Cloudflare).
- * Con `refBytes` l'immagine di ieri entra come input_image_0 (deve essere <512x512):
- * il modello mantiene composizione e palette e applica solo il cambiamento chiesto.
+ * Riferimento visivo per una data d'archivio. Se i byte sono già in memoria
+ * (backfill: l'immagine è stata generata pochi secondi fa in questa stessa
+ * invocazione) si usano quelli, senza passare da KV — che è eventualmente
+ * consistente e in passato costringeva ad attese di parecchi secondi.
+ */
+export async function referenceFor(env, channelId, date, cachedBytes = null) {
+  if (cachedBytes) return resizeForModel(env, cachedBytes);
+  const img = await getImage(env, channelId, date);
+  if (!img) {
+    console.warn(`[generate] nessuna immagine in archivio per ${channelId} ${date}`);
+    return null;
+  }
+  return resizeForModel(env, img.stream);
+}
+
+/* ===================== GENERATORI ===================== */
+
+/**
+ * Tentativo con FLUX.2 klein: input multipart.
+ * I riferimenti entrano come input_image_0, input_image_1, ... (max 4).
  */
 async function tryKlein(env, prompt, seed, size, refs = []) {
   const form = new FormData();
@@ -123,13 +118,12 @@ async function tryKlein(env, prompt, seed, size, refs = []) {
   form.append("width", String(size.width));
   form.append("height", String(size.height));
   if (seed != null) form.append("seed", String(seed));
-  // Riferimenti visivi (max 4, ognuno <512x512): input_image_0, input_image_1, ...
   refs.forEach((bytes, i) => {
     form.append(`input_image_${i}`, new Blob([bytes], { type: "image/jpeg" }), `ref${i}.jpg`);
   });
 
-  // Trucco documentato da Cloudflare: passare il body multipart tramite una Request
-  // fittizia per ottenere lo stream e il boundary corretto del content-type.
+  // Trucco documentato da Cloudflare: passare il body multipart tramite una
+  // Request fittizia per ottenere stream e boundary corretti.
   const formRequest = new Request("http://dummy", { method: "POST", body: form });
   const out = await env.AI.run(CONFIG.IMAGE_MODEL_PRIMARY, {
     multipart: {
@@ -141,9 +135,12 @@ async function tryKlein(env, prompt, seed, size, refs = []) {
   return { ...img, model: CONFIG.IMAGE_MODEL_PRIMARY, ...size };
 }
 
-/** Tentativo con FLUX.1 schnell: input JSON, 4-8 steps, base64 in output.
- *  Lo schema documentato accetta solo prompt+steps: proviamo prima col seed
- *  (utile per la continuità) e, se la validazione lo rifiuta, senza. */
+/** Probe pubblico (usato da /test-size): un tentativo klein a una risoluzione precisa. */
+export async function tryKleinSize(env, prompt, size) {
+  return tryKlein(env, prompt, 1, size);
+}
+
+/** Tentativo con FLUX.1 schnell: input JSON, base64 in output. */
 async function trySchnell(env, prompt, seed) {
   let out;
   try {
@@ -155,7 +152,7 @@ async function trySchnell(env, prompt, seed) {
   return { ...img, model: CONFIG.IMAGE_MODEL_FALLBACK, width: 1024, height: 1024 };
 }
 
-/** Ultima spiaggia: Pollinations (nessuna chiave; il tier anonimo riduce la risoluzione). */
+/** Ultima spiaggia: Pollinations (nessuna chiave, risoluzione ridotta). */
 async function tryPollinations(prompt, seed, size) {
   const url =
     CONFIG.POLLINATIONS_URL +
@@ -164,18 +161,12 @@ async function tryPollinations(prompt, seed, size) {
   const res = await fetch(url, { signal: AbortSignal.timeout(90000) });
   if (!res.ok) throw new Error(`pollinations HTTP ${res.status}`);
   const bytes = new Uint8Array(await res.arrayBuffer());
-  if (bytes.length < 5000) throw new Error("pollinations: risposta troppo piccola, probabile errore");
-  return {
-    bytes,
-    contentType: res.headers.get("content-type") || sniffBytes(bytes),
-    model: "pollinations",
-    ...size,
-  };
+  if (bytes.length < 5000) throw new Error("pollinations: risposta troppo piccola");
+  return { bytes, contentType: res.headers.get("content-type") || sniffBytes(bytes), model: "pollinations", ...size };
 }
 
 /**
- * Genera l'immagine del giorno provando l'intera catena di fallback.
- * `refBytes` (opzionale): immagine di ieri <512px come riferimento di continuità.
+ * Genera l'immagine provando l'intera catena di fallback.
  * Ritorna { bytes, contentType, model, width, height, usedReference }.
  * Lancia un errore solo se OGNI via è fallita.
  */
@@ -183,9 +174,9 @@ export async function generateImage(env, prompt, seed, refs = []) {
   const errors = [];
   refs = (refs || []).filter(Boolean);
 
-  // 1) FLUX.2 klein con riferimenti (continuità visiva), poi senza.
-  //    Coi riferimenti si prova solo la risoluzione primaria: un errore lì è
-  //    legato all'input, non all'output, e i subrequest sono contati (cap 50).
+  // klein con riferimenti (continuità visiva), poi senza. Coi riferimenti si
+  // prova solo la risoluzione primaria: un errore lì dipende dall'input, non
+  // dall'output, e le sottorichieste sono contate (tetto 50).
   for (const withRef of refs.length ? [true, false] : [false]) {
     const sizes = withRef ? [CONFIG.IMAGE_SIZES[0]] : CONFIG.IMAGE_SIZES;
     for (const size of sizes) {
@@ -193,37 +184,139 @@ export async function generateImage(env, prompt, seed, refs = []) {
         const t0 = Date.now();
         const img = await tryKlein(env, prompt, seed, size, withRef ? refs : []);
         console.log(
-          `[generate] klein${withRef ? "+ref" : ""} ok ${size.width}x${size.height} in ${Date.now() - t0}ms (${img.bytes.length} byte)`
+          `[generate] klein${withRef ? "+ref" : ""} ok ${size.width}x${size.height} ` +
+          `in ${Date.now() - t0}ms (${img.bytes.length} byte)`
         );
         return { ...img, usedReference: withRef };
       } catch (err) {
         errors.push(`klein${withRef ? "+ref" : ""} ${size.width}x${size.height}: ${err.message}`);
-        console.warn(
-          `[generate] klein${withRef ? "+ref" : ""} ${size.width}x${size.height} fallito: ${err.message}`
-        );
+        console.warn(`[generate] klein${withRef ? "+ref" : ""} ${size.width}x${size.height} fallito: ${err.message}`);
       }
     }
   }
 
-  // 2) FLUX.1 schnell.
   try {
     const img = await trySchnell(env, prompt, seed);
     console.log(`[generate] schnell ok (${img.bytes.length} byte)`);
-    return img;
+    return { ...img, usedReference: false };
   } catch (err) {
     errors.push(`schnell: ${err.message}`);
     console.warn(`[generate] schnell fallito: ${err.message}`);
   }
 
-  // 3) Pollinations.
   try {
     const img = await tryPollinations(prompt, seed, CONFIG.IMAGE_SIZES[0]);
     console.log(`[generate] pollinations ok (${img.bytes.length} byte)`);
-    return img;
+    return { ...img, usedReference: false };
   } catch (err) {
     errors.push(`pollinations: ${err.message}`);
     console.warn(`[generate] pollinations fallito: ${err.message}`);
   }
 
   throw new Error(`tutti i generatori sono falliti: ${errors.join(" | ")}`);
+}
+
+/* ===================== IL CANCELLO ===================== */
+
+/**
+ * Decide come correggere la dose per il tentativo successivo, guardando in che
+ * modo il candidato ha sbagliato.
+ *
+ * Non è una manopola "intensità" data al modello: cambia QUANTA storia si
+ * descrive. Troppo poco cambiamento → si aggiunge materiale della tappa dopo;
+ * troppo → si tiene solo la prima frase della tappa. Quando invece il problema
+ * è la FORMA del cambiamento (sparso quando doveva essere concentrato) la dose
+ * resta, e a cambiare è solo il seme: descrivere di più non aiuterebbe.
+ */
+function nextDose(m, profile, dose) {
+  const troppoPoco = m.estensione < profile.estensione[0] || m.intensita < profile.intensita[0];
+  const troppo = m.estensione > profile.estensione[1] || m.intensita > profile.intensita[1];
+  if (troppoPoco && !troppo) return Math.min(2, dose + 1);
+  if (troppo && !troppoPoco) return Math.max(-1, dose - 1);
+  return dose;
+}
+
+/**
+ * Genera finché il cambiamento non rientra nel profilo del concept.
+ *
+ * `promptForDose(dose)` costruisce il prompt alla dose richiesta.
+ * `prevFingerprint` è l'impronta di ieri; se manca (primo giorno dell'arco,
+ * oppure misura non disponibile) il cancello si disattiva da solo e si
+ * pubblica il primo risultato: meglio uno sfondo non collaudato che nessuno.
+ *
+ * Ritorna l'immagine con in più { impronta, misure, verdetto, tentativi, dose }.
+ */
+export async function generateWithGate(env, opts) {
+  const {
+    promptForDose, seed, refs = [], profile, prevFingerprint, label = "",
+    maxAttempts = null, doseIniziale = 0, anchorFingerprint = null, occupazionePrec = null,
+  } = opts;
+  const tentativiMax = maxAttempts ?? CONFIG.MAX_ATTEMPTS;
+
+  // Senza metro non c'è cancello: si genera una volta e si pubblica.
+  if (!prevFingerprint || !profile) {
+    const img = await generateImage(env, promptForDose(0), seed, refs);
+    const impronta = await fingerprintFromBytes(env, img.bytes);
+    return { ...img, impronta, misure: null, verdetto: null, tentativi: 1, dose: 0 };
+  }
+
+  // La dose di partenza arriva dal giorno prima: se ieri era rimasto in debito
+  // si comincia gia' spingendo, senza sprecare un tentativo per scoprirlo.
+  let dose = doseIniziale;
+  let migliore = null;
+  let fatti = 0;
+  const scadenza = Date.now() + CONFIG.GATE_DEADLINE_MS;
+
+  for (let tentativo = 1; tentativo <= tentativiMax; tentativo++) {
+    // Salvaguardia sui tempi: il cron ha una finestra, e uno sfondo imperfetto
+    // pubblicato vale infinitamente più di un tentativo perfetto interrotto a
+    // metà. Se il tempo è finito ci si ferma e si tiene il migliore finora.
+    if (tentativo > 1 && Date.now() > scadenza) {
+      console.warn(`[gate] ${label}: tempo esaurito dopo ${tentativo - 1} tentativi`);
+      break;
+    }
+    const prompt = promptForDose(dose);
+    // Il seme cambia a ogni tentativo: klein non è deterministico nemmeno a
+    // seme fisso, ma variarlo evita di riottenere esattamente lo stesso scarto.
+    const img = await generateImage(env, prompt, seed + tentativo - 1, refs);
+    fatti = tentativo;
+
+    const impronta = await fingerprintFromBytes(env, img.bytes);
+    if (!impronta) {
+      console.warn(`[gate] ${label}: impronta non calcolabile, pubblico senza collaudo`);
+      return { ...img, impronta: null, misure: null, verdetto: null, tentativi: tentativo, dose };
+    }
+
+    const misure = compare(prevFingerprint, impronta);
+
+    // Sesta misura: quanto la scena si e' allontanata dal keyframe, e se
+    // rispetto a ieri e' andata avanti o INDIETRO. Le altre cinque non
+    // distinguono una pianta che cresce da una che rimpicciolisce.
+    const occ = occupancy(anchorFingerprint, impronta);
+    if (occ !== null) {
+      misure.occupazione = occ;
+      misure.avanzamento = occupazionePrec === null ? 0 : occ - occupazionePrec;
+    }
+
+    const v = verdict(misure, profile);
+    const candidato = { ...img, impronta, misure, verdetto: v, tentativi: tentativo, dose };
+
+    console.log(
+      `[gate] ${label} tentativo ${tentativo}/${tentativiMax} (dose ${dose}): ` +
+      `${formatMeasures(misure)} → ${v.ok ? "ACCETTATO" : "rifiutato: " + v.motivi.join("; ")}`
+    );
+
+    if (v.ok) return candidato;
+    if (!migliore || v.distanza < migliore.verdetto.distanza) migliore = candidato;
+    dose = nextDose(misure, profile, dose);
+  }
+
+  console.warn(
+    `[gate] ${label}: tentativi esauriti, pubblico il più vicino al bersaglio ` +
+    `(distanza ${migliore.verdetto.distanza.toFixed(2)}, ${formatMeasures(migliore.misure)})`
+  );
+  // `tentativi` conta quanti se ne sono fatti in TUTTO, non a quale apparteneva
+  // il candidato scelto: altrimenti un ripiego trovato al primo colpo e poi
+  // rifiutato due volte verrebbe riportato come "1 tentativo, tutto liscio".
+  return { ...migliore, tentativi: fatti, ripiego: true };
 }

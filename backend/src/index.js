@@ -1,38 +1,172 @@
 // ArtiPop v3 — Worker Cloudflare.
 //
 // Due responsabilità:
-//   1. `scheduled` (cron giornaliero): per ogni canale, fa una richiesta interna a
-//      /run/<canale> tramite il binding SELF, così ogni canale gira in una invocazione
-//      separata (budget CPU indipendente sul piano free) e in parallelo.
-//   2. `fetch` (HTTP): serve le immagini (/w/<canale>), la landing page (/),
-//      l'API JSON (/api/channels) e gli endpoint di generazione protetti (/run/...).
+//   1. `scheduled` (cron giornaliero): per ogni flusso fa una richiesta interna
+//      a /run/<flusso> tramite il binding SELF, così ogni flusso gira in una
+//      invocazione separata (budget CPU indipendente sul piano free) e in
+//      parallelo.
+//   2. `fetch` (HTTP): serve le immagini (/w/<flusso>), la landing page, l'API
+//      JSON e gli endpoint protetti di generazione.
 //
-// Robustezza: se la generazione di un canale fallisce, l'immagine precedente resta
-// al suo posto — la Shortcut degli utenti non si rompe mai.
+// Il giro di un giorno, per un flusso:
+//   a. si legge COM'E' ANDATA IERI dalle misure salvate ieri stesso: la tappa
+//      e' stata saldata, oppure il modello e' rimasto indietro o corso avanti;
+//   b. si sceglie la tappa di oggi di conseguenza, spalmando cio' che manca sui
+//      giorni che restano — il settimo giorno chiude comunque (story.js);
+//   c. si genera, si MISURA quanto e' cambiato davvero e si rigenera finche' il
+//      cambiamento non rientra nel profilo del concept (generate.js + metrics.js);
+//   d. si pubblica, conservando l'impronta di oggi per il confronto di domani.
+//
+// Il punto (a) usava un modello di visione che leggeva l'immagine. E' stato
+// sostituito dalle misure perche' su fotogrammi inequivocabili sbagliava di
+// grosso (dettagli e numeri in metrics.js, funzione `classify`).
+//
+// Robustezza: se un flusso fallisce, l'immagine precedente resta al suo posto —
+// la Shortcut degli utenti non si rompe mai.
 
-import { ACTIVE_CHANNELS, getChannel } from "./channels.js";
-import { evolveStory, buildImagePrompt, buildEditPrompt, buildProgressPrompt, buildCumulativePrompt, buildCumulativeListPrompt, todayKey } from "./story.js";
-import { generateImage, fetchReferenceImage } from "./generate.js";
+import { CONFIG } from "./config.js";
+import { ACTIVE_CHANNELS, getChannel, resolveChannel, poolFor } from "./channels.js";
+import { getConcept } from "./concepts.js";
+import {
+  evolveStory, buildKeyframePrompt, buildDailyPrompt, buildCumulativePrompt,
+  buildRealignPrompt, clausesFor, todayKey,
+} from "./story.js";
+import { generateImage, generateWithGate, referenceFor } from "./generate.js";
 import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
+import {
+  fingerprintFromBytes, fingerprintFromArchive, compare, verdict, classify,
+  encodeFingerprint, decodeFingerprint, formatMeasures, diagnose,
+} from "./metrics.js";
+import { readStage } from "./vision.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage } from "./help.js";
 
-/** Confronto sicuro della chiave admin (query ?key= oppure header x-artipop-key). */
+/** Confronto della chiave admin (query ?key= oppure header x-artipop-key). */
 function isAuthorized(request, env) {
-  if (!env.ADMIN_KEY) return false; // senza secret configurato, gli endpoint admin sono chiusi
+  if (!env.ADMIN_KEY) return false; // senza secret configurato, gli admin sono chiusi
   const url = new URL(request.url);
   const provided = request.headers.get("x-artipop-key") || url.searchParams.get("key") || "";
   return provided === env.ADMIN_KEY;
 }
 
+/** Risposta JSON con status. */
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+/* ===================== IL GIRO DI UN GIORNO ===================== */
+
 /**
- * Genera (se serve) l'immagine di oggi per un canale.
- * Idempotente: se l'immagine di oggi esiste già e non è richiesto `force`, non fa nulla.
+ * Genera l'immagine di un giorno per un flusso, con il cancello di collaudo.
+ *
+ * `prevBytes` (facoltativo): i byte dell'immagine di ieri, se sono già in
+ * memoria — è il caso del backfill, che genera i giorni in sequenza dentro una
+ * sola invocazione. Passarli evita di rileggere da KV, che è eventualmente
+ * consistente e in passato costringeva ad attese di parecchi secondi.
+ */
+async function generateDay(env, channel, concept, state, { prevBytes = null, anchorBytes = null, maxAttempts = null } = {}) {
+  const label = `${channel.id}/${concept.id} t${state.stage + 1}`;
+
+  /* --- Keyframe: primo giorno dell'arco, generazione pulita --- */
+  if (state.dayInArc === 0) {
+    const clean = await generateImage(env, buildKeyframePrompt(concept), state.seed);
+
+    // Riallineamento: il keyframe nasce da testo puro, mentre tutti i giorni
+    // successivi nascono da un editing. Senza questo passaggio il giorno 1
+    // dell'arco risulta visibilmente "di un'altra famiglia" rispetto ai suoi
+    // seguiti. Si rigenera partendo da se stesso, e si tiene il risultato SOLO
+    // se le misure dicono che non ha perso nulla per strada.
+    const selfRef = await referenceFor(env, channel.id, state.lastDate, clean.bytes);
+    if (selfRef) {
+      try {
+        const aligned = await generateImage(env, buildRealignPrompt(concept), state.seed, [selfRef]);
+        if (aligned.usedReference) {
+          const [fa, fb] = await Promise.all([
+            fingerprintFromBytes(env, clean.bytes),
+            fingerprintFromBytes(env, aligned.bytes),
+          ]);
+          if (fa && fb) {
+            const m = compare(fa, fb);
+            // Il riallineamento deve essere un ritocco, non una reinvenzione.
+            if (m.estensione < 45 && m.degrado < 10) {
+              console.log(`[gen] ${label}: keyframe riallineato (${formatMeasures(m)})`);
+              return { ...aligned, impronta: fb, misure: null, verdetto: null, tentativi: 2, ancora: true };
+            }
+            console.warn(`[gen] ${label}: riallineamento scartato, ha cambiato troppo (${formatMeasures(m)})`);
+          } else {
+            return { ...aligned, impronta: null, misure: null, verdetto: null, tentativi: 2, ancora: true };
+          }
+        }
+      } catch (err) {
+        console.warn(`[gen] ${label}: riallineamento fallito (${err.message}), tengo l'originale`);
+      }
+    }
+    const impronta = await fingerprintFromBytes(env, clean.bytes);
+    return { ...clean, impronta, misure: null, verdetto: null, tentativi: 1, ancora: true };
+  }
+
+  /* --- Giorno normale: image 0 = ieri, image 1 = keyframe dell'arco --- */
+  const [refIeri, refAncora] = await Promise.all([
+    state.prevDate ? referenceFor(env, channel.id, state.prevDate, prevBytes) : null,
+    state.anchorDate && state.anchorDate !== state.prevDate
+      ? referenceFor(env, channel.id, state.anchorDate, anchorBytes)
+      : null,
+  ]);
+
+  // L'impronta di ieri: di norma è già nello stato (l'abbiamo salvata ieri), e
+  // in quel caso il confronto non costa niente. Se manca, si ricalcola.
+  let prevFingerprint = decodeFingerprint(state.improntaPrec);
+  if (!prevFingerprint && state.prevDate) {
+    prevFingerprint = prevBytes
+      ? await fingerprintFromBytes(env, prevBytes)
+      : await fingerprintFromArchive(env, channel.id, state.prevDate);
+  }
+
+  if (!refIeri && !refAncora) {
+    console.warn(`[gen] ${label}: nessun riferimento disponibile, genero da zero`);
+    const img = await generateImage(env, buildKeyframePrompt(concept), state.seed);
+    const impronta = await fingerprintFromBytes(env, img.bytes);
+    return { ...img, impronta, misure: null, verdetto: null, tentativi: 1 };
+  }
+
+  if (!refIeri) {
+    // Ieri non recuperabile: si riparte dal keyframe e si descrive lo stato
+    // cumulativo raggiunto. Niente cancello: il confronto non avrebbe senso.
+    console.warn(`[gen] ${label}: ieri non disponibile, uso lo stato cumulativo dall'àncora`);
+    const img = await generateImage(env, buildCumulativePrompt(concept, state.stage), state.seed, [refAncora]);
+    const impronta = await fingerprintFromBytes(env, img.bytes);
+    return { ...img, impronta, misure: null, verdetto: null, tentativi: 1 };
+  }
+
+  const refs = [refIeri, refAncora].filter(Boolean);
+  return generateWithGate(env, {
+    label,
+    seed: state.seed + state.dayInArc * 101,
+    refs,
+    profile: concept.profilo,
+    prevFingerprint,
+    maxAttempts,
+    doseIniziale: state.dosePartenza ?? 0,
+    // Riferimenti per la misura di DIREZIONE: quanto la scena si e' allontanata
+    // dal keyframe, e se rispetto a ieri e' avanzata o arretrata.
+    anchorFingerprint: decodeFingerprint(state.improntaAncora),
+    occupazionePrec: typeof state.occupazione === "number" ? state.occupazione : null,
+    promptForDose: (dose) =>
+      buildDailyPrompt(concept, clausesFor(concept, state.stage, dose, state.extraIndex), refs.length > 1),
+  });
+}
+
+/**
+ * Genera (se serve) l'immagine di oggi per un flusso.
+ * Idempotente: se l'immagine di oggi esiste già e non è richiesto `force`, esce.
  */
 async function runChannel(env, channelId, { force = false } = {}) {
   const channel = getChannel(channelId);
-  if (!channel) throw new Error(`canale sconosciuto: ${channelId}`);
-  if (!channel.active) throw new Error(`canale in pausa: ${channelId}`);
+  if (!channel) throw new Error(`flusso sconosciuto: ${channelId}`);
+  if (!channel.active) throw new Error(`flusso in pausa: ${channelId}`);
 
   const date = todayKey();
   const prevState = await getState(env, channelId);
@@ -42,172 +176,154 @@ async function runChannel(env, channelId, { force = false } = {}) {
     return { channel: channelId, date, skipped: true };
   }
 
-  // 1. La storia avanza di un giorno (LLM con fallback deterministico).
-  const state = await evolveStory(env, channel, prevState, date);
-  console.log(`[run] ${channelId} ${date}: arco ${state.arcIndex} giorno ${state.dayInArc} — "${state.scene}"`);
+  // 1. Com'e' andato ieri? Lo dicono le misure salvate ieri stesso, confrontate
+  //    col profilo del concept: "ok", "poco" (tappa non saldata), "troppo" (il
+  //    modello e' corso avanti). E' il segnale con cui il piano si corregge.
+  const conceptPrec = prevState?.conceptId ? getConcept(prevState.conceptId) : null;
+  const esito = conceptPrec ? classify(prevState?.misure, conceptPrec.profilo) : null;
 
-  // 2-3. Generazione con continuità (vedi generateDay).
-  if (!state.prevDate && prevState?.lastDate && prevState.lastDate !== date) {
-    state.prevDate = prevState.lastDate;
-  }
-  const img = await generateDay(env, channel, channelId, state, date);
+  // 2. La storia avanza di un giorno, tenendo conto dell'esito.
+  const state = evolveStory(channel, prevState, date, esito);
+  const concept = getConcept(state.conceptId);
+  state.improntaPrec = prevState?.impronta ?? null;
 
-  // 4. Persistenza: immagine + metadati + stato narrativo.
+  console.log(
+    `[run] ${channelId} ${date}: concept "${concept.id}" arco ${state.arcIndex} ` +
+    `giorno ${state.dayInArc} tappa ${state.stage + 1}/${concept.tappe.length} — "${state.scene}"`
+  );
+
+  // 3. Generazione con collaudo.
+  const img = await generateDay(env, channel, concept, state);
+
+  // 4. Persistenza: immagine, metadati, stato (con l'impronta per domani).
   await putImage(env, channelId, img, {
     date,
     scene: state.scene,
-    arcTheme: state.arcTheme,
+    conceptId: concept.id,
+    conceptNome: concept.nome,
+    famiglia: concept.famiglia.id,
     arcIndex: state.arcIndex,
     dayInArc: state.dayInArc,
+    stage: state.stage,
+    misure: img.misure,
+    tentativi: img.tentativi,
   });
-  await putState(env, channelId, state);
+
+  const { improntaPrec, ...statoDaSalvare } = state;
+  await putState(env, channelId, {
+    ...statoDaSalvare,
+    impronta: img.impronta ? encodeFingerprint(img.impronta) : null,
+    // L'impronta del keyframe resta per tutto l'arco: e' il metro con cui si
+    // misura se la storia sta andando avanti o indietro.
+    improntaAncora: img.ancora && img.impronta
+      ? encodeFingerprint(img.impronta)
+      : (state.improntaAncora ?? null),
+    occupazione: img.ancora ? 0 : (img.misure?.occupazione ?? state.occupazione ?? 0),
+    misure: img.misure ?? null,
+  });
 
   return {
     channel: channelId,
     date,
+    concept: concept.id,
+    famiglia: concept.famiglia.id,
     scene: state.scene,
     arc: `${state.arcIndex}/${state.dayInArc}`,
+    tappa: `${state.stage + 1}/${concept.tappe.length}`,
+    ieri: esito,
     model: img.model,
-    continuity: img.usedReference ? "ref-ieri" : "keyframe",
+    tentativi: img.tentativi,
+    collaudo: img.verdetto ? (img.verdetto.ok ? "passato" : "ripiego: " + img.verdetto.motivi.join("; ")) : "non applicabile",
+    misure: img.misure ? formatMeasures(img.misure) : null,
     size: `${img.width}x${img.height}`,
     bytes: img.bytes.length,
   };
 }
 
 /**
- * Backfill: simula `days` giorni consecutivi di storia FINO A OGGI, come se il
- * canale girasse da una settimana. Riparte da zero (stato azzerato): giorno 1 =
- * oggi-(days-1) con la firstScene, poi un'evoluzione al giorno; ogni immagine
- * viene archiviata sotto la sua data passata e l'ultima diventa il "latest".
- * Un'invocazione per canale (LLM+klein+KV ≈ 6 subrequest/giorno, cap free 50).
+ * Backfill: simula `days` giorni consecutivi di storia fino a oggi.
+ * Riparte da zero (stato azzerato). I byte di ogni giorno restano in memoria e
+ * fanno da riferimento per il giorno dopo: nessun giro da KV, nessuna attesa di
+ * propagazione.
  */
-async function backfillChannel(env, channelId, days) {
+async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
   const channel = getChannel(channelId);
-  if (!channel) throw new Error(`canale sconosciuto: ${channelId}`);
-  if (!channel.active) throw new Error(`canale in pausa: ${channelId}`);
+  if (!channel) throw new Error(`flusso sconosciuto: ${channelId}`);
+  if (!channel.active) throw new Error(`flusso in pausa: ${channelId}`);
 
-  let state = null; // reset: la storia riparte dal capitolo 1
+  let state = null;
+  let prevBytes = null;
+  let anchorBytes = null;
+  let prevFingerprint = null;
   const results = [];
+
   for (let i = days - 1; i >= 0; i--) {
     const date = todayKey(new Date(Date.now() - i * 86400000));
-    state = await evolveStory(env, channel, state, date);
+    // Anche qui l'anello si chiude: l'esito del giorno appena generato decide
+    // la tappa del successivo, esattamente come farebbe il cron.
+    const conceptPrec = state?.conceptId ? getConcept(state.conceptId) : null;
+    const esito = conceptPrec ? classify(state?.misure, conceptPrec.profilo) : null;
+    state = evolveStory(channel, state, date, esito);
+    const concept = getConcept(state.conceptId);
+    state.improntaPrec = prevFingerprint ? encodeFingerprint(prevFingerprint) : null;
 
-    // Generazione con continuità "anchor, don't chain" (vedi generateDay);
-    // più tentativi sul resize: l'àncora è stata scritta pochi secondi fa.
-    const img = await generateDay(env, channel, channelId, state, date, 3);
+    if (state.dayInArc === 0) anchorBytes = null; // arco nuovo: l'àncora sarà questa immagine
 
-    // Giorni intermedi: solo archivio. L'ultimo giorno scrive anche latest+meta.
+    // `gate=0` fa una sola generazione per giorno: sette giorni con tre
+    // tentativi ciascuno possono superare i limiti di durata di una richiesta.
+    const img = await generateDay(env, channel, concept, state, {
+      prevBytes, anchorBytes, maxAttempts: conGate ? null : 1,
+    });
+
     await putImage(env, channelId, img, {
       date,
       scene: state.scene,
-      arcTheme: state.arcTheme,
+      conceptId: concept.id,
+      conceptNome: concept.nome,
+      famiglia: concept.famiglia.id,
       arcIndex: state.arcIndex,
       dayInArc: state.dayInArc,
+      stage: state.stage,
+      misure: img.misure,
+      tentativi: img.tentativi,
     }, { archiveOnly: i > 0 });
 
-    console.log(`[backfill] ${channelId} ${date}: "${state.scene}" (${img.model}${img.usedReference ? ", ref" : ""})`);
+    console.log(
+      `[backfill] ${channelId} ${date} (${concept.id} t${state.stage + 1}): ` +
+      `${img.model}, ${img.tentativi} tentativi${img.misure ? ", " + formatMeasures(img.misure) : ""}`
+    );
+
     results.push({
       date,
+      concept: concept.id,
+      tappa: state.stage + 1,
       scene: state.scene,
       model: img.model,
-      continuity: img.usedReference ? "ref-ieri" : "keyframe",
-      size: `${img.width}x${img.height}`,
+      tentativi: img.tentativi,
+      misure: img.misure ? formatMeasures(img.misure) : null,
     });
+
+    prevBytes = img.bytes;
+    prevFingerprint = img.impronta ?? null;
+    state.misure = img.misure ?? null;
+    if (img.ancora && img.impronta) {
+      state.improntaAncora = encodeFingerprint(img.impronta);
+      state.occupazione = 0;
+    } else if (typeof img.misure?.occupazione === "number") {
+      state.occupazione = img.misure.occupazione;
+    }
+    if (state.dayInArc === 0) anchorBytes = img.bytes;
   }
-  await putState(env, channelId, state); // una sola scrittura di stato, alla fine
+
+  const { improntaPrec, ...statoDaSalvare } = state;
+  await putState(env, channelId, {
+    ...statoDaSalvare,
+    impronta: prevFingerprint ? encodeFingerprint(prevFingerprint) : null,
+  });
   return results;
 }
 
-
-/**
- * Genera l'immagine di un giorno secondo la strategia "anchor, don't chain":
- *  - giorni normali: edit del keyframe dell'arco (immagine pulita, mai catene);
- *  - keyframe (dayInArc 0): generazione pulita seguita da un AUTO-EDIT ("stesso
- *    luogo, stesso momento") che riallinea il keyframe alla famiglia visiva
- *    prodotta dagli edit — senza, il giorno 0 risulterebbe visivamente diverso
- *    dai giorni 1..N che lo usano come riferimento.
- * `retries`: tentativi del resize esterno (di più nel backfill, dove l'àncora
- * è stata scritta pochi secondi fa e deve propagarsi in KV).
- */
-async function generateDay(env, channel, channelId, state, date, retries = 2) {
-  const refUrl = (d) => `${env.PUBLIC_ORIGIN}/w/${channelId}?date=${d}`;
-
-  // --- Progressione "anchor-cumulative": sempre e solo il keyframe come base ---
-  if (channel.mode === "progression" && channel.refMode === "anchor-cumulative" && state.dayInArc > 0) {
-    const refAnchor = await fetchReferenceImage(env, refUrl(state.anchorDate), retries);
-    if (refAnchor) {
-      const project = channel.projects[(state.arcIndex ?? 0) % channel.projects.length];
-      const name = project.noun ?? project.subject;
-      const items = channel.stageSummaries
-        .slice(1, state.dayInArc + 1)
-        .filter(Boolean)
-        .map((t) => t.replaceAll("{s}", name));
-      return generateImage(env, buildCumulativeListPrompt(channel, items), state.seed, [refAnchor]);
-    }
-    console.warn(`[gen] ${channelId}: àncora non disponibile, genero da zero`);
-    return generateImage(env, buildImagePrompt(channel, state.scene), state.seed);
-  }
-
-  // --- Canali a PROGRESSIONE: edit additivo (ieri + àncora di stile) ---
-  if (channel.mode === "progression" && state.dayInArc > 0) {
-    const [refYesterday, refAnchor] = await Promise.all([
-      state.prevDate ? fetchReferenceImage(env, refUrl(state.prevDate), retries) : null,
-      state.anchorDate && state.anchorDate !== state.prevDate
-        ? fetchReferenceImage(env, refUrl(state.anchorDate), retries)
-        : null,
-    ]);
-    if (refYesterday) {
-      // image 0 = ieri (contenuto da preservare + aggiunta di oggi),
-      // image 1 = keyframe (àncora di qualità/stile, anti-drift multi-reference).
-      const prompt = buildProgressPrompt(channel, state.scene);
-      return generateImage(env, prompt, state.seed, [refYesterday, refAnchor]);
-    }
-    if (refAnchor) {
-      // Ieri non recuperabile: si mostra lo stato cumulativo partendo dall'àncora.
-      console.warn(`[gen] ${channelId}: ieri non disponibile, uso solo l'àncora`);
-      const prompt = buildCumulativePrompt(channel, state.scene, state.dayInArc);
-      return generateImage(env, prompt, state.seed, [refAnchor]);
-    }
-    console.warn(`[gen] ${channelId}: nessun riferimento disponibile, genero da zero`);
-    return generateImage(env, buildImagePrompt(channel, state.scene), state.seed);
-  }
-
-  // --- Canali "viaggio": edit dell'àncora dell'arco ---
-  if (state.dayInArc > 0 && state.anchorDate && state.anchorDate !== date) {
-    const refBytes = await fetchReferenceImage(env, refUrl(state.anchorDate), retries);
-    if (!refBytes) console.warn(`[gen] ${channelId}: àncora non scaricabile, genero senza`);
-    const prompt = refBytes
-      ? buildEditPrompt(channel, state.scene, state.dayInArc)
-      : buildImagePrompt(channel, state.scene);
-    return generateImage(env, prompt, state.seed, refBytes ? [refBytes] : []);
-  }
-
-  // --- Keyframe: generazione pulita + auto-edit di riallineamento ---
-  const clean = await generateImage(env, buildImagePrompt(channel, state.scene), state.seed);
-  // Pubblica provvisoriamente il keyframe in archivio: serve solo da sorgente
-  // per il resizer esterno (il Worker non può ridimensionare in locale).
-  await putImage(env, channelId, clean, {
-    date, scene: state.scene, arcTheme: state.arcTheme,
-    arcIndex: state.arcIndex, dayInArc: state.dayInArc,
-  }, { archiveOnly: true });
-  const selfRef = await fetchReferenceImage(env, refUrl(date), 3);
-  if (selfRef) {
-    try {
-      const aligned = await generateImage(
-        env, buildEditPrompt(channel, state.scene, 0), state.seed, [selfRef]
-      );
-      if (aligned.usedReference) {
-        console.log(`[gen] ${channelId}: keyframe riallineato alla famiglia degli edit`);
-        return aligned;
-      }
-    } catch (err) {
-      console.warn(`[gen] ${channelId}: auto-edit keyframe fallito (${err.message}), tengo l'originale`);
-    }
-  }
-  return clean;
-}
-
-/** Fan-out: una richiesta interna per canale (parallela) tramite il binding SELF. */
+/** Fan-out: una richiesta interna per flusso (parallela) tramite il binding SELF. */
 async function fanOutAll(env, { force = false } = {}) {
   const results = await Promise.allSettled(
     ACTIVE_CHANNELS.map((ch) =>
@@ -224,16 +340,10 @@ async function fanOutAll(env, { force = false } = {}) {
   });
 }
 
-/** Risposta JSON con status. */
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data, null, 2), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8" },
-  });
-}
+/* ===================== HTTP ===================== */
 
 export default {
-  /** Cron giornaliero: genera tutti i canali. */
+  /** Cron giornaliero: genera tutti i flussi. */
   async scheduled(event, env, ctx) {
     console.log(`[cron] avvio generazione giornaliera (${new Date().toISOString()})`);
     ctx.waitUntil(
@@ -247,34 +357,46 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // ---- Immagine del giorno: /w/<canale> (accetta anche .jpg/.png in coda) ----
+    // ---- Immagine del giorno: /w/<flusso> (accetta anche .jpg/.png in coda) ----
     const wMatch = path.match(/^\/w\/([a-z]+)(?:\.(?:jpg|jpeg|png))?$/);
     if (wMatch) {
       const chId = wMatch[1];
 
-      // Canale "random": ogni giorno un canale diverso, deterministico per data.
-      let target = chId;
+      // "random": ogni giorno un flusso diverso, deterministico per data.
+      let requested = chId;
       if (chId === "random") {
         const day = Math.floor(Date.parse(todayKey()) / 86400000);
-        target = ACTIVE_CHANNELS[day % ACTIVE_CHANNELS.length].id;
+        requested = ACTIVE_CHANNELS[day % ACTIVE_CHANNELS.length].id;
       }
 
-      if (!getChannel(target)) {
-        return json({ error: "canale sconosciuto", channels: ACTIVE_CHANNELS.map((c) => c.id).concat("random") }, 404);
+      const { channel, isLegacy } = resolveChannel(requested);
+      if (!channel) {
+        return json({
+          error: "flusso sconosciuto",
+          flussi: ACTIVE_CHANNELS.map((c) => c.id).concat("random"),
+        }, 404);
       }
 
-      // ?date=YYYY-MM-DD → una data specifica dall'archivio permanente.
       const dateParam = url.searchParams.get("date");
       const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : null;
 
-      const img = await getImage(env, target, date);
+      // Con ?date= si legge l'archivio dell'id RICHIESTO: la storia dei vecchi
+      // canali resta consultabile per sempre sotto il suo nome. Senza data si
+      // segue l'alias e si serve l'immagine di oggi del flusso erede.
+      const sorgente = date ? requested : channel.id;
+      let img = await getImage(env, sorgente, date);
+
+      // Rete di sicurezza per le Shortcut già installate: se il flusso erede
+      // non ha ancora prodotto nulla (subito dopo un cambio di nomi, prima del
+      // primo cron), si serve comunque l'ultima immagine del vecchio canale
+      // invece di un 404. Meglio uno sfondo di ieri che uno sfondo rotto.
+      if (!img && isLegacy) img = await getImage(env, requested, date);
+      if (!img && date && isLegacy) img = await getImage(env, channel.id, date);
       if (!img) return json({ error: "immagine non ancora generata, riprova tra poco" }, 404);
 
       return new Response(img.stream, {
         headers: {
           "content-type": img.meta.contentType || "image/png",
-          // latest: mai in cache (la Shortcut vuole sempre il più recente);
-          // archivio per data: immutabile, cache lunga.
           "cache-control": date ? "public, max-age=604800, immutable" : "no-store, must-revalidate",
           "x-artipop-date": img.meta.date || "",
           "x-artipop-model": img.meta.model || "",
@@ -282,29 +404,24 @@ export default {
       });
     }
 
-    // ---- Download diretto della Shortcut firmata: /s/<canale>[-base].shortcut ----
-    // File .shortcut firmati con `shortcuts sign --mode anyone` (vedi cartella
-    // shortcut/ del repo), caricati in KV con `wrangler kv key put shortcut:<id>`.
-    // Il suffisso "-base" serve la variante a 2 azioni (senza aggancio al primo
-    // sfondo): è il piano B documentato nella pagina /aiuto.
+    // ---- Download della Shortcut firmata: /s/<flusso>[-base].shortcut ----
     const sMatch = path.match(/^\/s\/([a-z]+(?:-base)?)\.shortcut$/);
     if (sMatch) {
       const file = await env.KV.get(`shortcut:${sMatch[1]}`, { type: "stream" });
-      if (!file) return json({ error: "shortcut non disponibile per questo canale" }, 404);
+      if (!file) return json({ error: "shortcut non disponibile per questo flusso" }, 404);
       return new Response(file, {
         headers: {
           "content-type": "application/octet-stream",
           // `inline` e non `attachment`: con attachment Safari su iOS salva il
-          // file nei Download senza dire niente, e l'utente deve andarselo a
-          // cercare. Con inline il tap apre il foglio di sistema, da cui iOS
-          // propone direttamente Comandi rapidi.
+          // file nei Download senza dire niente. Con inline il tap apre il
+          // foglio di sistema, da cui iOS propone direttamente Comandi rapidi.
           "content-disposition": `inline; filename="ArtiPop-${sMatch[1]}.shortcut"`,
           "cache-control": "public, max-age=3600",
         },
       });
     }
 
-    // ---- API JSON: stato di tutti i canali ----
+    // ---- API JSON: stato di tutti i flussi ----
     if (path === "/api/channels") {
       const metas = await Promise.all(ACTIVE_CHANNELS.map((c) => getMeta(env, c.id)));
       return json({
@@ -315,25 +432,23 @@ export default {
           accent: c.accent,
           tagline: c.tagline,
           taglineEn: c.taglineEn,
+          famiglie: c.famiglie,
+          concepts: poolFor(c).length,
           url: `${url.origin}/w/${c.id}`,
           today: metas[i],
         })),
       });
     }
 
-    // ---- API archivio: date disponibili per un canale (più recente per prima) ----
+    // ---- API archivio: date disponibili per un flusso ----
     const archMatch = path.match(/^\/api\/archive\/([a-z]+)$/);
     if (archMatch) {
-      if (!getChannel(archMatch[1])) return json({ error: "canale sconosciuto" }, 404);
       const limit = Math.min(Number(url.searchParams.get("limit")) || 60, 365);
       const dates = await listArchiveDates(env, archMatch[1], limit);
-      return json(
-        { channel: archMatch[1], dates },
-        200
-      );
+      return json({ channel: archMatch[1], dates });
     }
 
-    // ---- Generazione manuale/interna di un canale: /run/<canale>?[force=1] ----
+    // ---- Generazione manuale/interna di un flusso: /run/<flusso>?[force=1] ----
     const runMatch = path.match(/^\/run\/([a-z]+)$/);
     if (runMatch) {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
@@ -344,105 +459,163 @@ export default {
         return json(result);
       } catch (err) {
         console.error(`[run] ${runMatch[1]} fallito: ${err.message}`);
-        return json({ error: err.message }, 500);
+        return json({ error: err.message, stack: String(err.stack).slice(0, 800) }, 500);
       }
     }
 
-    // ---- Backfill storico (admin): /backfill?ch=<canale>&days=7 ----
+    // ---- Backfill storico (admin): /backfill?ch=<flusso>&days=7[&gate=0] ----
     if (path === "/backfill") {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const ch = url.searchParams.get("ch") || "";
       const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 2), 7);
+      const conGate = url.searchParams.get("gate") !== "0";
       // SINCRONO di proposito: la richiesta aperta tiene vivo il worker per
-      // tutta la durata (minuti). Con waitUntil il runtime termina il lavoro
-      // dopo ~30-60s dalla risposta (verificato: backfill morti a 2/7 giorni).
-      // Il client deve restare connesso; in caso di disconnessione, rilanciare.
+      // tutta la durata. Con waitUntil il runtime chiude il lavoro dopo ~30-60s
+      // dalla risposta (verificato: backfill morti a 2/7 giorni).
       try {
-        const results = await backfillChannel(env, ch, days);
-        return json({ channel: ch, days, results });
+        const results = await backfillChannel(env, ch, days, { conGate });
+        return json({ channel: ch, days, conGate, results });
       } catch (err) {
         console.error(`[backfill] ${ch} fallito: ${err.message}`);
-        return json({ error: err.message }, 500);
+        return json({ error: err.message, stack: String(err.stack).slice(0, 800) }, 500);
       }
     }
 
-    // ---- Rigenerazione chirurgica di UN giorno: /regen-day?ch=X&date=YYYY-MM-DD ----
-    // Utile quando un singolo frame esce male (la generazione non è
-    // perfettamente deterministica): ricostruisce lo stato di quel giorno dal
-    // piano salvato e rigenera solo quell'immagine, senza toccare il resto.
+    // ---- Rigenerazione di UN giorno: /regen-day?ch=X&date=YYYY-MM-DD ----
+    // Utile quando un singolo fotogramma esce male: ricostruisce lo stato di
+    // quel giorno e rigenera solo quell'immagine.
     if (path === "/regen-day") {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const ch = url.searchParams.get("ch") || "";
       const date = url.searchParams.get("date") || "";
       const channel = getChannel(ch);
       if (!channel || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "servono ?ch= e ?date=" }, 400);
+
       const state = await getState(env, ch);
-      if (!state?.anchorDate || !Array.isArray(state.plan)) {
-        return json({ error: "stato non compatibile (serve un canale a progressione già attivo)" }, 400);
+      const concept = state?.conceptId ? getConcept(state.conceptId) : null;
+      if (!state?.anchorDate || !concept) {
+        return json({ error: "stato non compatibile (serve un flusso già attivo)" }, 400);
       }
       const dayInArc =
         Math.floor(Date.parse(date + "T00:00:00Z") / 86400000) -
         Math.floor(Date.parse(state.anchorDate + "T00:00:00Z") / 86400000);
-      if (dayInArc < 0 || dayInArc >= state.plan.length) {
+      if (dayInArc < 0 || dayInArc >= concept.tappe.length) {
         return json({ error: `data fuori dall'arco corrente (àncora ${state.anchorDate})` }, 400);
       }
       const prevDate = todayKey(new Date(Date.parse(date + "T12:00:00Z") - 86400000));
       const dayState = {
         ...state,
         dayInArc,
+        stage: dayInArc,
+        extraIndex: null,
+        lastDate: date,
         prevDate: dayInArc > 0 ? prevDate : null,
-        scene: dayInArc === 0
-          ? `${channel.setting}, ${state.plan[0]}`
-          : state.plan[Math.min(dayInArc, state.plan.length - 1)],
+        improntaPrec: null,
+        scene: clausesFor(concept, dayInArc, 0, null).join(". "),
       };
       try {
-        const img = await generateDay(env, channel, ch, dayState, date, 3);
+        const img = await generateDay(env, channel, concept, dayState);
         await putImage(env, ch, img, {
           date,
           scene: dayState.scene,
-          arcTheme: state.arcTheme,
+          conceptId: concept.id,
+          conceptNome: concept.nome,
+          famiglia: concept.famiglia.id,
           arcIndex: state.arcIndex,
           dayInArc,
+          stage: dayInArc,
+          misure: img.misure,
+          tentativi: img.tentativi,
         }, { archiveOnly: date !== state.lastDate });
-        return json({ channel: ch, date, dayInArc, model: img.model, size: `${img.width}x${img.height}` });
+        return json({
+          channel: ch, date, dayInArc, model: img.model, tentativi: img.tentativi,
+          misure: img.misure ? formatMeasures(img.misure) : null,
+        });
       } catch (err) {
         return json({ error: err.message }, 500);
       }
     }
 
-    // ---- Generazione manuale di tutti i canali: /run-all?[force=1] ----
+    // ---- Generazione manuale di tutti i flussi: /run-all?[force=1] ----
     if (path === "/run-all") {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const results = await fanOutAll(env, { force: url.searchParams.get("force") === "1" });
       return json(results);
     }
 
-    // ---- Probe editing (admin): /test-edit?ch=X&date=YYYY-MM-DD&scene=... ----
-    // Genera UN'immagine con riferimento a quella archiviata alla data indicata
-    // e la ritorna direttamente (per valutare a occhio la continuità).
-    if (path === "/test-edit") {
+    // ---- Sonda del misuratore (admin): /test-metrics?ch=X&a=DATA&b=DATA ----
+    if (path === "/test-metrics") {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
-      const ch = url.searchParams.get("ch") || "horizon";
-      const refDate = url.searchParams.get("date");
-      const scene = url.searchParams.get("scene") || "the same place, one day later, slightly warmer light";
-      const channel = getChannel(ch);
-      if (!channel || !refDate) return json({ error: "servono ?ch= e ?date=" }, 400);
-      const refBytes = await fetchReferenceImage(
-        env, `${env.PUBLIC_ORIGIN}/w/${ch}?date=${refDate}`, 2
-      );
-      if (!refBytes) return json({ error: "riferimento non scaricabile" }, 502);
-      const img = await generateImage(env, buildEditPrompt(channel, scene), 42, [refBytes]);
-      return new Response(img.bytes, {
-        headers: {
-          "content-type": img.contentType,
-          "x-artipop-continuity": img.usedReference ? "ref" : "no-ref",
-          "cache-control": "no-store",
-        },
+      const ch = url.searchParams.get("ch") || "natura";
+      const a = url.searchParams.get("a");
+      const b = url.searchParams.get("b");
+      if (!a || !b) return json({ error: "servono ?a= e ?b= (due date YYYY-MM-DD)" }, 400);
+      const t0 = Date.now();
+      const [fa, fb] = await Promise.all([
+        fingerprintFromArchive(env, ch, a),
+        fingerprintFromArchive(env, ch, b),
+      ]);
+      if (!fa || !fb) {
+        return json({ ok: false, bindingPresente: Boolean(env.IMAGES), diagnosi: await diagnose(env, ch, a) }, 502);
+      }
+      const m = compare(fa, fb);
+      // Se si indica anche ?concept= si vede il verdetto che avrebbe dato il cancello.
+      const conceptId = url.searchParams.get("concept");
+      const concept = conceptId ? getConcept(conceptId) : null;
+      return json({
+        ok: true, ch, a, b, ms: Date.now() - t0,
+        misure: m, riga: formatMeasures(m),
+        verdetto: concept ? verdict(m, concept.profilo) : null,
       });
     }
 
+    // ---- Sonda del lettore di immagini (admin): /test-vision?ch=X&date=D ----
+    if (path === "/test-vision") {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      const ch = url.searchParams.get("ch") || "";
+      const date = url.searchParams.get("date") || "";
+      const conceptId = url.searchParams.get("concept");
+      const concept = conceptId ? getConcept(conceptId) : getConcept((await getState(env, ch))?.conceptId);
+      if (!concept) return json({ error: "servono ?concept= oppure un flusso già attivo" }, 400);
+      const ref = await referenceFor(env, ch, date || null);
+      if (!ref) return json({ error: "immagine non recuperabile" }, 404);
+      const t0 = Date.now();
+      const traccia = [];
+      const stage = await readStage(env, concept, ref, traccia);
+      return json({
+        ch, date, concept: concept.id, ms: Date.now() - t0,
+        tappaLetta: stage === null ? null : stage + 1,
+        traccia,
+        tappe: concept.tappe.map((f, i) => `${i + 1}. ${f.join(", ")}`),
+      });
+    }
+
+    // ---- Sonda domanda libera al lettore (admin): /test-ask?ch=X&date=D&q=... ----
+    // Serve a capire QUALE forma di domanda regge il modello di visione: la
+    // scelta fra 7 alternative si è rivelata inaffidabile, una domanda binaria
+    // potrebbe non esserlo.
+    if (path === "/test-ask") {
+      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      const ch = url.searchParams.get("ch") || "";
+      const date = url.searchParams.get("date") || "";
+      const q = url.searchParams.get("q") || "";
+      if (!q) return json({ error: "serve ?q=" }, 400);
+      const ref = await referenceFor(env, ch, date || null);
+      if (!ref) return json({ error: "immagine non recuperabile" }, 404);
+      const out = [];
+      for (const model of CONFIG.VISION_MODELS) {
+        const t0 = Date.now();
+        try {
+          const res = await env.AI.run(model, { prompt: q, image: Array.from(ref), max_tokens: 24 });
+          out.push({ model, ms: Date.now() - t0, risposta: res?.response });
+        } catch (err) {
+          out.push({ model, errore: String(err.message).slice(0, 200) });
+        }
+      }
+      return json({ ch, date, q, risposte: out });
+    }
+
     // ---- Probe risoluzione (admin): /test-size?w=1152&h=2496 ----
-    // Verifica se il modello primario accetta una data risoluzione, senza toccare KV.
     if (path === "/test-size") {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const w = Number(url.searchParams.get("w"));
@@ -458,16 +631,20 @@ export default {
     }
 
     // ---- Healthcheck ----
-    if (path === "/health") return json({ ok: true, activeChannels: ACTIVE_CHANNELS.map((c) => c.id) });
+    if (path === "/health") {
+      return json({
+        ok: true,
+        flussi: ACTIVE_CHANNELS.map((c) => ({
+          id: c.id, famiglie: c.famiglie, concepts: poolFor(c).length,
+        })),
+        misuratore: Boolean(env.IMAGES),
+      });
+    }
 
-    // ---- Pagina di aiuto: troubleshooting + FAQ ----
+    // ---- Pagina di aiuto ----
     if (path === "/aiuto" || path === "/aiuto.html" || path === "/help") {
       return new Response(renderHelpPage(), {
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          // Contenuto statico: può stare in cache un'ora.
-          "cache-control": "public, max-age=3600",
-        },
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" },
       });
     }
 
@@ -480,10 +657,7 @@ export default {
         })
       );
       return new Response(renderPage(metas, url.origin, todayKey()), {
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "public, max-age=300", // la pagina può stare in cache 5 minuti
-        },
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" },
       });
     }
 
