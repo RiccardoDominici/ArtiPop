@@ -10,14 +10,6 @@
 // - `journey` è la lista di tappe/temi: ispira i nuovi archi (e guida il fallback
 //   deterministico quando l'LLM non è disponibile).
 // - `moments` e `weathers` sono variazioni giornaliere per il fallback deterministico.
-// - `icloudLink` (facoltativo) è il link icloud.com/shortcuts pubblicato dal
-//   maintainer per quel canale. Se c'è, il bottone del sito punta lì invece che
-//   al file .shortcut: su iPhone un link iCloud apre DIRETTAMENTE l'app Comandi
-//   rapidi sulla schermata "Aggiungi comando", mentre il file passa per i
-//   Download di Safari. Si ottiene una volta sola, a mano: importa la Shortcut
-//   sull'iPhone → tieni premuto → Condividi → Copia link iCloud, e incollalo qui.
-//   ATTENZIONE: il link fotografa la Shortcut com'era quel giorno — se cambi i
-//   template va rigenerato, altrimenti distribuisci una versione vecchia.
 
 import { CONFIG } from "./config.js";
 
@@ -27,7 +19,6 @@ export const CHANNELS = [
     name: "Studio",
     emoji: "📚",
     active: true,
-    icloudLink: null, // ← incolla qui il link iCloud per l'installazione in un tap
     accent: ["#c98d5a", "#4a6b5d"],
     tagline: "Una scrivania vuota che si riempie di vita, un oggetto al giorno",
     taglineEn: "An empty desk filling with life, one object a day",
@@ -94,7 +85,6 @@ export const CHANNELS = [
     name: "Isola",
     emoji: "🏝️",
     active: true,
-    icloudLink: null, // ← incolla qui il link iCloud per l'installazione in un tap
     accent: ["#7ec8e3", "#f2b878"],
     tagline: "Un'isola fluttuante che prende vita, un pezzo al giorno",
     taglineEn: "A floating island coming alive, one piece a day",
@@ -261,7 +251,6 @@ export const CHANNELS = [
     name: "Bloom",
     emoji: "🌸",
     active: true,
-    icloudLink: null, // ← incolla qui il link iCloud per l'installazione in un tap
     accent: ["#f6a5c0", "#8fd3b6"],
     tagline: "Una pianta che cresce giorno dopo giorno, dal seme al fiore",
     taglineEn: "A plant growing day by day, from seed to flower",

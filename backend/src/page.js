@@ -33,9 +33,6 @@ export function renderPage(metas, origin, dateKey) {
     tagline: c.tagline,
     scene: metas[c.id]?.scene || null,
     date: metas[c.id]?.date || dateKey,
-    // Se valorizzato in channels.js, il bottone punta al link iCloud invece
-    // che al file .shortcut (vedi updateChrome).
-    icloudLink: c.icloudLink || null,
   }));
 
   return `<!doctype html>
@@ -415,13 +412,8 @@ function updateChrome() {
   const ch = CHANNELS[order[0]];
   document.documentElement.style.setProperty("--a1", ch.accent[0]);
   document.documentElement.style.setProperty("--a2", ch.accent[1]);
-  // Il bottone segue sempre il canale della card in cima. Se il canale ha un
-  // link iCloud pubblicato, quello vince: è l'unico modo su iOS di aprire la
-  // Shortcut direttamente nell'app (un tap → schermata "Aggiungi comando"),
-  // mentre il file .shortcut passa per i Download di Safari.
-  const btn = document.getElementById("dlShortcut");
-  btn.href = ch.icloudLink || \`/s/\${ch.id}.shortcut\`;
-  btn.textContent = ch.icloudLink ? "➕ Aggiungi la Shortcut" : "⬇️ Scarica la Shortcut";
+  // Il bottone di download segue sempre il canale della card in cima.
+  document.getElementById("dlShortcut").href = \`/s/\${ch.id}.shortcut\`;
   dotsEl.innerHTML = CHANNELS.map((c) =>
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
   previewDate = null;

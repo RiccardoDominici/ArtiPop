@@ -36,20 +36,25 @@ Shortcut già pronte, con l'URL del canale dentro — scarica, apri, importa:
 
 > Se iOS blocca l'import: *Impostazioni → Scorciatoie → Consenti scorciatoie non
 > attendibili* (il toggle appare dopo aver eseguito una scorciatoia qualsiasi).
-> Dopo l'import, apri l'azione *Imposta sfondo* e **disattiva "Mostra anteprima"**.
 >
 > ⚠️ Il vecchio link iCloud del README precedente puntava al backend AWS dismesso:
 > non usarlo, scaricava immagini che non si aggiornano più.
 
 ## 📲 Attivalo in 2 minuti
 
-1. **Scarica la Shortcut** del tuo canale (link qui sopra, o dal sito) e importala.
+1. **Scarica la Shortcut** del tuo canale (link qui sopra, o dal sito) e importala:
+   ha già dentro URL, anteprima spenta e ritaglio automatico spento.
    Preferisci farla a mano? 2 azioni: *Ottieni contenuto da URL* (incolla il link
-   del canale) + *Imposta sfondo* (**disattiva "Mostra anteprima"**).
+   del canale) + *Imposta sfondo* (**disattiva "Mostra anteprima"**, o in
+   automazione non funzionerà).
 2. **Automazioni** → *Ora del giorno* → **Tramonto** → *Esegui immediatamente*.
 3. Fine: da stasera cambia da solo.
 
-Passo-passo dettagliato, FAQ e soluzioni ai problemi: **[GUIDA.md](GUIDA.md)**.
+ArtiPop aggiorna sempre l'**ultimo** sfondo della schermata di blocco: se in
+fondo hai uno sfondo a cui tieni, aggiungine uno nuovo qualsiasi e sarà quello.
+
+- Passo-passo, uso quotidiano e manuale del maintainer → **[GUIDA.md](GUIDA.md)**
+- Problemi e FAQ, sempre aggiornati → **[pagina /aiuto](https://artipop.riccardo-dominici.workers.dev/aiuto)**
 
 ## 🧠 Come funziona
 

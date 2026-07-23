@@ -1,214 +1,342 @@
-# 📖 Guida completa ad ArtiPop
+# 📖 Guida ad ArtiPop
 
-Tutto quello che serve sapere, sia per **usare** ArtiPop sul tuo iPhone sia per
-**gestirlo** da maintainer. Aggiornata a luglio 2026.
+Un wallpaper nuovo ogni giorno sull'iPhone, generato dall'AI, che **evolve**:
+ogni canale racconta un progetto che avanza di un pezzo al giorno e si completa
+in una settimana. Gratis, senza app, senza account.
+
+Questa guida ha due parti indipendenti: la **Parte 1** serve a chi usa ArtiPop
+sul telefono, la **Parte 2** a chi lo gestisce. Non serve leggerle entrambe.
 
 ---
 
-## Parte 1 — Per chi lo usa (2 minuti)
+## Indice
 
-### Che cos'è
+**Parte 1 — Usare ArtiPop** *(5 minuti, una volta sola)*
+- [1.1 Come funziona, in breve](#11-come-funziona-in-breve)
+- [1.2 Scegliere il canale](#12-scegliere-il-canale)
+- [1.3 Installare la Shortcut](#13-installare-la-shortcut)
+- [1.4 Accendere l'automazione](#14-accendere-lautomazione)
+- [1.5 Uso quotidiano](#15-uso-quotidiano)
+- [1.6 Se qualcosa non va](#16-se-qualcosa-non-va)
 
-Ogni notte ArtiPop genera un nuovo wallpaper con l'AI per ogni canale attivo.
-Ogni canale è un *viaggio*: la scena di oggi è l'evoluzione di quella di ieri
-(la luce cambia, il progetto avanza) e ogni 7 giorni si cambia base: il ciclo
-ricomincia da capo con un progetto nuovo.
-Il tuo iPhone scarica l'immagine e la imposta come sfondo **da solo, ogni sera
-al tramonto**. Gratis, senza app e senza account.
+**Parte 2 — Gestire ArtiPop** *(maintainer)*
+- [2.1 Architettura in 30 secondi](#21-architettura-in-30-secondi)
+- [2.2 Anatomia di una giornata](#22-anatomia-di-una-giornata)
+- [2.3 Mappa del repo](#23-mappa-del-repo)
+- [2.4 Operazioni comuni](#24-operazioni-comuni)
+- [2.5 Come sono fatti i canali](#25-come-sono-fatti-i-canali)
+- [2.6 Come è garantita la coerenza visiva](#26-come-è-garantita-la-coerenza-visiva)
+- [2.7 Le Shortcut firmate](#27-le-shortcut-firmate)
+- [2.8 Limiti del piano gratuito](#28-limiti-del-piano-gratuito)
+- [2.9 Runbook: quando qualcosa si rompe](#29-runbook-quando-qualcosa-si-rompe)
+- [2.10 Lezioni imparate (non regredire)](#210-lezioni-imparate-non-regredire)
 
-### Passo 1 — Scegli il canale
+---
+---
 
-Vai su **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)**,
-sfoglia le card (swipe!) e copia il link del canale che preferisci:
+# Parte 1 — Usare ArtiPop
+
+## 1.1 Come funziona, in breve
+
+| | |
+|---|---|
+| **Cosa fa** | Ogni notte ArtiPop genera un wallpaper nuovo per ogni canale |
+| **Come arriva sul telefono** | Una Shortcut lo scarica e lo imposta, da sola, ogni sera |
+| **Cosa cambia ogni giorno** | Un pezzo della scena: la storia avanza, non riparte |
+| **Ogni 7 giorni** | Il progetto è completo → si cambia **base** e ricomincia da capo |
+| **Costo** | Zero, per sempre. Nessun account, nessuna app |
+
+## 1.2 Scegliere il canale
+
+Vai su **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)**
+e sfoglia le card (si trascinano). Ogni canale è un mondo diverso:
 
 | Canale | Cosa succede, giorno dopo giorno | URL |
 |---|---|---|
 | 🏝️ **Isola** | un'isola fluttuante prende vita, un pezzo al giorno | `…/w/island` |
 | 📚 **Studio** | una scrivania vuota si riempie di vita, un oggetto al giorno | `…/w/studio` |
-| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura, un po' ogni giorno | `…/w/bloom` |
+| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura | `…/w/bloom` |
 | 🎲 **Random** | ogni giorno un canale a sorpresa | `…/w/random` |
 
-(i canali "viaggio" — Horizon, Neon, Cosmos, Depths, Aurora — restano nel
-codice in pausa, riattivabili con una riga)
+> I canali "viaggio" (Horizon, Neon, Cosmos, Depths, Aurora) restano nel codice
+> in pausa: si riattivano con una riga, vedi [2.4](#24-operazioni-comuni).
 
-### Passo 2 — Prendi la Shortcut (una volta sola)
+## 1.3 Installare la Shortcut
 
-**Via consigliata:** scarica la Shortcut del canale dal sito (pulsante
-"⬇️ Scarica la Shortcut") e importala. Ha già dentro l'URL giusto,
-**l'anteprima disattivata** e l'aggancio all'**ultimo sfondo** della schermata di
-blocco: è pronta per l'automazione e non devi toccare nulla. Se iOS blocca
-l'import, attiva *Impostazioni → Scorciatoie → Consenti scorciatoie non
-attendibili*.
+**Passo A — Scarica.** Sul sito, tocca **⬇️ Scarica la Shortcut** con in cima la
+card del canale che vuoi. Il file ha già dentro tutto: URL del canale, anteprima
+disattivata, ritaglio automatico disattivato.
 
-⚠️ ArtiPop aggiorna sempre l'**ultimo** sfondo della galleria (Impostazioni →
-Sfondo). Se in fondo hai uno sfondo a cui tieni, aggiungine uno nuovo qualsiasi:
-finisce in coda e diventa quello gestito da ArtiPop. Puntiamo all'ultimo e non al
-primo perché il primo posto è quasi sempre occupato e iOS non lascia riordinare
-le schede. Se preferisci lasciare la scelta a iOS, c'è la variante base:
-`…/s/<canale>-base.shortcut`.
+**Passo B — Apri il file.** Tocca l'icona dei **Download** in Safari (la freccia
+in alto) e poi il file appena scaricato: si apre **Comandi rapidi** con la
+schermata *Aggiungi comando*. Lo trovi anche in *File → Download*.
 
-**Se preferisci farla a mano** (3 azioni in croce, ma un dettaglio è critico):
+> 🔒 Se iOS rifiuta l'importazione, attiva *Impostazioni → Scorciatoie →
+> **Consenti scorciatoie non attendibili*** (la voce compare dopo aver eseguito
+> almeno una scorciatoia qualsiasi), poi riapri il file.
 
-1. Apri l'app **Comandi rapidi** → tab **Comandi** → **+** in alto a destra.
-2. Aggiungi l'azione **Ottieni contenuto da URL** e incolla il link del canale,
-   es. `https://artipop.riccardo-dominici.workers.dev/w/island`.
-3. Aggiungi l'azione **Imposta sfondo** subito dopo:
-   - scegli quale sfondo aggiornare (Lock screen, Home, o entrambi);
-   - espandi le opzioni (la freccetta) e **disattiva "Mostra anteprima"** ⚠️ —
-     è il passaggio più importante di tutta la guida: con l'anteprima attiva
-     l'azione apre un foglio di conferma che in automazione **non può
-     comparire**, quindi lo sfondo non cambia mai (vedi FAQ).
-4. Dai un nome al comando (es. "ArtiPop") e salva.
+**Passo C — Prepara lo sfondo da far gestire.** ArtiPop aggiorna sempre
+l'**ultimo** sfondo della schermata di blocco — l'ultima scheda in
+*Impostazioni → Sfondo*. Se in fondo hai uno sfondo a cui tieni, aggiungine uno
+nuovo qualsiasi: finisce in coda e diventa quello di ArtiPop.
 
-Provalo subito con un tap: lo sfondo deve cambiare all'istante **e senza
-chiederti niente**. Se ti chiede conferma, l'anteprima è ancora accesa.
+> Perché l'ultimo e non il primo: il primo posto è quasi sempre già occupato e
+> iOS **non permette di riordinare** le schede. L'ultimo, invece, te lo puoi
+> creare quando vuoi.
 
-### Passo 3 — Automatizza al tramonto
+**✅ Verifica:** tocca la Shortcut. Lo sfondo deve cambiare **subito e senza
+chiederti niente**. Se ti chiede conferma, vedi [1.6](#16-se-qualcosa-non-va).
 
-1. Tab **Automazioni** → **+** → **Ora del giorno**.
-2. Scegli **Tramonto** (o l'orario che preferisci), ripetizione **Ogni giorno**.
-3. Seleziona **Esegui immediatamente** (così non chiede conferma).
-4. Scegli il comando "ArtiPop" appena creato → **Fine**.
+### Preferisci crearla a mano?
+
+Due azioni, ma un dettaglio è critico:
+
+1. **Comandi rapidi** → tab *Comandi* → **+**.
+2. Azione **Ottieni contenuto da URL** → incolla l'URL del canale.
+3. Azione **Imposta sfondo** → espandi le opzioni con la freccetta e
+   **disattiva "Mostra anteprima"** ⚠️ (spiegazione in [1.6](#16-se-qualcosa-non-va))
+   e "Ritaglia sul soggetto".
+4. Dai un nome al comando e salva.
+
+## 1.4 Accendere l'automazione
+
+1. Tab **Automazioni** → **+** → *Ora del giorno*.
+2. **Tramonto** (o l'orario che preferisci) → ripeti **Ogni giorno**.
+3. Seleziona **Esegui immediatamente**.
+4. Scegli la Shortcut ArtiPop → **Fine**.
 
 Da stasera è tutto automatico. 🌇
 
-### Domande frequenti
-
-> Tutte queste risposte (e altre) sono anche online, sempre aggiornate, sulla
-> pagina **[artipop…workers.dev/aiuto](https://artipop.riccardo-dominici.workers.dev/aiuto)**.
-
-**Posso cambiare canale?** Sì: apri il comando e sostituisci l'URL.
-
-**Posso avere uno sfondo nuovo subito?** Tocca il comando manualmente,
-oppure aggiungi l'automazione anche all'**Alba** per il "turno" del mattino.
-
-**A mano funziona ma in automazione no!** È *il* problema classico, e nel 99%
-dei casi la causa è una sola: **"Mostra anteprima" acceso** nell'azione Imposta
-sfondo. Con l'anteprima attiva l'azione deve mostrarti un foglio di conferma:
-quando lanci il comando a mano tu tocchi "Imposta" (spesso senza farci caso) e
-tutto sembra a posto, ma un'automazione a tempo gira in background — di solito
-a telefono bloccato — dove nessuna schermata può comparire: l'azione si ferma lì
-e non vedi **nessun** errore. Soluzione: apri il comando, espandi l'azione
-Imposta sfondo, spegni "Mostra anteprima". Le Shortcut scaricate dal sito da
-luglio 2026 hanno già l'anteprima spenta dentro il file.
-Controlla anche che l'automazione sia su **Esegui immediatamente**.
-
-**Lo sfondo a volte non cambia lo stesso (iOS 18+)?** Con l'anteprima già
-spenta resta un bug intermittente di Apple sull'azione "Imposta sfondo" nelle
-automazioni (`extensionKit error 2`), che dipende dal modello di iPhone.
-Workaround collaudato: **duplica l'automazione** e sfalsala di un minuto
-(tramonto e tramonto +1'): se la prima fallisce, la seconda passa.
-
-**Dove finiscono gli sfondi vecchi?** In archivio, per sempre: sulla pagina
-del sito, sezione "Il viaggio finora", puoi rivedere ogni giorno passato.
-Ogni immagine d'archivio resta scaricabile: `…/w/horizon?date=2026-07-16`.
-
----
-
-## Parte 2 — Per chi lo gestisce (maintainer)
-
-### Architettura in una riga
-
-Un **Cloudflare Worker** (piano free) con cron notturno genera le immagini con
-**Workers AI** (FLUX.2 klein-4b), le salva in **KV** (ultimo giorno + archivio
-permanente per data + stato narrativo) e serve sito, API e immagini.
-Dettagli tecnici completi: [`backend/README.md`](backend/README.md).
-
-### Comandi essenziali
-
-```bash
-cd backend
-npx wrangler deploy              # deploy di qualsiasi modifica
-npx wrangler tail                # log in tempo reale
-npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
-```
-
-### Operazioni comuni
+## 1.5 Uso quotidiano
 
 | Voglio… | Come |
 |---|---|
-| Rigenerare subito tutti i canali | `curl "https://artipop.…workers.dev/run-all?force=1&key=<ADMIN_KEY>"` |
-| Rigenerare un canale | `…/run/horizon?force=1&key=<ADMIN_KEY>` |
-| Attivare/disattivare un canale | in `backend/src/channels.js` cambia `active: true/false`, poi `npx wrangler deploy`. L'archivio dei canali in pausa resta in KV. |
-| Aggiungere un canale nuovo | aggiungi una voce in `channels.js` (id, stile, palette, prima scena, tappe del viaggio, accent). Costo: ~200 neuroni/giorno. |
-| Cambiare l'orario di generazione | `triggers.crons` in `backend/wrangler.jsonc` (ora in UTC) |
-| Verificare una risoluzione del modello | `…/test-size?w=960&h=2048&key=<ADMIN_KEY>` |
-| Vedere i consumi AI | dash.cloudflare.com → AI → Workers AI (neuroni/giorno) |
+| Uno sfondo nuovo subito | Tocca la Shortcut a mano: scarica sempre l'ultima immagine |
+| Averlo anche la mattina | Aggiungi una seconda automazione all'**Alba** |
+| Cambiare canale | Apri la Shortcut e sostituisci l'URL, o scarica quella dell'altro canale |
+| Rivedere i giorni passati | Sul sito, sezione **"Il viaggio finora"** |
+| Riscaricare un giorno preciso | `…/w/island?date=2026-07-16` |
 
-### I canali a progressione (come funzionano)
+## 1.6 Se qualcosa non va
 
-Un arco = un **progetto** che si completa in esattamente 7 giorni (un'isola,
-una pianta): il piano delle 7 tappe è deterministico e curato in
-`channels.js` (`stageTemplates`, con `{s}` = nome breve del progetto).
-Ogni giorno l'immagine è un **edit additivo**: klein riceve
-`input_image_0` = ieri (contenuto da preservare + la tappa di oggi) e
-`input_image_1` = keyframe dell'arco (àncora di qualità), con l'istruzione
-"aggiungi SOLO questo cambiamento, tutto il resto resta identico".
-Lezioni imparate (verificate empiricamente, non toccare senza motivo):
-- le tappe iniziali NON devono nominare il risultato finale, o il modello lo
-  disegna subito;
-- il resizer esterno va chiamato con un nonce nell'URL sorgente, o le
-  rigenerazioni ricevono miniature stantie dalla sua cache;
-- se un singolo giorno esce male: `/regen-day?ch=X&date=YYYY-MM-DD&key=…`.
+Il troubleshooting completo, sempre aggiornato, è sulla pagina
+**[artipop…workers.dev/aiuto](https://artipop.riccardo-dominici.workers.dev/aiuto)**.
+Il caso di gran lunga più frequente:
 
-### La coerenza nel tempo (come è garantita)
+> **A mano funziona, in automazione non succede niente.**
+> Causa: l'interruttore **"Mostra anteprima"** acceso nell'azione *Imposta
+> sfondo*. Con l'anteprima attiva l'azione deve mostrarti un foglio di conferma:
+> a mano lo tocchi senza farci caso, ma un'automazione gira in background — di
+> norma a telefono bloccato — dove **nessuna schermata può comparire**. L'azione
+> si ferma lì, senza errore.
+> Rimedio: spegni "Mostra anteprima". Le Shortcut scaricate dal sito ce l'hanno
+> già spento; se la tua è vecchia, riscaricala.
 
-1. **Àncora visiva — "anchor, don't chain"** (la garanzia più forte): il primo
-   giorno di ogni arco è un *keyframe* generato pulito; ogni giorno successivo
-   viene generato da FLUX.2 klein **con il keyframe come immagine di
-   riferimento** (`input_image_0`, ridotta <512px via images.weserv.nl) e
-   un'istruzione "stesso luogo, N giorni dopo: cambia solo luce/meteo/piccole
-   evoluzioni". Si edita sempre il keyframe pulito, mai l'output di ieri: la
-   degradazione da editing iterato (visibile dal 2°-3° edit in catena, severa
-   dal 4°-8° — letteratura 2025-26) non si accumula mai. Il keyframe stesso
-   viene "riallineato" con un auto-edit alla famiglia visiva degli edit.
-2. **Identità fissa**: `style` + `palette` del canale entrano in ogni prompt.
-3. **LLM vincolato**: riceve il tema del capitolo + le ultime 3 scene, con
-   la regola "stesso luogo, cambia solo 1-2 dettagli".
-4. **Guardia anti-deriva** (`story.js`): la scena proposta è accettata solo se
-   resta ancorata al vocabolario del canale/arco, non ripete quasi-identica una
-   scena recente e non contiene elementi vietati; altrimenti scatta il fallback
-   deterministico (tappa + momento + meteo), coerente per costruzione.
-5. **Seed stabile per arco** (7 giorni): composizioni imparentate; nuovo arco
-   → nuovo keyframe, nuovo seed e nuova tappa del viaggio.
+---
+---
 
-Se il resizer esterno non risponde, quel giorno si genera senza riferimento
-(la storia testuale mantiene comunque la continuità) — nessun blocco.
+# Parte 2 — Gestire ArtiPop
 
-### Limiti free tier e cosa fare quando…
+## 2.1 Architettura in 30 secondi
 
-| Risorsa | Uso attuale | Limite free | Quando si avvicina… |
+Un solo **Cloudflare Worker** sul piano gratuito fa tutto:
+
+```
+cron 03:00 UTC
+      │
+      ├─► fan-out: una richiesta interna per canale (binding SELF)
+      │        │
+      │        ├─ story.js    la storia avanza di un giorno
+      │        ├─ generate.js FLUX.2 klein genera l'immagine (960x2048)
+      │        └─ storage.js  KV: latest + archivio permanente + stato
+      │
+      └─► HTTP: /w/<canale> immagine · / sito · /aiuto · /s/… Shortcut · /api/…
+```
+
+Dettagli tecnici: [`backend/README.md`](backend/README.md).
+
+## 2.2 Anatomia di una giornata
+
+1. **03:00 UTC** — parte il cron, che fa fan-out con una richiesta per canale
+   (ogni canale ha così il proprio budget CPU sul piano free).
+2. `evolveStory` avanza di un giorno. Se il ciclo di 7 giorni è finito
+   → **nuova base**: nuovo progetto, nuovo keyframe, nuovo seed.
+3. `generateDay` genera l'immagine, con o senza riferimento visivo a seconda
+   del punto del ciclo (vedi [2.6](#26-come-è-garantita-la-coerenza-visiva)).
+4. L'immagine finisce in KV: `img:<ch>:latest`, `archive:<ch>:<data>`, `meta:<ch>`.
+5. **Al tramonto** la Shortcut dell'utente scarica `/w/<canale>` e lo imposta.
+
+> Se un passaggio fallisce, resta l'immagine del giorno prima: la Shortcut degli
+> utenti non si rompe mai.
+
+## 2.3 Mappa del repo
+
+| Percorso | Cosa c'è |
+|---|---|
+| `backend/src/index.js` | routing HTTP, cron, orchestrazione per canale |
+| `backend/src/channels.js` | definizione dei canali: identità visiva, progetti, tappe |
+| `backend/src/story.js` | evoluzione giornaliera e ciclo di vita degli archi |
+| `backend/src/generate.js` | catena di generazione immagini con fallback |
+| `backend/src/storage.js` | layout delle chiavi KV |
+| `backend/src/page.js` | landing page |
+| `backend/src/help.js` | pagina `/aiuto` (troubleshooting + FAQ) |
+| `backend/src/config.js` | tutti i parametri regolabili, documentati |
+| `shortcut/` | template, build e verifica dei file `.shortcut` firmati |
+
+## 2.4 Operazioni comuni
+
+```bash
+cd backend
+npx wrangler deploy                # deploy di qualsiasi modifica
+npx wrangler tail                  # log in tempo reale
+npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
+```
+
+| Voglio… | Come |
+|---|---|
+| Rigenerare tutti i canali | `curl "…/run-all?force=1&key=<ADMIN_KEY>"` |
+| Rigenerare un canale | `…/run/island?force=1&key=<ADMIN_KEY>` |
+| Rigenerare **un solo giorno** venuto male | `…/regen-day?ch=island&date=2026-07-20&key=…` |
+| Ricostruire una settimana di storia | `…/backfill?ch=island&days=7&key=…` (azzera lo stato del canale; 7 = un ciclo intero) |
+| Attivare/disattivare un canale | `active: true/false` in `channels.js` + deploy. L'archivio resta in KV |
+| Aggiungere un canale | nuova voce in `channels.js`. Un canale a progressione vuole **esattamente 7** `stageTemplates` |
+| Cambiare l'orario di generazione | `triggers.crons` in `backend/wrangler.jsonc` (UTC) |
+| Cambiare la durata del ciclo | `ARC_LENGTH_DAYS` in `config.js` — **e le tappe di ogni canale** |
+| Vedere i consumi AI | dash.cloudflare.com → AI → Workers AI |
+
+> La chiave admin è un secret di Wrangler: se la perdi non si recupera, se ne
+> genera una nuova con `npx wrangler secret put ADMIN_KEY`
+> (es. `openssl rand -hex 20`). Protegge `/run`, `/run-all`, `/backfill`,
+> `/regen-day`, `/test-size`, `/test-edit`.
+
+## 2.5 Come sono fatti i canali
+
+Ci sono **due motori**, scelti dal campo `mode`:
+
+**Canali a progressione** (`mode: "progression"` — gli attivi: island, studio, bloom).
+Un arco = un **progetto** che si completa in esattamente
+`CONFIG.ARC_LENGTH_DAYS` = **7 giorni**. Il piano è deterministico e curato a
+mano in `channels.js` (`stageTemplates`, dove `{s}` = nome breve del progetto).
+Ogni giorno mostra una tappa: un cambiamento visibile e cumulativo sulla stessa
+scena fissa. All'ottavo giorno si cambia base.
+
+**Canali "viaggio"** (nessun `mode` — quelli in pausa). Un LLM riscrive ogni
+giorno la scena "un giorno dopo", con una guardia anti-deriva e un fallback
+deterministico. Stesso ciclo di 7 giorni.
+
+Due modalità di riferimento visivo (`refMode`):
+
+| refMode | Come genera il giorno N | Quando usarlo |
+|---|---|---|
+| *(default)* | edit additivo: `input_image_0` = ieri, `input_image_1` = keyframe | scene illustrate/pittoriche |
+| `anchor-cumulative` | sempre e solo il keyframe + la lista cumulativa di ciò che c'è | scene fotorealistiche lisce, che in catena accumulano artefatti |
+
+> **Invariante:** un canale a progressione deve avere esattamente
+> `ARC_LENGTH_DAYS` `stageTemplates` (e altrettante `stageSummaries` se usa
+> `anchor-cumulative`). È verificata a caricamento modulo: se sgarra, lo vedi
+> in `wrangler tail` senza che il canale vada offline.
+
+## 2.6 Come è garantita la coerenza visiva
+
+In ordine di importanza:
+
+1. **Àncora visiva — "anchor, don't chain".** Il primo giorno del ciclo è un
+   *keyframe* generato pulito; i giorni dopo si edita **il keyframe**, mai
+   l'output di ieri. La degradazione da editing iterato (visibile dal 2°-3°
+   passaggio in catena) non si accumula mai. Con archi da 7 giorni la catena è
+   lunga al massimo 6 passaggi. Il keyframe stesso viene riallineato con un
+   auto-edit alla famiglia visiva degli edit.
+2. **Identità fissa.** `style` + `palette` del canale entrano in *ogni* prompt.
+3. **Seed stabile per arco.** Composizioni imparentate per tutti i 7 giorni;
+   nuovo arco → nuovo seed.
+4. **Tappe quantificate.** Ogni tappa dichiara un cambiamento misurabile
+   ("DOUBLED", "HALF of its final height"): vedi [2.10](#210-lezioni-imparate-non-regredire).
+5. **Guardia anti-deriva** (solo canali "viaggio"): la scena proposta dall'LLM
+   è accettata solo se resta nel vocabolario del canale, non ripete quasi
+   identica una scena recente e non contiene elementi vietati; altrimenti
+   scatta il fallback deterministico.
+
+L'immagine di riferimento va ridotta sotto i 512px: lo fa il resizer gratuito
+`images.weserv.nl`. Se non risponde, quel giorno si genera senza riferimento —
+nessun blocco.
+
+## 2.7 Le Shortcut firmate
+
+In [`shortcut/`](shortcut/README.md): due template, `build_shortcuts.sh` (firma
+con `shortcuts sign --mode anyone`, richiede macOS) e `verify_shortcuts.py`.
+
+| Variante | Template | Servita su | Cosa fa |
 |---|---|---|---|
-| Neuroni Workers AI | ~500/giorno (2 canali) | 10.000/giorno | c'è spazio per ~40 canali: non succede |
-| Scritture KV | ~10/giorno | 1.000/giorno | idem |
-| **Storage KV (archivio)** | ~2,2 MB/giorno | 1 GB | **~15 mesi di archivio**: quando il dashboard KV segna >800 MB, o si abilita R2 (10 GB gratuiti, richiede attivazione in dashboard con carta — resta gratis) spostandoci l'archivio, o si esporta lo storico su GitHub e si liberano le chiavi `archive:*` più vecchie |
-| Richieste Worker | poche migliaia/giorno | 100.000/giorno | non succede |
+| principale | `template-poster.shortcut.xml` | `/s/<ch>.shortcut` | 4 azioni: aggiorna sempre l'**ultimo** sfondo della lock screen |
+| base | `template.shortcut.xml` | `/s/<ch>-base.shortcut` | 2 azioni: lascia a iOS la scelta dello sfondo — piano B |
 
-Se il budget neuroni si esaurisse comunque (impossibile con 2 canali):
-le generazioni falliscono, resta l'immagine del giorno prima, zero addebiti.
+Entrambe impostano nell'azione *Imposta sfondo*:
 
-### Chiave admin persa?
-
-`npx wrangler secret put ADMIN_KEY` con un valore nuovo (es. `openssl rand -hex 20`).
-Gli endpoint `/run`, `/run-all` e `/test-size` usano quella.
-
-### File `.shortcut` firmati
-
-In [`shortcut/`](shortcut/README.md): due template plist + `build_shortcuts.sh`
-(firma con `shortcuts sign --mode anyone`; richiede macOS) + `verify_shortcuts.py`.
-
-- `template-poster.shortcut.xml` → **variante principale** (4 azioni): aggancia
-  sempre l'ultimo sfondo della lock screen (`WFSelectedPoster` = ultimo elemento
-  di "Ottieni tutti gli sfondi"). Servita su `/s/<canale>.shortcut`.
-- `template.shortcut.xml` → **variante base** (2 azioni): lascia a iOS la scelta
-  dello sfondo. Servita su `/s/<canale>-base.shortcut`, è il piano B citato
-  nella pagina `/aiuto`.
-
-Entrambi impostano `WFWallpaperShowPreview=false` nell'azione Imposta sfondo:
-è la riga che rende le Shortcut usabili in automazione (con l'anteprima accesa
-funzionano solo a mano — vedi FAQ della Parte 1 e il README della cartella).
+- `WFWallpaperShowPreview = false` → **la riga che rende usabile l'automazione**;
+- `WFWallpaperSmartCrop = false` → niente ritaglio sul soggetto, che sposterebbe
+  l'inquadratura composta apposta per la lock screen.
 
 `build_shortcuts.sh` **verifica i file dopo averli firmati**: riapre l'archivio
-AEA, ne estrae `Shortcut.wflow` e controlla che l'anteprima sia spenta e l'URL
-sostituito. Se qualcosa non torna la build fallisce e i file non vanno caricati.
-Dopo la build, carica i `.shortcut` in KV con i comandi che lo script stampa.
+AEA, ne estrae `Shortcut.wflow` e controlla le invarianti. Se qualcosa non torna
+la build fallisce e i file non vanno distribuiti. Dopo la build, caricali in KV
+con i comandi `wrangler kv key put` che lo script stampa.
+
+> Dopo ogni modifica ai template: **rigenera, verifica, ricarica in KV.**
+> I file in KV sono quelli che gli utenti scaricano.
+
+## 2.8 Limiti del piano gratuito
+
+Con i 3 canali attivi di oggi:
+
+| Risorsa | Uso attuale | Limite free | Margine |
+|---|---|---|---|
+| Neuroni Workers AI | ~600/giorno (~800 nei giorni di cambio base) | 10.000/giorno | spazio per ~40 canali |
+| Scritture KV | ~15/giorno | 1.000/giorno | enorme |
+| **Storage KV (archivio)** | ~3,3 MB/giorno | 1 GB | **~10 mesi** ⚠️ |
+| Richieste Worker | poche migliaia/giorno | 100.000/giorno | enorme |
+
+L'unico limite che si avvicina davvero è lo **storage dell'archivio**. Quando la
+dashboard KV supera ~800 MB, due strade: abilitare R2 (10 GB gratuiti, richiede
+attivazione con carta ma resta gratis) e spostarci l'archivio, oppure esportare
+lo storico su GitHub e liberare le chiavi `archive:*` più vecchie.
+
+Se i neuroni si esaurissero comunque: le generazioni falliscono, resta
+l'immagine del giorno prima, **zero addebiti**.
+
+## 2.9 Runbook: quando qualcosa si rompe
+
+| Sintomo | Prima cosa da guardare | Rimedio |
+|---|---|---|
+| Oggi nessuna immagine nuova | `npx wrangler tail` durante `…/run/<ch>?force=1` | se è il modello, riprova: klein non è deterministico |
+| Un giorno è venuto brutto | — | `…/regen-day?ch=X&date=Y&key=…` |
+| Il canale ripete ieri identico | le tappe sono quantificate? | vedi [2.10](#210-lezioni-imparate-non-regredire), punto 5 |
+| Il progetto completo compare al giorno 1 | la tappa 1 nomina il risultato finale? | vedi [2.10](#210-lezioni-imparate-non-regredire), punto 1 |
+| Miniature di riferimento sbagliate | cache di `images.weserv.nl` | serve un nonce nell'URL sorgente |
+| `/backfill` si ferma a metà | è sincrono di proposito | resta connesso, rilancia se cade |
+| Il DNS non risolve workers.dev | — | `curl --resolve "artipop.riccardo-dominici.workers.dev:443:172.67.176.123" …` |
+| Le Shortcut degli utenti non funzionano in automazione | `python3 shortcut/verify_shortcuts.py` | rigenera e ricarica in KV |
+
+## 2.10 Lezioni imparate (non regredire)
+
+Tutte verificate sul campo. Cambiarle senza motivo rompe cose che funzionano.
+
+1. **Le tappe iniziali non devono nominare il risultato finale** del progetto,
+   né usare `{s}`: il modello lo disegnerebbe subito.
+2. **`images.weserv.nl` cachea per URL**: serve un nonce nell'URL sorgente, o le
+   rigenerazioni ricevono le miniature del run precedente.
+3. **klein non è deterministico** nemmeno a seed fisso: per il giorno storto c'è
+   `/regen-day`.
+4. **Il planner LLM delle tappe è disattivato**: produceva tappe fuori bersaglio.
+   Si usano i template curati.
+5. **Le tappe devono essere QUANTIFICATE** ("raddoppiato", "metà dell'altezza
+   finale"): senza numeri il modello, istruito a preservare tutto il resto,
+   riproduce ieri quasi identico.
+6. **Le scene fotorealistiche lisce accumulano macchie in catena**: per quelle
+   serve `refMode: "anchor-cumulative"`, o uno stile pittorico/bokeh.
+7. **`/backfill` deve restare sincrono**: `ctx.waitUntil` viene ucciso dopo
+   ~30-60s dalla risposta.
+8. **Mai backtick nei commenti dentro `page.js`/`help.js`**: l'HTML sta dentro un
+   template literal JS e un backtick lo chiude a metà.
+9. **Lo schema `shortcuts://import-workflow` non esiste più**: non compare in
+   nessun binario di sistema su macOS 26. Per l'apertura in un tap l'unica via
+   sarebbe un link iCloud, che però va generato a mano da un device.
