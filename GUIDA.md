@@ -35,15 +35,17 @@ codice in pausa, riattivabili con una riga)
 
 **Via consigliata:** scarica la Shortcut del canale dal sito (pulsante
 "⬇️ Scarica la Shortcut") e importala. Ha già dentro l'URL giusto,
-**l'anteprima disattivata** e l'aggancio al **primo sfondo** della schermata di
+**l'anteprima disattivata** e l'aggancio all'**ultimo sfondo** della schermata di
 blocco: è pronta per l'automazione e non devi toccare nulla. Se iOS blocca
 l'import, attiva *Impostazioni → Scorciatoie → Consenti scorciatoie non
 attendibili*.
 
-⚠️ ArtiPop sovrascrive sempre il **primo** sfondo della schermata di blocco:
-metti al primo posto quello che vuoi far gestire (Impostazioni → Sfondo, è la
-scheda più a sinistra). Se preferisci lasciare la scelta a iOS, c'è la variante
-base: `…/s/<canale>-base.shortcut`.
+⚠️ ArtiPop aggiorna sempre l'**ultimo** sfondo della galleria (Impostazioni →
+Sfondo). Se in fondo hai uno sfondo a cui tieni, aggiungine uno nuovo qualsiasi:
+finisce in coda e diventa quello gestito da ArtiPop. Puntiamo all'ultimo e non al
+primo perché il primo posto è quasi sempre occupato e iOS non lascia riordinare
+le schede. Se preferisci lasciare la scelta a iOS, c'è la variante base:
+`…/s/<canale>-base.shortcut`.
 
 **Se preferisci farla a mano** (3 azioni in croce, ma un dettaglio è critico):
 
@@ -196,7 +198,7 @@ In [`shortcut/`](shortcut/README.md): due template plist + `build_shortcuts.sh`
 (firma con `shortcuts sign --mode anyone`; richiede macOS) + `verify_shortcuts.py`.
 
 - `template-poster.shortcut.xml` → **variante principale** (4 azioni): aggancia
-  sempre il primo sfondo della lock screen (`WFSelectedPoster` = primo elemento
+  sempre l'ultimo sfondo della lock screen (`WFSelectedPoster` = ultimo elemento
   di "Ottieni tutti gli sfondi"). Servita su `/s/<canale>.shortcut`.
 - `template.shortcut.xml` → **variante base** (2 azioni): lascia a iOS la scelta
   dello sfondo. Servita su `/s/<canale>-base.shortcut`, è il piano B citato

@@ -43,13 +43,17 @@ const PROBLEMI = [
   },
   {
     sintomo: "Cambia lo sfondo sbagliato",
-    causa: `ArtiPop aggiorna sempre il <strong>primo</strong> sfondo della schermata di blocco,
-      cioè la prima scheda che vedi in Impostazioni → Sfondo. Se il primo posto è occupato da
-      un altro sfondo, viene sovrascritto quello.`,
-    rimedio: `Metti al primo posto lo sfondo che vuoi far gestire ad ArtiPop. Se preferisci
-      lasciare che iOS scelga da solo quale aggiornare, scarica la
-      <a href="/s/island-base.shortcut">versione base della Shortcut</a>, che non tocca la
-      posizione e aggiorna lo sfondo attivo.`,
+    causa: `ArtiPop aggiorna sempre l'<strong>ultimo</strong> sfondo della schermata di blocco,
+      cioè l'ultima scheda della galleria in Impostazioni → Sfondo. Se in fondo c'è uno sfondo
+      a cui tieni, viene sovrascritto quello. (Puntiamo all'ultimo e non al primo proprio
+      perché il primo posto è quasi sempre già occupato e iOS non permette di riordinare le
+      schede: l'ultimo, invece, te lo puoi creare quando vuoi.)`,
+    rimedio: `Crea uno sfondo dedicato ad ArtiPop e lascialo per ultimo: in
+      <em>Impostazioni → Sfondo</em> aggiungine uno nuovo qualsiasi — finisce in fondo alla
+      galleria e da lì in poi sarà quello aggiornato ogni giorno. Se invece preferisci
+      lasciare la scelta a iOS, scarica la
+      <a href="/s/island-base.shortcut">versione base della Shortcut</a>, che non aggancia
+      nessuna scheda e aggiorna lo sfondo attivo.`,
   },
   {
     sintomo: "iOS non mi fa importare il file",

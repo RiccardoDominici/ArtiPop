@@ -6,19 +6,19 @@ In `dist/` ci sono i file `.shortcut` firmati, generati da `build_shortcuts.sh`
 
 | File | Template | Cosa fa |
 |---|---|---|
-| `ArtiPop-<ch>.shortcut` | `template-poster.shortcut.xml` | 4 azioni: aggiorna **sempre il primo sfondo** della schermata di blocco (`WFSelectedPoster`) |
+| `ArtiPop-<ch>.shortcut` | `template-poster.shortcut.xml` | 4 azioni: aggiorna **sempre l'ultimo sfondo** della schermata di blocco (`WFSelectedPoster`) |
 | `ArtiPop-<ch>-base.shortcut` | `template.shortcut.xml` | 2 azioni: lascia a iOS la scelta dello sfondo — piano B |
 
 La prima è quella servita dal sito su `/s/<canale>.shortcut`; la seconda su
 `/s/<canale>-base.shortcut` ed è linkata dalla pagina `/aiuto`.
 
-### Come si aggancia "sempre il primo sfondo"
+### Come si aggancia "sempre l'ultimo sfondo"
 
 ```
 Ottieni contenuto da URL  ──────────────────────────┐
 Ottieni tutti gli sfondi   (WFPosterType = All)     │
 Ottieni elemento dall'elenco (WFItemSpecifier =     │
-                              "First Item")  ──┐    │
+                              "Last Item")   ──┐    │
 Imposta sfondo  (WFSelectedPoster = ┘, WFInput = ┘, anteprima OFF)
 ```
 
@@ -29,6 +29,12 @@ with other actions**», e `wallpaper.set` ha una variante di summary dedicata �
 applica l'immagine a uno sfondo **esistente** invece di crearne uno nuovo.
 `WFItemSpecifier` accetta `First Item`, `Last Item`, `Random Item`,
 `Item At Index`, `Items in Range`.
+
+**Perché l'ultimo e non il primo:** il primo posto della galleria è quasi sempre
+già occupato da uno sfondo dell'utente e iOS non permette di riordinare le
+schede — puntare al primo significherebbe sovrascrivere qualcosa di suo.
+L'ultimo posto invece l'utente se lo può creare a comando, aggiungendo un nuovo
+sfondo qualsiasi.
 
 ## ⚠️ Il dettaglio che rendeva le Shortcut inutilizzabili in automazione
 
@@ -55,9 +61,10 @@ corpus pubblici di shortcut.
 
 Gli altri parametri dell'azione — `WFWallpaperLocation` (array di
 `"Lock Screen"` / `"Home Screen"`), `WFWallpaperSmartCrop`,
-`WFWallpaperLegibilityBlur`, `WFWallpaperPerspectiveZoom`, `WFSelectedPoster` —
-sono lasciati **assenti** di proposito: l'azione usa i suoi default e non
-rischiamo errori di tipo su valori che non possiamo provare su macOS.
+`WFWallpaperLegibilityBlur`, `WFWallpaperPerspectiveZoom` — sono lasciati
+**assenti** di proposito: l'azione usa i suoi default e non rischiamo errori di
+tipo su valori che non possiamo provare su macOS. L'unico parametro opzionale
+che valorizziamo è `WFSelectedPoster`, e solo nel template principale.
 
 ## Rigenerare i file
 

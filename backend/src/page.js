@@ -304,9 +304,11 @@ export function renderPage(metas, origin, dateKey) {
         <h4>Provala con un tap</h4>
         <p>Tocca la Shortcut appena importata: lo sfondo deve cambiare
         <strong>subito e senza chiederti niente</strong>.<br><br>
-        ArtiPop aggiorna sempre il <strong>primo sfondo</strong> della tua
-        schermata di blocco, quindi metti al primo posto quello che vuoi far
-        gestire ad ArtiPop (Impostazioni → Sfondo: è la scheda più a sinistra).</p>
+        ArtiPop aggiorna sempre l'<strong>ultimo sfondo</strong> della tua
+        schermata di blocco — quello in fondo alla galleria. Così non tocca
+        gli sfondi a cui tieni: se non ne hai ancora uno da dedicargli, vai in
+        <em>Impostazioni → Sfondo</em>, aggiungine uno nuovo qualsiasi e sarà
+        quello che ArtiPop terrà aggiornato.</p>
       </div>
       <div class="step">
         <div class="n">3</div>

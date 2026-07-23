@@ -106,8 +106,8 @@ def check(path: Path) -> list[str]:
         if src.get("Type") != "ActionOutput":
             errors.append("l'input dell'azione sfondo non è l'output del download")
 
-    # Variante "primo sfondo": se c'è l'aggancio al poster, la catena
-    # Ottieni sfondi → primo elemento → WFSelectedPoster deve essere completa,
+    # Variante "ultimo sfondo": se c'è l'aggancio al poster, la catena
+    # Ottieni sfondi → ultimo elemento → WFSelectedPoster deve essere completa,
     # altrimenti l'azione punterebbe a uno sfondo inesistente.
     if wp is not None and POSTER_KEY in wp:
         posters = by_id.get(POSTERS_ACTION)
@@ -118,16 +118,16 @@ def check(path: Path) -> list[str]:
             errors.append(f"WFPosterType = {posters.get('WFPosterType')!r} invece di 'All'")
         if item is None:
             errors.append(f"{POSTER_KEY} è valorizzato ma manca l'azione {LIST_ITEM_ACTION}")
-        elif item.get("WFItemSpecifier") != "First Item":
+        elif item.get("WFItemSpecifier") != "Last Item":
             errors.append(
-                f"WFItemSpecifier = {item.get('WFItemSpecifier')!r} invece di 'First Item': "
-                "non verrebbe aggiornato il primo sfondo"
+                f"WFItemSpecifier = {item.get('WFItemSpecifier')!r} invece di 'Last Item': "
+                "non verrebbe aggiornato l'ultimo sfondo"
             )
         elif item.get("WFInput", {}).get("Value", {}).get("OutputUUID") != posters.get("UUID"):
-            errors.append("l'elenco di 'primo elemento' non è collegato a 'ottieni tutti gli sfondi'")
+            errors.append("l'elenco di 'ultimo elemento' non è collegato a 'ottieni tutti gli sfondi'")
         poster_ref = wp[POSTER_KEY].get("Value", {}) if isinstance(wp[POSTER_KEY], dict) else {}
         if item is not None and poster_ref.get("OutputUUID") != item.get("UUID"):
-            errors.append(f"{POSTER_KEY} non è collegato al primo elemento della lista")
+            errors.append(f"{POSTER_KEY} non è collegato all'ultimo elemento della lista")
 
     return errors
 
@@ -157,7 +157,7 @@ def main() -> int:
             for e in errors:
                 print(f"    - {e}")
         else:
-            variante = "aggancia il primo sfondo" if "-base" not in path.name else "sfondo scelto da iOS"
+            variante = "aggancia l'ultimo sfondo" if "-base" not in path.name else "sfondo scelto da iOS"
             print(f"✓ {path.name}: anteprima spenta, URL sostituito, {variante}")
 
     print()

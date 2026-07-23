@@ -21,7 +21,7 @@ OUT_DIR="dist"
 mkdir -p "$OUT_DIR"
 
 # Due varianti per canale:
-#   <canale>       = template-poster (4 azioni): aggiorna SEMPRE il primo sfondo
+#   <canale>       = template-poster (4 azioni): aggiorna SEMPRE l'ultimo sfondo
 #                    della schermata di blocco — è quella distribuita dal sito;
 #   <canale>-base  = template (2 azioni): lascia a iOS la scelta dello sfondo,
 #                    piano B documentato nella pagina /aiuto.

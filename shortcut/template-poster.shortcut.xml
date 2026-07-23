@@ -1,21 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Template PRINCIPALE di ArtiPop: 4 azioni. Aggiorna SEMPRE il primo sfondo della
+  Template PRINCIPALE di ArtiPop: 4 azioni. Aggiorna SEMPRE l'ULTIMO sfondo della
   schermata di blocco, così l'utente non deve scegliere niente e ogni giorno
   l'immagine finisce nella stessa scheda invece di crearne di nuove.
 
     1. Ottieni contenuto da URL     is.workflow.actions.downloadurl
     2. Ottieni tutti gli sfondi     is.workflow.actions.posters.get     (WFPosterType = All)
-    3. Ottieni elemento dall'elenco is.workflow.actions.getitemfromlist (WFItemSpecifier = First Item)
+    3. Ottieni elemento dall'elenco is.workflow.actions.getitemfromlist (WFItemSpecifier = Last Item)
     4. Imposta sfondo               is.workflow.actions.wallpaper.set   (WFSelectedPoster = quello sopra)
+
+  Perché l'ULTIMO e non il primo: il primo posto della galleria sfondi è quasi
+  sempre già occupato da uno sfondo a cui l'utente tiene, e iOS non permette di
+  riordinare le schede — quindi puntare al primo significherebbe sovrascrivere
+  qualcosa di suo. L'ultimo posto invece è quello che l'utente può creare a
+  comando: basta aggiungere un nuovo sfondo e diventa la scheda gestita da ArtiPop.
 
   Perché funziona così: la descrizione ufficiale dell'azione "Get All Wallpapers"
   è «Gets all of your Lock Screen wallpapers, and returns them as output so you
   can use them with other actions», e "Imposta sfondo" ha una variante di summary
   dedicata — «Set ${WFSelectedPoster} to ${WFInput} for ${WFWallpaperLocation}» —
   che applica l'immagine a uno sfondo GIÀ ESISTENTE invece di crearne uno nuovo.
-  Prendendo il primo elemento della lista si punta sempre alla stessa scheda.
+  Prendendo sempre lo stesso elemento della lista si punta sempre alla stessa scheda.
   (Identifier e parametri verificati nelle stringhe di ActionKit nella dyld shared
   cache di macOS 26.1; WFItemSpecifier accetta First Item / Last Item / Random
   Item / Item At Index / Items in Range.)
@@ -59,8 +65,8 @@
       <key>WFWorkflowActionParameters</key>
       <dict>
         <key>UUID</key><string>1A2B3C4D-0004-0000-0000-000000000004</string>
-        <key>CustomOutputName</key><string>First Wallpaper</string>
-        <key>WFItemSpecifier</key><string>First Item</string>
+        <key>CustomOutputName</key><string>Last Wallpaper</string>
+        <key>WFItemSpecifier</key><string>Last Item</string>
         <key>WFInput</key>
         <dict>
           <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
@@ -89,14 +95,14 @@
             <key>OutputUUID</key><string>1A2B3C4D-0001-0000-0000-000000000001</string>
           </dict>
         </dict>
-        <!-- Lo sfondo da aggiornare: sempre il primo della lista. -->
+        <!-- Lo sfondo da aggiornare: sempre l'ultimo della lista. -->
         <key>WFSelectedPoster</key>
         <dict>
           <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
           <key>Value</key>
           <dict>
             <key>Type</key><string>ActionOutput</string>
-            <key>OutputName</key><string>First Wallpaper</string>
+            <key>OutputName</key><string>Last Wallpaper</string>
             <key>OutputUUID</key><string>1A2B3C4D-0004-0000-0000-000000000004</string>
           </dict>
         </dict>
