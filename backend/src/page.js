@@ -331,8 +331,7 @@ export function renderPage(metas, origin, dateKey) {
       💡 Preferisci la mattina? Nell'automazione scegli <em>Alba</em> o un orario fisso.<br>
       🛟 Qualcosa non funziona? C'è una pagina apposta:
       <a href="/aiuto"><strong>Aiuto e problemi comuni</strong></a> — soprattutto se
-      <em>a mano funziona ma in automazione no</em>.<br>
-      Gli sfondi passati non si perdono mai: sono qui sotto, in "Il viaggio finora".
+      <em>a mano funziona ma in automazione no</em>.
     </p>
   </section>
 
