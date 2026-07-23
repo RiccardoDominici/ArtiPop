@@ -108,6 +108,12 @@
         </dict>
         <!-- Anteprima SPENTA: senza questa riga l'automazione non funziona. -->
         <key>WFWallpaperShowPreview</key><false/>
+        <!-- "Ritaglia sul soggetto" SPENTO: l'immagine è già composta a misura di
+             lock screen (960x2048, terzo alto pulito per l'orologio). Lasciandolo
+             attivo iOS ritaglia attorno al soggetto che riconosce e sposta
+             l'inquadratura, cambiando ogni giorno la composizione che il modello
+             ha costruito apposta. -->
+        <key>WFWallpaperSmartCrop</key><false/>
       </dict>
     </dict>
   </array>

@@ -56,6 +56,18 @@ const PROBLEMI = [
       nessuna scheda e aggiorna lo sfondo attivo.`,
   },
   {
+    sintomo: "Ho toccato \"Scarica la Shortcut\" ma non si è aperto niente",
+    causa: `Safari non sa aprire da solo un file <code>.shortcut</code>: lo passa al sistema, e a
+      seconda delle impostazioni te lo mostra subito con un foglio di condivisione oppure te lo
+      salva nei <strong>Download</strong>. Non è un errore: il file è arrivato, manca solo
+      l'ultimo passo.`,
+    rimedio: `Tocca l'icona dei <strong>Download</strong> in Safari (la freccia verso il basso
+      accanto alla barra dell'indirizzo) e tocca il file appena scaricato: si apre
+      <strong>Comandi rapidi</strong> con la schermata "Aggiungi comando". In alternativa lo
+      trovi nell'app <em>File</em> → <em>Download</em>. Se iOS dice che la scorciatoia non è
+      attendibile, vedi la voce qui sotto.`,
+  },
+  {
     sintomo: "iOS non mi fa importare il file",
     causa: `Le Shortcut distribuite come file (non tramite link iCloud) sono considerate
       "non attendibili" finché non abiliti l'opzione apposta.`,

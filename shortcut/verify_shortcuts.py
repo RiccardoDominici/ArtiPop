@@ -33,6 +33,7 @@ POSTERS_ACTION = "is.workflow.actions.posters.get"
 LIST_ITEM_ACTION = "is.workflow.actions.getitemfromlist"
 PREVIEW_KEY = "WFWallpaperShowPreview"
 POSTER_KEY = "WFSelectedPoster"
+SMARTCROP_KEY = "WFWallpaperSmartCrop"
 
 
 def read_signed_shortcut(path: Path) -> dict:
@@ -100,6 +101,12 @@ def check(path: Path) -> list[str]:
             errors.append(
                 f"{PREVIEW_KEY} = {preview!r} invece di False → l'anteprima resta "
                 "accesa e l'automazione NON funzionerà"
+            )
+        crop = wp.get(SMARTCROP_KEY, "ASSENTE")
+        if crop is not False:
+            errors.append(
+                f"{SMARTCROP_KEY} = {crop!r} invece di False → iOS ritaglierebbe "
+                "l'immagine attorno al soggetto, cambiando l'inquadratura"
             )
         # L'immagine deve arrivare dall'azione di download, non da altro.
         src = wp.get("WFInput", {}).get("Value", {})

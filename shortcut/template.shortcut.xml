@@ -58,6 +58,9 @@
         </dict>
         <!-- Anteprima SPENTA: senza questa riga l'automazione non funziona. -->
         <key>WFWallpaperShowPreview</key><false/>
+        <!-- "Ritaglia sul soggetto" SPENTO: l'immagine è già composta a misura di
+             lock screen, il ritaglio automatico ne sposterebbe l'inquadratura. -->
+        <key>WFWallpaperSmartCrop</key><false/>
       </dict>
     </dict>
   </array>

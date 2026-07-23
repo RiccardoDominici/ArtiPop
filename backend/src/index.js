@@ -294,7 +294,11 @@ export default {
       return new Response(file, {
         headers: {
           "content-type": "application/octet-stream",
-          "content-disposition": `attachment; filename="ArtiPop-${sMatch[1]}.shortcut"`,
+          // `inline` e non `attachment`: con attachment Safari su iOS salva il
+          // file nei Download senza dire niente, e l'utente deve andarselo a
+          // cercare. Con inline il tap apre il foglio di sistema, da cui iOS
+          // propone direttamente Comandi rapidi.
+          "content-disposition": `inline; filename="ArtiPop-${sMatch[1]}.shortcut"`,
           "cache-control": "public, max-age=3600",
         },
       });
