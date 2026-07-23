@@ -32,12 +32,17 @@ import {
   buildRealignPrompt, clausesFor, todayKey,
 } from "./story.js";
 import { generateImage, generateWithGate, referenceFor } from "./generate.js";
+import { generateDay } from "./daygen.js";
 import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
 import {
   fingerprintFromBytes, fingerprintFromArchive, compare, verdict, classify,
   encodeFingerprint, decodeFingerprint, formatMeasures, diagnose,
 } from "./metrics.js";
 import { readStage } from "./vision.js";
+import { effectiveProfiles, saveTuning, clearTuning, loadTuning, resolveProfilo, defaultProfiles } from "./profiles.js";
+import { runLabArc, getLabImage } from "./lab.js";
+import { ELEMENTS, getElement, combine } from "./concepts.js";
+import { FAMILIES } from "./families.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage } from "./help.js";
 
@@ -54,108 +59,6 @@ function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
-  });
-}
-
-/* ===================== IL GIRO DI UN GIORNO ===================== */
-
-/**
- * Genera l'immagine di un giorno per un flusso, con il cancello di collaudo.
- *
- * `prevBytes` (facoltativo): i byte dell'immagine di ieri, se sono già in
- * memoria — è il caso del backfill, che genera i giorni in sequenza dentro una
- * sola invocazione. Passarli evita di rileggere da KV, che è eventualmente
- * consistente e in passato costringeva ad attese di parecchi secondi.
- */
-async function generateDay(env, channel, concept, state, { prevBytes = null, anchorBytes = null, maxAttempts = null } = {}) {
-  const label = `${channel.id}/${concept.id} t${state.stage + 1}`;
-
-  /* --- Keyframe: primo giorno dell'arco, generazione pulita --- */
-  if (state.dayInArc === 0) {
-    const clean = await generateImage(env, buildKeyframePrompt(concept), state.seed);
-
-    // Riallineamento: il keyframe nasce da testo puro, mentre tutti i giorni
-    // successivi nascono da un editing. Senza questo passaggio il giorno 1
-    // dell'arco risulta visibilmente "di un'altra famiglia" rispetto ai suoi
-    // seguiti. Si rigenera partendo da se stesso, e si tiene il risultato SOLO
-    // se le misure dicono che non ha perso nulla per strada.
-    const selfRef = await referenceFor(env, channel.id, state.lastDate, clean.bytes);
-    if (selfRef) {
-      try {
-        const aligned = await generateImage(env, buildRealignPrompt(concept), state.seed, [selfRef]);
-        if (aligned.usedReference) {
-          const [fa, fb] = await Promise.all([
-            fingerprintFromBytes(env, clean.bytes),
-            fingerprintFromBytes(env, aligned.bytes),
-          ]);
-          if (fa && fb) {
-            const m = compare(fa, fb);
-            // Il riallineamento deve essere un ritocco, non una reinvenzione.
-            if (m.estensione < 45 && m.degrado < 10) {
-              console.log(`[gen] ${label}: keyframe riallineato (${formatMeasures(m)})`);
-              return { ...aligned, impronta: fb, misure: null, verdetto: null, tentativi: 2, ancora: true };
-            }
-            console.warn(`[gen] ${label}: riallineamento scartato, ha cambiato troppo (${formatMeasures(m)})`);
-          } else {
-            return { ...aligned, impronta: null, misure: null, verdetto: null, tentativi: 2, ancora: true };
-          }
-        }
-      } catch (err) {
-        console.warn(`[gen] ${label}: riallineamento fallito (${err.message}), tengo l'originale`);
-      }
-    }
-    const impronta = await fingerprintFromBytes(env, clean.bytes);
-    return { ...clean, impronta, misure: null, verdetto: null, tentativi: 1, ancora: true };
-  }
-
-  /* --- Giorno normale: image 0 = ieri, image 1 = keyframe dell'arco --- */
-  const [refIeri, refAncora] = await Promise.all([
-    state.prevDate ? referenceFor(env, channel.id, state.prevDate, prevBytes) : null,
-    state.anchorDate && state.anchorDate !== state.prevDate
-      ? referenceFor(env, channel.id, state.anchorDate, anchorBytes)
-      : null,
-  ]);
-
-  // L'impronta di ieri: di norma è già nello stato (l'abbiamo salvata ieri), e
-  // in quel caso il confronto non costa niente. Se manca, si ricalcola.
-  let prevFingerprint = decodeFingerprint(state.improntaPrec);
-  if (!prevFingerprint && state.prevDate) {
-    prevFingerprint = prevBytes
-      ? await fingerprintFromBytes(env, prevBytes)
-      : await fingerprintFromArchive(env, channel.id, state.prevDate);
-  }
-
-  if (!refIeri && !refAncora) {
-    console.warn(`[gen] ${label}: nessun riferimento disponibile, genero da zero`);
-    const img = await generateImage(env, buildKeyframePrompt(concept), state.seed);
-    const impronta = await fingerprintFromBytes(env, img.bytes);
-    return { ...img, impronta, misure: null, verdetto: null, tentativi: 1 };
-  }
-
-  if (!refIeri) {
-    // Ieri non recuperabile: si riparte dal keyframe e si descrive lo stato
-    // cumulativo raggiunto. Niente cancello: il confronto non avrebbe senso.
-    console.warn(`[gen] ${label}: ieri non disponibile, uso lo stato cumulativo dall'àncora`);
-    const img = await generateImage(env, buildCumulativePrompt(concept, state.stage), state.seed, [refAncora]);
-    const impronta = await fingerprintFromBytes(env, img.bytes);
-    return { ...img, impronta, misure: null, verdetto: null, tentativi: 1 };
-  }
-
-  const refs = [refIeri, refAncora].filter(Boolean);
-  return generateWithGate(env, {
-    label,
-    seed: state.seed + state.dayInArc * 101,
-    refs,
-    profile: concept.profilo,
-    prevFingerprint,
-    maxAttempts,
-    doseIniziale: state.dosePartenza ?? 0,
-    // Riferimenti per la misura di DIREZIONE: quanto la scena si e' allontanata
-    // dal keyframe, e se rispetto a ieri e' avanzata o arretrata.
-    anchorFingerprint: decodeFingerprint(state.improntaAncora),
-    occupazionePrec: typeof state.occupazione === "number" ? state.occupazione : null,
-    promptForDose: (dose) =>
-      buildDailyPrompt(concept, clausesFor(concept, state.stage, dose, state.extraIndex), refs.length > 1),
   });
 }
 
@@ -179,12 +82,19 @@ async function runChannel(env, channelId, { force = false } = {}) {
   // 1. Com'e' andato ieri? Lo dicono le misure salvate ieri stesso, confrontate
   //    col profilo del concept: "ok", "poco" (tappa non saldata), "troppo" (il
   //    modello e' corso avanti). E' il segnale con cui il piano si corregge.
+  // I range del cancello possono essere stati tarati da fuori (KV `tuning:profili`,
+  // vedi profiles.js): li si legge una volta sola e li si usa sia per capire
+  // com'e' andata ieri sia per collaudare oggi.
+  const tuning = await loadTuning(env);
   const conceptPrec = prevState?.conceptId ? getConcept(prevState.conceptId) : null;
-  const esito = conceptPrec ? classify(prevState?.misure, conceptPrec.profilo) : null;
+  const esito = conceptPrec
+    ? classify(prevState?.misure, resolveProfilo(conceptPrec.famiglia, tuning))
+    : null;
 
   // 2. La storia avanza di un giorno, tenendo conto dell'esito.
   const state = evolveStory(channel, prevState, date, esito);
-  const concept = getConcept(state.conceptId);
+  const conceptBase = getConcept(state.conceptId);
+  const concept = { ...conceptBase, profilo: resolveProfilo(conceptBase.famiglia, tuning) };
   state.improntaPrec = prevState?.impronta ?? null;
 
   console.log(
@@ -251,6 +161,7 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
   if (!channel) throw new Error(`flusso sconosciuto: ${channelId}`);
   if (!channel.active) throw new Error(`flusso in pausa: ${channelId}`);
 
+  const tuning = await loadTuning(env); // range tarati da fuori, come nel cron
   let state = null;
   let prevBytes = null;
   let anchorBytes = null;
@@ -262,9 +173,12 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
     // Anche qui l'anello si chiude: l'esito del giorno appena generato decide
     // la tappa del successivo, esattamente come farebbe il cron.
     const conceptPrec = state?.conceptId ? getConcept(state.conceptId) : null;
-    const esito = conceptPrec ? classify(state?.misure, conceptPrec.profilo) : null;
+    const esito = conceptPrec
+      ? classify(state?.misure, resolveProfilo(conceptPrec.famiglia, tuning))
+      : null;
     state = evolveStory(channel, state, date, esito);
-    const concept = getConcept(state.conceptId);
+    const conceptBase = getConcept(state.conceptId);
+    const concept = { ...conceptBase, profilo: resolveProfilo(conceptBase.famiglia, tuning) };
     state.improntaPrec = prevFingerprint ? encodeFingerprint(prevFingerprint) : null;
 
     if (state.dayInArc === 0) anchorBytes = null; // arco nuovo: l'àncora sarà questa immagine
@@ -356,6 +270,102 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // ---- CORS per lo strumento di tuning (gira da file:// → origine "null") ----
+    // Gli endpoint /tuning e /lab servono la UI locale, quindi devono rispondere
+    // cross-origin. La scrittura resta protetta dalla chiave admin: CORS permette
+    // solo di *tentare* la richiesta, non di autenticarsi.
+    const CORS = {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "access-control-allow-headers": "content-type, x-artipop-key",
+      "access-control-max-age": "86400",
+    };
+    const isTool = path === "/tuning" || path.startsWith("/lab/");
+    if (isTool && request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS });
+    }
+    const jsonCors = (data, status = 200) =>
+      new Response(JSON.stringify(data, null, 2), {
+        status,
+        headers: { "content-type": "application/json; charset=utf-8", ...CORS },
+      });
+
+    // ---- Tuning dei range (concept = schema di evoluzione) ----
+    // GET  /tuning        → default del codice + valori effettivi + elenco element
+    // PUT  /tuning        → salva l'override in KV (protetto)
+    // DELETE /tuning      → torna ai default del codice (protetto)
+    if (path === "/tuning") {
+      if (request.method === "GET") {
+        return jsonCors({
+          concepts: await effectiveProfiles(env),
+          defaults: defaultProfiles(),
+          elements: ELEMENTS.map((e) => ({
+            id: e.id, nome: e.nome, soggetto: e.soggetto, famigliaNativa: e.famigliaNativa,
+          })),
+        });
+      }
+      if (request.method === "PUT" || request.method === "POST") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        let body;
+        try { body = await request.json(); }
+        catch { return jsonCors({ error: "JSON non valido nel corpo della richiesta" }, 400); }
+        const res = await saveTuning(env, body);
+        return jsonCors(res, res.ok ? 200 : 400);
+      }
+      if (request.method === "DELETE") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        await clearTuning(env);
+        return jsonCors({ ok: true, cleared: true });
+      }
+      return jsonCors({ error: "metodo non ammesso" }, 405);
+    }
+
+    // ---- Lab: elenco concept+element per i menu della UI ----
+    if (path === "/lab/elements") {
+      return jsonCors({
+        concepts: Object.values(FAMILIES).map((f) => ({ id: f.id, nome: f.nome })),
+        elements: ELEMENTS.map((e) => ({
+          id: e.id, nome: e.nome, soggetto: e.soggetto, famigliaNativa: e.famigliaNativa,
+        })),
+      });
+    }
+
+    // ---- Lab: genera un arco di prova (protetto) ----
+    // GET/POST /lab/arc?concept=<schema>&element=<soggetto>&days=7&gate=0
+    if (path === "/lab/arc") {
+      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+      const familyId = url.searchParams.get("concept") || "";
+      const elementId = url.searchParams.get("element") || "";
+      const days = Number(url.searchParams.get("days")) || 7;
+      const gate = url.searchParams.get("gate") === "1";
+      // runId senza Date.now-in-workflow: qui siamo in un Worker normale, Date.now
+      // è disponibile. Il runId identifica le immagini temporanee in KV.
+      const runId = `${familyId}-${elementId}-${Date.now().toString(36)}`;
+      try {
+        const res = await runLabArc(env, { familyId, elementId, days, gate, runId });
+        return jsonCors(res);
+      } catch (err) {
+        console.error(`[lab] ${familyId}+${elementId} fallito: ${err.message}`);
+        return jsonCors({ error: err.message, stack: String(err.stack).slice(0, 600) }, 500);
+      }
+    }
+
+    // ---- Lab: serve un'immagine di prova ----
+    const labImgMatch = path === "/lab/img";
+    if (labImgMatch) {
+      const runId = url.searchParams.get("run") || "";
+      const n = Number(url.searchParams.get("n"));
+      const img = await getLabImage(env, runId, n);
+      if (!img) return jsonCors({ error: "immagine di prova non trovata o scaduta" }, 404);
+      return new Response(img.stream, {
+        headers: {
+          "content-type": img.meta.contentType || "image/png",
+          "cache-control": "no-store",
+          ...CORS,
+        },
+      });
+    }
 
     // ---- Immagine del giorno: /w/<flusso> (accetta anche .jpg/.png in coda) ----
     const wMatch = path.match(/^\/w\/([a-z]+)(?:\.(?:jpg|jpeg|png))?$/);

@@ -338,3 +338,80 @@ export function getConcept(id) {
 export function conceptsForFamilies(familyIds) {
   return CONCEPTS.filter((c) => familyIds.includes(c.famiglia.id));
 }
+
+/* ===================== ELEMENT × CONCEPT (combinazione libera) =====================
+   Nel vocabolario dello strumento di tuning i due assi sono:
+     - CONCEPT  = lo SCHEMA DI EVOLUZIONE (la famiglia: timelapse, crescita, …),
+                  che porta le tappe astratte e i range;
+     - ELEMENT  = il SOGGETTO (girasole, isola, città…), che porta mondo, stile,
+                  palette e un nome breve.
+   Uno "sfondo" è una coppia CONCEPT × ELEMENT. In produzione ogni element usa il
+   suo concept nativo (con tappe curate); il lab, invece, permette di accoppiare
+   QUALSIASI concept con QUALSIASI element, sintetizzando le tappe al volo. */
+
+/** L'elenco degli element (i soggetti), per la UI del lab. */
+export const ELEMENTS = CONCEPTS_RAW.map((c) => ({
+  id: c.id,
+  nome: c.nome,
+  // `soggetto` = nome breve NEUTRO, riusabile con qualunque concept (es. "the
+  // island"); se assente si ripiega su `s`, che però può essere legato al
+  // concept nativo (es. "a lighthouse") e rendere strane certe combinazioni.
+  soggetto: c.soggetto ?? c.s,
+  famigliaNativa: c.famiglia,
+  setting: c.setting,
+  style: c.style,
+  palette: c.palette,
+}));
+
+/** L'element con quell'id, o undefined. */
+export function getElement(id) {
+  return ELEMENTS.find((e) => e.id === id);
+}
+
+/**
+ * Costruisce un concept VIRTUALE accoppiando uno schema di evoluzione (famiglia)
+ * con un soggetto (element). È il cuore della combinazione libera del lab.
+ *
+ * - Coppia NATIVA (l'element appartiene a quella famiglia): si usa il concept
+ *   reale, con le sue tappe curate — è esattamente ciò che gira in produzione.
+ * - Coppia LIBERA: si sintetizzano le tappe dai template astratti della
+ *   famiglia, sostituendo il soggetto. Il risultato è meno curato (avvisato),
+ *   ma permette di provare "timelapse di una pianta", "un dipinto che si
+ *   compone per accumulo", ecc.
+ *
+ * `rangeOverride` (facoltativo) è il profilo effettivo già risolto col tuning:
+ * così il lab misura e collauda con i range che si stanno tarando.
+ */
+export function combine(familyId, elementId, rangeOverride = null) {
+  const fam = FAMILIES[familyId];
+  const el = getElement(elementId);
+  if (!fam) throw new Error(`concept (schema) sconosciuto: "${familyId}"`);
+  if (!el) throw new Error(`element (soggetto) sconosciuto: "${elementId}"`);
+
+  const nativa = fam.id === el.famigliaNativa;
+  if (nativa) {
+    const reale = getConcept(elementId);
+    if (reale) {
+      return rangeOverride ? { ...reale, profilo: { ...reale.profilo, ...rangeOverride } } : reale;
+    }
+  }
+
+  const s = el.soggetto;
+  const tappe = fam.tappe.map((frasi) => frasi.map((f) => f.replaceAll("{s}", s)));
+  const extra = fam.extra.map((f) => f.replaceAll("{s}", s));
+  return {
+    id: `${fam.id}+${el.id}`,
+    nome: `${fam.nome} · ${el.nome}`,
+    famiglia: fam,
+    setting: el.setting,
+    style: el.style,
+    palette: el.palette,
+    s,
+    tappe,
+    extra,
+    profilo: rangeOverride
+      ? { ...fam.profilo, ...rangeOverride }
+      : { ...fam.profilo, maxDeriva: fam.maxDeriva, maxDegrado: fam.maxDegrado },
+    virtuale: !nativa,
+  };
+}

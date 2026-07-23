@@ -74,9 +74,29 @@ npx wrangler tail                   # log in tempo reale
 
 | Endpoint | Uso |
 |---|---|
-| `/run/<canale>?force=1` | rigenera subito un canale (senza force è idempotente sul giorno) |
-| `/run-all?force=1` | rigenera tutti i canali |
+| `/run/<flusso>?force=1` | rigenera subito un flusso (senza force è idempotente sul giorno) |
+| `/run-all?force=1` | rigenera tutti i flussi |
 | `/test-size?w=960&h=2048` | verifica se il modello accetta una risoluzione |
+| `/test-metrics?ch=X&a=DATA&b=DATA[&concept=Y]` | misura il cambiamento fra due giorni d'archivio |
+
+### Tuning dei range del cancello
+
+I range con cui il cancello (`metrics.js`) accetta un'immagine sono nel codice
+(`families.js`, uno per **concept** = schema di evoluzione), ma si possono
+**tarare da fuori** senza rideployare: un JSON salvato in KV (`tuning:profili`)
+viene fuso sopra i default (`profiles.js`).
+
+- `GET /tuning` → default del codice + valori effettivi + elenco element
+- `PUT /tuning` (chiave admin) → salva l'override; `DELETE /tuning` → torna ai default
+- `GET/POST /lab/arc?concept=<schema>&element=<soggetto>&days=7&gate=0` (chiave) →
+  genera un arco USA-E-GETTA (non tocca la produzione, immagini con TTL 1h) e
+  restituisce le sei misure giorno per giorno — serve a tarare i range con dati
+  alla mano e a provare combinazioni libere (`timelapse`×`girasole`, ecc.)
+- `GET /lab/img?run=<id>&n=<n>` → serve un'immagine di prova
+
+Lo **strumento visuale** è in `../tuning/index.html` (fuori dal repo, `.gitignore`):
+si apre nel browser, edita i range per concept, prova le combinazioni nel lab e
+con un tasto li "lancia nel Worker". Il JSON scaricabile è la fonte di verità.
 
 ### Aggiungere o modificare un canale
 

@@ -2,3 +2,7 @@ node_modules/
 .wrangler/
 .dev.vars
 .DS_Store
+
+# Strumento di tuning locale: non fa parte del prodotto, resta fuori dal repo.
+# (HTML + copie del JSON dei range prodotte a mano.)
+tuning/
