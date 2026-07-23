@@ -6,9 +6,24 @@
   Identifier delle azioni verificati sul formato moderno (iOS 16+):
     - is.workflow.actions.downloadurl
     - is.workflow.actions.wallpaper.set
-  Nota: la chiave del toggle "Mostra anteprima" non è documentata pubblicamente,
-  quindi l'azione importata avrà l'anteprima ATTIVA: per l'uso in automazione va
-  disattivata a mano dopo l'import (vedi README di questa cartella).
+
+  ⚠️ WFWallpaperShowPreview = false È LA RIGA PIÙ IMPORTANTE DI QUESTO FILE.
+  Con l'anteprima ATTIVA (il default di iOS) l'azione "Imposta sfondo" apre un
+  foglio di conferma: a mano l'utente tocca "Imposta" e sembra tutto a posto, ma
+  in un'automazione a tempo — che gira headless, spesso a telefono bloccato —
+  quella UI non può essere mostrata e l'azione muore in silenzio. È esattamente
+  il sintomo "funziona a mano ma non in automazione".
+  Chiave verificata su tre fonti indipendenti: le stringhe di ActionKit nella
+  dyld shared cache di macOS 26.1 (blocco "ActionKit42": is.workflow.actions.
+  wallpaper.set → WFSetWallpaperAction → WFWallpaperShowPreview → "Show Preview"),
+  il decompilato di WFSetWallpaperAction.m (parameterValueForKey:@"WFWallpaper
+  ShowPreview") e i corpus pubblici di shortcut. È un boolean plist nudo: NON va
+  avvolto in un WFSerializationType.
+  Gli altri parametri dell'azione (WFWallpaperLocation, WFWallpaperSmartCrop,
+  WFWallpaperLegibilityBlur, WFWallpaperPerspectiveZoom, WFSelectedPoster) sono
+  lasciati ASSENTI di proposito: così l'azione usa i propri default (schermata di
+  blocco + home) senza rischiare errori di tipo su valori che non possiamo
+  provare qui. Chi vuole solo la home li imposta a mano dopo l'import.
 -->
 <plist version="1.0">
 <dict>
@@ -30,6 +45,7 @@
       <string>is.workflow.actions.wallpaper.set</string>
       <key>WFWorkflowActionParameters</key>
       <dict>
+        <key>UUID</key><string>1A2B3C4D-0002-0000-0000-000000000002</string>
         <key>WFInput</key>
         <dict>
           <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
@@ -40,6 +56,8 @@
             <key>OutputUUID</key><string>1A2B3C4D-0001-0000-0000-000000000001</string>
           </dict>
         </dict>
+        <!-- Anteprima SPENTA: senza questa riga l'automazione non funziona. -->
+        <key>WFWallpaperShowPreview</key><false/>
       </dict>
     </dict>
   </array>

@@ -301,14 +301,12 @@ export function renderPage(metas, origin, dateKey) {
       </div>
       <div class="step">
         <div class="n">2</div>
-        <h4>Sistema l'azione "Imposta sfondo"</h4>
-        <p>In Comandi rapidi tieni premuto sulla Shortcut → <em>Modifica</em>.
-        Nell'azione <strong>Imposta sfondo</strong>:<br>
-        ① scegli quale sfondo aggiornare (<em>Schermata di blocco</em>,
-        <em>Home</em> o entrambe);<br>
-        ② <strong>spegni "Mostra anteprima"</strong> — obbligatorio, altrimenti
-        iOS chiederà conferma ogni sera.<br><br>
-        ▶️ Ora tocca la Shortcut per provarla: lo sfondo deve cambiare subito.</p>
+        <h4>Provala con un tap</h4>
+        <p>Tocca la Shortcut appena importata: lo sfondo deve cambiare
+        <strong>subito e senza chiederti niente</strong>.<br><br>
+        ArtiPop aggiorna sempre il <strong>primo sfondo</strong> della tua
+        schermata di blocco, quindi metti al primo posto quello che vuoi far
+        gestire ad ArtiPop (Impostazioni → Sfondo: è la scheda più a sinistra).</p>
       </div>
       <div class="step">
         <div class="n">3</div>
@@ -323,16 +321,17 @@ export function renderPage(metas, origin, dateKey) {
       </div>
     </div>
     <p class="note">
-      💡 Preferisci la mattina? Nell'automazione scegli <em>Alba</em> o un orario fisso.
-      Su alcuni iPhone con iOS 18 l'azione "Imposta sfondo" ha un bug intermittente
-      nelle automazioni: se capita, duplica l'automazione sfalsandola di un minuto
-      (tramonto e tramonto +1'). Gli sfondi passati non si perdono mai:
-      sono qui sotto, in "Il viaggio finora".
+      💡 Preferisci la mattina? Nell'automazione scegli <em>Alba</em> o un orario fisso.<br>
+      🛟 Qualcosa non funziona? C'è una pagina apposta:
+      <a href="/aiuto"><strong>Aiuto e problemi comuni</strong></a> — soprattutto se
+      <em>a mano funziona ma in automazione no</em>.<br>
+      Gli sfondi passati non si perdono mai: sono qui sotto, in "Il viaggio finora".
     </p>
   </section>
 
   <footer>
     ArtiPop v3 — generato ogni notte da FLUX.2 su Cloudflare Workers AI ·
+    <a href="/aiuto">Aiuto</a> ·
     <a href="/api/channels">API</a> · <a href="https://github.com/RiccardoDominici/ArtiPop">GitHub</a>
   </footer>
 </main>

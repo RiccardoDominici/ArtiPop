@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template PRINCIPALE di ArtiPop: 4 azioni. Aggiorna SEMPRE il primo sfondo della
+  schermata di blocco, così l'utente non deve scegliere niente e ogni giorno
+  l'immagine finisce nella stessa scheda invece di crearne di nuove.
+
+    1. Ottieni contenuto da URL     is.workflow.actions.downloadurl
+    2. Ottieni tutti gli sfondi     is.workflow.actions.posters.get     (WFPosterType = All)
+    3. Ottieni elemento dall'elenco is.workflow.actions.getitemfromlist (WFItemSpecifier = First Item)
+    4. Imposta sfondo               is.workflow.actions.wallpaper.set   (WFSelectedPoster = quello sopra)
+
+  Perché funziona così: la descrizione ufficiale dell'azione "Get All Wallpapers"
+  è «Gets all of your Lock Screen wallpapers, and returns them as output so you
+  can use them with other actions», e "Imposta sfondo" ha una variante di summary
+  dedicata — «Set ${WFSelectedPoster} to ${WFInput} for ${WFWallpaperLocation}» —
+  che applica l'immagine a uno sfondo GIÀ ESISTENTE invece di crearne uno nuovo.
+  Prendendo il primo elemento della lista si punta sempre alla stessa scheda.
+  (Identifier e parametri verificati nelle stringhe di ActionKit nella dyld shared
+  cache di macOS 26.1; WFItemSpecifier accetta First Item / Last Item / Random
+  Item / Item At Index / Items in Range.)
+
+  ⚠️ WFWallpaperShowPreview = false resta LA RIGA PIÙ IMPORTANTE: con l'anteprima
+  attiva (default iOS) l'azione apre un foglio di conferma che in un'automazione
+  headless non può comparire, e lo sfondo non cambia mai — il classico "a mano
+  funziona, in automazione no". È un boolean plist nudo, senza WFSerializationType.
+
+  Se su un dispositivo l'aggancio al primo sfondo desse problemi, esiste la
+  variante a 2 azioni (template.shortcut.xml, servita come /s/<canale>-base.shortcut).
+-->
+<plist version="1.0">
+<dict>
+  <key>WFWorkflowActions</key>
+  <array>
+    <dict>
+      <key>WFWorkflowActionIdentifier</key>
+      <string>is.workflow.actions.downloadurl</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>UUID</key><string>1A2B3C4D-0001-0000-0000-000000000001</string>
+        <key>CustomOutputName</key><string>Wallpaper Image</string>
+        <key>WFHTTPMethod</key><string>GET</string>
+        <key>WFURL</key><string>__ARTIPOP_URL__</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>WFWorkflowActionIdentifier</key>
+      <string>is.workflow.actions.posters.get</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>UUID</key><string>1A2B3C4D-0003-0000-0000-000000000003</string>
+        <key>CustomOutputName</key><string>All Wallpapers</string>
+        <key>WFPosterType</key><string>All</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>WFWorkflowActionIdentifier</key>
+      <string>is.workflow.actions.getitemfromlist</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>UUID</key><string>1A2B3C4D-0004-0000-0000-000000000004</string>
+        <key>CustomOutputName</key><string>First Wallpaper</string>
+        <key>WFItemSpecifier</key><string>First Item</string>
+        <key>WFInput</key>
+        <dict>
+          <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
+          <key>Value</key>
+          <dict>
+            <key>Type</key><string>ActionOutput</string>
+            <key>OutputName</key><string>All Wallpapers</string>
+            <key>OutputUUID</key><string>1A2B3C4D-0003-0000-0000-000000000003</string>
+          </dict>
+        </dict>
+      </dict>
+    </dict>
+    <dict>
+      <key>WFWorkflowActionIdentifier</key>
+      <string>is.workflow.actions.wallpaper.set</string>
+      <key>WFWorkflowActionParameters</key>
+      <dict>
+        <key>UUID</key><string>1A2B3C4D-0002-0000-0000-000000000002</string>
+        <key>WFInput</key>
+        <dict>
+          <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
+          <key>Value</key>
+          <dict>
+            <key>Type</key><string>ActionOutput</string>
+            <key>OutputName</key><string>Wallpaper Image</string>
+            <key>OutputUUID</key><string>1A2B3C4D-0001-0000-0000-000000000001</string>
+          </dict>
+        </dict>
+        <!-- Lo sfondo da aggiornare: sempre il primo della lista. -->
+        <key>WFSelectedPoster</key>
+        <dict>
+          <key>WFSerializationType</key><string>WFTextTokenAttachment</string>
+          <key>Value</key>
+          <dict>
+            <key>Type</key><string>ActionOutput</string>
+            <key>OutputName</key><string>First Wallpaper</string>
+            <key>OutputUUID</key><string>1A2B3C4D-0004-0000-0000-000000000004</string>
+          </dict>
+        </dict>
+        <!-- Anteprima SPENTA: senza questa riga l'automazione non funziona. -->
+        <key>WFWallpaperShowPreview</key><false/>
+      </dict>
+    </dict>
+  </array>
+  <key>WFWorkflowClientVersion</key><string>2038.0.2.4</string>
+  <key>WFWorkflowMinimumClientVersion</key><integer>900</integer>
+  <key>WFWorkflowMinimumClientVersionString</key><string>900</string>
+  <key>WFWorkflowIcon</key>
+  <dict>
+    <key>WFWorkflowIconGlyphNumber</key><integer>61440</integer>
+    <key>WFWorkflowIconStartColor</key><integer>4292093695</integer>
+  </dict>
+  <key>WFWorkflowImportQuestions</key><array/>
+  <key>WFWorkflowTypes</key><array/>
+  <key>WFWorkflowInputContentItemClasses</key>
+  <array>
+    <string>WFImageContentItem</string>
+    <string>WFURLContentItem</string>
+    <string>WFStringContentItem</string>
+  </array>
+</dict>
+</plist>

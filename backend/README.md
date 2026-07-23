@@ -31,7 +31,7 @@ fetch()
 |---|---|
 | `src/index.js` | routing HTTP, cron, orchestrazione per-canale |
 | `src/channels.js` | definizione dei 6 canali (identità visiva, viaggio, fallback) |
-| `src/story.js` | evoluzione giornaliera della storia (archi da 12 giorni, seed stabile per arco) |
+| `src/story.js` | evoluzione giornaliera della storia (archi da 7 giorni, seed stabile per arco) |
 | `src/generate.js` | catena di generazione immagini con fallback |
 | `src/storage.js` | layout chiavi KV |
 | `src/page.js` | landing page |
@@ -57,9 +57,9 @@ e resta l'immagine del giorno prima.
   giorno nell'arco, scena di ieri.
 - Ogni notte un LLM riscrive la scena "un giorno dopo" (cambiano 1-2 dettagli:
   la luce, il meteo, il viaggio avanza). Il **seed resta fisso per tutto l'arco**
-  (12 giorni), quindi le composizioni restano imparentate.
-- Ogni 12 giorni si apre un nuovo arco: nuova tappa del viaggio del canale,
-  nuovo seed. I canali restano riconoscibili grazie a `style` + `palette` fissi.
+  (7 giorni), quindi le composizioni restano imparentate.
+- Ogni 7 giorni il canale cambia BASE: nuovo keyframe pulito, nuova tappa del
+  viaggio, nuovo seed. I canali restano riconoscibili grazie a `style` + `palette` fissi.
 
 ## Deploy e gestione
 

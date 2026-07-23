@@ -33,9 +33,15 @@ export const CONFIG = {
     "@cf/meta/llama-3.2-3b-instruct",
   ],
 
-  // Durata di un "arco narrativo": dopo N giorni il canale apre un nuovo capitolo
-  // (nuovo tema dentro l'identità del canale, nuovo seed) per restare sempre fresco.
-  ARC_LENGTH_DAYS: 12,
+  // CICLO DI VITA DI UNO SFONDO: dopo esattamente N giorni il canale cambia BASE
+  // e riparte da capo (nuovo keyframe pulito, nuovo progetto/tema, nuovo seed).
+  // 7 = una settimana esatta: l'utente vede un ciclo completo ogni settimana,
+  // e la catena di editing resta cortissima (max 6 edit dal keyframe), quindi la
+  // degradazione iterativa non ha il tempo di accumularsi.
+  // INVARIANTE: i canali a progressione devono avere esattamente ARC_LENGTH_DAYS
+  // `stageTemplates` (e `stageSummaries` dove previsti) — verificato a caricamento
+  // modulo in channels.js.
+  ARC_LENGTH_DAYS: 7,
 
   // --- Continuità visiva (image-conditioned generation) ---
   // Ogni giorno l'immagine di IERI entra come riferimento (input_image_0) nella

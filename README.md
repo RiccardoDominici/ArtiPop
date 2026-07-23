@@ -54,7 +54,7 @@ Passo-passo dettagliato, FAQ e soluzioni ai problemi: **[GUIDA.md](GUIDA.md)**.
 ## 🧠 Come funziona
 
 - Ogni notte un cron su **Cloudflare Workers** (piano free) fa avanzare la
-  storia di ogni canale: un arco = un progetto di 12 giorni (piano di tappe
+  storia di ogni canale: un arco = un progetto di 7 giorni (piano di tappe
   curate), e l'immagine di oggi è un **edit additivo** di quella di ieri
   (FLUX.2 klein con doppio riferimento: ieri = contenuto da preservare,
   keyframe dell'arco = àncora di qualità) — cambia solo il pezzo del giorno.

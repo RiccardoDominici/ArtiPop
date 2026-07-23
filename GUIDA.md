@@ -11,7 +11,8 @@ Tutto quello che serve sapere, sia per **usare** ArtiPop sul tuo iPhone sia per
 
 Ogni notte ArtiPop genera un nuovo wallpaper con l'AI per ogni canale attivo.
 Ogni canale è un *viaggio*: la scena di oggi è l'evoluzione di quella di ieri
-(la luce cambia, il percorso avanza) e ogni 12 giorni si apre un capitolo nuovo.
+(la luce cambia, il progetto avanza) e ogni 7 giorni si cambia base: il ciclo
+ricomincia da capo con un progetto nuovo.
 Il tuo iPhone scarica l'immagine e la imposta come sfondo **da solo, ogni sera
 al tramonto**. Gratis, senza app e senza account.
 
@@ -30,18 +31,35 @@ sfoglia le card (swipe!) e copia il link del canale che preferisci:
 (i canali "viaggio" — Horizon, Neon, Cosmos, Depths, Aurora — restano nel
 codice in pausa, riattivabili con una riga)
 
-### Passo 2 — Crea la Shortcut (una volta sola)
+### Passo 2 — Prendi la Shortcut (una volta sola)
+
+**Via consigliata:** scarica la Shortcut del canale dal sito (pulsante
+"⬇️ Scarica la Shortcut") e importala. Ha già dentro l'URL giusto,
+**l'anteprima disattivata** e l'aggancio al **primo sfondo** della schermata di
+blocco: è pronta per l'automazione e non devi toccare nulla. Se iOS blocca
+l'import, attiva *Impostazioni → Scorciatoie → Consenti scorciatoie non
+attendibili*.
+
+⚠️ ArtiPop sovrascrive sempre il **primo** sfondo della schermata di blocco:
+metti al primo posto quello che vuoi far gestire (Impostazioni → Sfondo, è la
+scheda più a sinistra). Se preferisci lasciare la scelta a iOS, c'è la variante
+base: `…/s/<canale>-base.shortcut`.
+
+**Se preferisci farla a mano** (3 azioni in croce, ma un dettaglio è critico):
 
 1. Apri l'app **Comandi rapidi** → tab **Comandi** → **+** in alto a destra.
 2. Aggiungi l'azione **Ottieni contenuto da URL** e incolla il link del canale,
-   es. `https://artipop.riccardo-dominici.workers.dev/w/horizon`.
+   es. `https://artipop.riccardo-dominici.workers.dev/w/island`.
 3. Aggiungi l'azione **Imposta sfondo** subito dopo:
    - scegli quale sfondo aggiornare (Lock screen, Home, o entrambi);
-   - **disattiva "Mostra anteprima"** ⚠️ — è il passaggio più importante:
-     con l'anteprima attiva iOS chiederebbe conferma ogni sera.
+   - espandi le opzioni (la freccetta) e **disattiva "Mostra anteprima"** ⚠️ —
+     è il passaggio più importante di tutta la guida: con l'anteprima attiva
+     l'azione apre un foglio di conferma che in automazione **non può
+     comparire**, quindi lo sfondo non cambia mai (vedi FAQ).
 4. Dai un nome al comando (es. "ArtiPop") e salva.
 
-Provalo subito con un tap: lo sfondo deve cambiare all'istante.
+Provalo subito con un tap: lo sfondo deve cambiare all'istante **e senza
+chiederti niente**. Se ti chiede conferma, l'anteprima è ancora accesa.
 
 ### Passo 3 — Automatizza al tramonto
 
@@ -54,16 +72,30 @@ Da stasera è tutto automatico. 🌇
 
 ### Domande frequenti
 
+> Tutte queste risposte (e altre) sono anche online, sempre aggiornate, sulla
+> pagina **[artipop…workers.dev/aiuto](https://artipop.riccardo-dominici.workers.dev/aiuto)**.
+
 **Posso cambiare canale?** Sì: apri il comando e sostituisci l'URL.
 
 **Posso avere uno sfondo nuovo subito?** Tocca il comando manualmente,
 oppure aggiungi l'automazione anche all'**Alba** per il "turno" del mattino.
 
-**Lo sfondo a volte non cambia (iOS 18)?** È un bug intermittente di Apple
-sull'azione "Imposta sfondo" nelle automazioni (`extensionKit error 2`),
-dipende dal modello di iPhone. Workaround collaudato: **duplica l'automazione**
-e sfalsala di un minuto (tramonto e tramonto +1'): se la prima fallisce,
-la seconda passa.
+**A mano funziona ma in automazione no!** È *il* problema classico, e nel 99%
+dei casi la causa è una sola: **"Mostra anteprima" acceso** nell'azione Imposta
+sfondo. Con l'anteprima attiva l'azione deve mostrarti un foglio di conferma:
+quando lanci il comando a mano tu tocchi "Imposta" (spesso senza farci caso) e
+tutto sembra a posto, ma un'automazione a tempo gira in background — di solito
+a telefono bloccato — dove nessuna schermata può comparire: l'azione si ferma lì
+e non vedi **nessun** errore. Soluzione: apri il comando, espandi l'azione
+Imposta sfondo, spegni "Mostra anteprima". Le Shortcut scaricate dal sito da
+luglio 2026 hanno già l'anteprima spenta dentro il file.
+Controlla anche che l'automazione sia su **Esegui immediatamente**.
+
+**Lo sfondo a volte non cambia lo stesso (iOS 18+)?** Con l'anteprima già
+spenta resta un bug intermittente di Apple sull'azione "Imposta sfondo" nelle
+automazioni (`extensionKit error 2`), che dipende dal modello di iPhone.
+Workaround collaudato: **duplica l'automazione** e sfalsala di un minuto
+(tramonto e tramonto +1'): se la prima fallisce, la seconda passa.
 
 **Dove finiscono gli sfondi vecchi?** In archivio, per sempre: sulla pagina
 del sito, sezione "Il viaggio finora", puoi rivedere ogni giorno passato.
@@ -103,8 +135,8 @@ npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
 
 ### I canali a progressione (come funzionano)
 
-Un arco = un **progetto** che si completa in esattamente 12 giorni (un quadro,
-una pianta): il piano delle 12 tappe è deterministico e curato in
+Un arco = un **progetto** che si completa in esattamente 7 giorni (un'isola,
+una pianta): il piano delle 7 tappe è deterministico e curato in
 `channels.js` (`stageTemplates`, con `{s}` = nome breve del progetto).
 Ogni giorno l'immagine è un **edit additivo**: klein riceve
 `input_image_0` = ieri (contenuto da preservare + la tappa di oggi) e
@@ -135,7 +167,7 @@ Lezioni imparate (verificate empiricamente, non toccare senza motivo):
    resta ancorata al vocabolario del canale/arco, non ripete quasi-identica una
    scena recente e non contiene elementi vietati; altrimenti scatta il fallback
    deterministico (tappa + momento + meteo), coerente per costruzione.
-5. **Seed stabile per arco** (12 giorni): composizioni imparentate; nuovo arco
+5. **Seed stabile per arco** (7 giorni): composizioni imparentate; nuovo arco
    → nuovo keyframe, nuovo seed e nuova tappa del viaggio.
 
 Se il resizer esterno non risponde, quel giorno si genera senza riferimento
@@ -158,10 +190,23 @@ le generazioni falliscono, resta l'immagine del giorno prima, zero addebiti.
 `npx wrangler secret put ADMIN_KEY` con un valore nuovo (es. `openssl rand -hex 20`).
 Gli endpoint `/run`, `/run-all` e `/test-size` usano quella.
 
-### File `.shortcut` firmati (sperimentale)
+### File `.shortcut` firmati
 
-In [`shortcut/`](shortcut/README.md): template plist + `build_shortcuts.sh`
-(firma con `shortcuts sign --mode anyone`; richiede macOS). I file in `dist/`
-sono pronti ma **non ancora testati su un iPhone reale** — prima di
-distribuirli, provane uno. La via consigliata per gli utenti resta la
-creazione manuale o un link iCloud pubblicato da te.
+In [`shortcut/`](shortcut/README.md): due template plist + `build_shortcuts.sh`
+(firma con `shortcuts sign --mode anyone`; richiede macOS) + `verify_shortcuts.py`.
+
+- `template-poster.shortcut.xml` → **variante principale** (4 azioni): aggancia
+  sempre il primo sfondo della lock screen (`WFSelectedPoster` = primo elemento
+  di "Ottieni tutti gli sfondi"). Servita su `/s/<canale>.shortcut`.
+- `template.shortcut.xml` → **variante base** (2 azioni): lascia a iOS la scelta
+  dello sfondo. Servita su `/s/<canale>-base.shortcut`, è il piano B citato
+  nella pagina `/aiuto`.
+
+Entrambi impostano `WFWallpaperShowPreview=false` nell'azione Imposta sfondo:
+è la riga che rende le Shortcut usabili in automazione (con l'anteprima accesa
+funzionano solo a mano — vedi FAQ della Parte 1 e il README della cartella).
+
+`build_shortcuts.sh` **verifica i file dopo averli firmati**: riapre l'archivio
+AEA, ne estrae `Shortcut.wflow` e controlla che l'anteprima sia spenta e l'URL
+sostituito. Se qualcosa non torna la build fallisce e i file non vanno caricati.
+Dopo la build, carica i `.shortcut` in KV con i comandi che lo script stampa.

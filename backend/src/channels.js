@@ -2,13 +2,16 @@
 //
 // Ogni canale è un mondo visivo con un'identità fissa (style + palette) che lo rende
 // riconoscibile, e una storia che evolve giorno per giorno: la scena di oggi nasce
-// da quella di ieri, e ogni ~12 giorni si apre un nuovo "arco" (capitolo) del viaggio.
+// da quella di ieri, e ogni CONFIG.ARC_LENGTH_DAYS giorni (7 = una settimana) il
+// canale cambia BASE e riparte con un nuovo "arco" (progetto/capitolo).
 //
 // - `style` e `palette` entrano in OGNI prompt: garantiscono coerenza visiva nel tempo.
 // - `firstScene` è il capitolo 1 in assoluto del canale.
 // - `journey` è la lista di tappe/temi: ispira i nuovi archi (e guida il fallback
 //   deterministico quando l'LLM non è disponibile).
 // - `moments` e `weathers` sono variazioni giornaliere per il fallback deterministico.
+
+import { CONFIG } from "./config.js";
 
 export const CHANNELS = [
   {
@@ -24,19 +27,17 @@ export const CHANNELS = [
     // con la lista cumulativa degli oggetti fin lì — le scene fotorealistiche
     // lisce accumulano macchie a ogni edit in catena (verificato due volte).
     refMode: "anchor-cumulative",
+    // Una voce per giorno del ciclo: elenca ciò che si AGGIUNGE quel giorno.
+    // index.js le concatena (slice(1, dayInArc+1)) per comporre la lista
+    // cumulativa che descrive la scrivania di oggi partendo dal keyframe vuoto.
     stageSummaries: [
       "",
-      "a small warm desk lamp, switched off, on the back corner",
-      "the desk lamp switched ON casting warm light, and a stack of two old books beside it",
-      "a small potted green plant on the opposite corner",
-      "a steaming ceramic cup near the front edge",
-      "an open blank notebook with a pen across it, in the middle",
-      "a taller stack of books, and a small framed landscape print leaning against the wall",
+      "a lit warm desk lamp on the back corner, and a stack of two old books beside it",
+      "a small potted green plant on the opposite corner, and a steaming ceramic cup near the front edge",
+      "an open notebook with a pen across it in the middle, four more books on the stack, and a framed landscape print leaning against the wall",
       "{s} in the place of honor at the center back",
-      "a few small objects related to {s} neatly around it",
-      "a string of tiny warm fairy lights glowing on the wall above",
-      "a lit candle and a second tiny plant in the last corners",
-      "every object in its place, cozy and warmly lit",
+      "three small objects related to {s} arranged around it, and a string of tiny warm fairy lights on the wall above",
+      "a lit candle and a second small plant in the last free corners",
     ],
     // Sfondo LISCIO di proposito: le texture fini (intonaco, pietra) accumulano
     // artefatti a ogni edit della catena (corruzione delle alte frequenze,
@@ -48,6 +49,9 @@ export const CHANNELS = [
       "a sturdy wooden desk against a smooth plain warm-cream wall with no texture, seen straight on from the front, soft window light from the left",
     // Ogni arco la scrivania appartiene a qualcuno di diverso: il `noun` è
     // l'oggetto-firma che arriva a metà arco.
+    // 12 progetti = 12 settimane prima che una base si ripeta (con archi da 7
+    // giorni la rotazione è doppia rispetto a prima: 6 progetti basterebbero
+    // per sole 6 settimane).
     projects: [
       { subject: "a writer's desk coming to life", noun: "a vintage typewriter" },
       { subject: "a botanist's desk coming to life", noun: "a glass terrarium with small ferns" },
@@ -55,20 +59,25 @@ export const CHANNELS = [
       { subject: "a musician's desk coming to life", noun: "a wooden violin resting on a small stand" },
       { subject: "an astronomer's desk coming to life", noun: "a small brass telescope" },
       { subject: "a painter's desk coming to life", noun: "a wooden paint box with tubes and brushes" },
+      { subject: "a cartographer's desk coming to life", noun: "an unrolled old map and a brass compass" },
+      { subject: "a watchmaker's desk coming to life", noun: "a watchmaker's loupe and a tray of tiny gears" },
+      { subject: "a photographer's desk coming to life", noun: "a vintage film camera on a small tripod" },
+      { subject: "a sailor's desk coming to life", noun: "a brass sextant and a ship in a bottle" },
+      { subject: "a poet's desk coming to life", noun: "an inkwell with a feather quill and a bundle of letters" },
+      { subject: "a chess player's desk coming to life", noun: "a wooden chess set mid-game" },
     ],
+    // 7 tappe = il ciclo di vita di uno sfondo (CONFIG.ARC_LENGTH_DAYS).
+    // Rispetto alle vecchie 12 ogni giorno porta DUE aggiunte invece di una:
+    // con una settimana sola a disposizione i salti devono essere più grossi,
+    // altrimenti l'arco non arriva mai alla scrivania "piena".
     stageTemplates: [
       "the wooden desk is completely empty and clean: bare desktop, bare wall, nothing on it at all",
-      "a small warm desk lamp now sits on the back corner of the empty desk, switched off",
-      "the lamp is now on, casting warm light; a small stack of two old books has appeared beside it",
-      "a small potted green plant now sits on the opposite corner of the desk",
-      "a steaming ceramic cup has appeared near the front edge of the desk",
-      "an open blank notebook with a pen across it now lies in the middle of the desk",
-      "a few more books have joined the stack, and a small framed landscape print leans against the wall",
+      "a warm desk lamp is now lit on the back corner, and a stack of two old books stands beside it",
+      "a small potted green plant now sits on the opposite corner, and a steaming ceramic cup near the front edge",
+      "an open notebook with a pen lies in the middle, the book stack has DOUBLED, and a framed landscape print leans against the wall",
       "{s} now takes the place of honor at the center back of the desk",
-      "a few small objects related to {s} are scattered neatly around it",
-      "a string of tiny warm fairy lights now glows on the wall above the desk",
-      "a lit candle and a second tiny plant fill the last empty corners",
-      "the desk is complete: cozy, lived-in and warmly lit, every object in its place",
+      "three small objects related to {s} are arranged around it, and a string of tiny warm fairy lights glows on the wall above",
+      "a lit candle and a second small plant fill the last empty corners: the desk is complete, cozy and warmly lit",
     ],
   },
   {
@@ -85,6 +94,7 @@ export const CHANNELS = [
     palette: "soft sky pastels with warm golden accents",
     setting:
       "a small floating island drifting in a vast soft pastel sky above distant clouds, seen from slightly below",
+    // 12 progetti: una base diversa ogni settimana per tre mesi (vedi nota su `studio`).
     projects: [
       { subject: "a floating island growing a cottage", noun: "a tiny stone cottage with a red roof" },
       { subject: "a floating island growing a lighthouse", noun: "a small white-and-red lighthouse" },
@@ -92,20 +102,24 @@ export const CHANNELS = [
       { subject: "a floating island growing a greenhouse", noun: "a small glass greenhouse" },
       { subject: "a floating island growing a tea house", noun: "a tiny wooden tea house with paper windows" },
       { subject: "a floating island growing a bell tower", noun: "a slender stone bell tower" },
+      { subject: "a floating island growing a treehouse", noun: "a small wooden treehouse in a big tree" },
+      { subject: "a floating island growing an observatory", noun: "a little stone observatory with a copper dome" },
+      { subject: "a floating island growing a chapel", noun: "a tiny chapel with a blue door" },
+      { subject: "a floating island growing a sky pier", noun: "a wooden pier reaching out over the void" },
+      { subject: "a floating island growing a clock tower", noun: "a small clock tower with a golden face" },
+      { subject: "a floating island growing a mill house", noun: "a little mill house of pale stone" },
     ],
+    // 7 tappe = il ciclo di vita di uno sfondo. Metà arco alla natura (roccia →
+    // isola verde), metà alla costruzione di {s}: così ogni giorno il cambiamento
+    // è grosso abbastanza da vedersi al primo sguardo.
     stageTemplates: [
       "the floating island is bare grey rock: no plants, no structures, nothing on it at all",
-      "the first patches of green moss and grass have appeared on the rocky surface",
-      "soft grass now covers most of the island, with a few small white wildflowers",
-      "a young leafy tree has sprouted near the island's center",
-      "a thin waterfall now pours from the island's edge, dissolving into mist below",
-      "two more trees and some bushes have grown; the island looks lush and green",
-      "the first wooden foundations of {s} have appeared among the grass",
-      "{s} is half built, its structure clearly taking shape",
-      "{s} is complete, standing charmingly among the trees",
-      "warm light now glows from {s}, and a little stone path leads to it",
-      "small birds circle the island and tiny paper lanterns hang from the trees",
-      "the island is complete and alive, glowing softly in the golden-hour sky",
+      "green moss and grass now cover HALF of the bare rock, with a few small white wildflowers",
+      "grass covers the whole island, THREE young trees have sprouted, and a thin waterfall pours from the edge into the mist below",
+      "the stone foundations and the first wooden frame of {s} have appeared among the trees",
+      "{s} is HALF built: its walls are up, the roof still missing",
+      "{s} is complete, warm light glowing from its windows, and a little stone path leads to it",
+      "the island is finished and alive: TWICE as many trees, tiny paper lanterns hanging from the branches, birds circling in the golden-hour sky",
     ],
   },
   {
@@ -142,14 +156,9 @@ export const CHANNELS = [
       "the canvas is COMPLETELY BLANK: pure white, untouched, nothing painted or drawn on it at all",
       "a few faint pencil lines begin to sketch {s} on the canvas, which is still mostly blank white",
       "the complete light pencil sketch of {s} covers the canvas: thin graphite outlines only, no paint at all",
-      "a first pale wash of color fills the sky area of the sketched {s}; the rest is still pencil on white",
-      "soft blocks of muted underpainting cover the upper half of {s}; the lower half is still bare sketch",
-      "the whole canvas shows the rough underpainting of {s}: blurry approximate colors, clearly unfinished",
-      "the main forms of {s} are now painted with real color, though details are still missing",
-      "richer color and the first fine details appear across {s}; some edges still rough",
-      "fine details and highlights sharpen {s}; it looks close to finished",
-      "deep shadows and warm glazes give {s} real depth",
-      "the final luminous highlights complete {s}",
+      "rough underpainting now covers the WHOLE canvas: blurry approximate colors over the sketch, clearly unfinished",
+      "the main forms of {s} are now painted with real color, though the details are still missing",
+      "fine details, deep shadows and the first luminous highlights sharpen {s}: it looks close to finished",
       "{s} is finished: a complete, detailed painting glowing on the easel",
     ],
   },
@@ -250,6 +259,7 @@ export const CHANNELS = [
     mode: "progression",
     setting:
       "a terracotta pot of dark soil on a stone windowsill in soft morning light, blurred garden behind the glass",
+    // 12 progetti: una base diversa ogni settimana per tre mesi (vedi nota su `studio`).
     projects: [
       { subject: "a sunflower growing from seed to golden bloom", noun: "the sunflower" },
       { subject: "a cherry branch blossoming in a glass vase", noun: "the cherry blossoms" },
@@ -257,6 +267,12 @@ export const CHANNELS = [
       { subject: "a fern unfurling from a tight spiral", noun: "the fern fronds" },
       { subject: "a cactus opening one bright pink flower", noun: "the pink cactus flower" },
       { subject: "an amaryllis opening huge red trumpet flowers", noun: "the red amaryllis flowers" },
+      { subject: "an orchid opening its first flowers", noun: "the white orchid flowers" },
+      { subject: "a tulip rising from its bulb", noun: "the red tulip" },
+      { subject: "a lavender plant coming into flower", noun: "the lavender spikes" },
+      { subject: "a hydrangea turning into a blue globe", noun: "the blue hydrangea blooms" },
+      { subject: "a passion flower unfurling on its vine", noun: "the purple passion flower" },
+      { subject: "a wisteria dropping its first purple clusters", noun: "the wisteria clusters" },
     ],
     // Tappe deterministiche. Le prime NON nominano il fiore: nominare il
     // risultato finale fa comparire subito la fioritura completa (leak verificato).
@@ -266,17 +282,12 @@ export const CHANNELS = [
     // "i pezzi nuovi compaiono ogni 3 giorni").
     stageTemplates: [
       "the pot holds only bare dark soil: completely empty, nothing has sprouted at all",
-      "a tiny pale green sprout has just broken through the soil, barely one centimeter tall",
-      "the sprout has DOUBLED in height since yesterday, its two round seed leaves now open wide",
-      "the plant is clearly taller than yesterday: a slim stem with the first true leaf unfolded",
-      "the plant has grown again by half: four small green leaves now catch the light",
-      "a growth spurt: the plant now reaches HALF of its final height, with many leaves",
-      "the plant is now almost at full height; a small tight green bud has formed at the top",
-      "the bud has DOUBLED in size overnight, a first hint of the color of {s} at its tip",
-      "the bud is opening: the very first petals of {s} are clearly unfurling",
-      "{s} is now HALF open, the bright color unmistakable",
-      "{s} is fully open, petals spread wide",
-      "{s} in full glorious bloom, larger and more radiant than yesterday",
+      "a tiny pale green sprout has just broken through the soil, barely one centimetre tall",
+      "the sprout has TRIPLED in height since yesterday: a slim stem with two open seed leaves and the first true leaf",
+      "a growth spurt: the plant now reaches HALF of its final height, with six green leaves catching the light",
+      "the plant is now at FULL height, twice as leafy as yesterday, and a small tight green bud has formed at the top",
+      "the bud has DOUBLED in size and is opening: the first petals of {s} are clearly unfurling",
+      "{s} in full glorious bloom, petals spread wide and radiant",
     ],
     style:
       "delicate botanical illustration, soft focus macro, dreamy minimalism, gentle bokeh",
@@ -355,6 +366,22 @@ export const CHANNELS = [
     weathers: ["flowing gently", "almost still", "in slow rotation", "dissolving at the edges", "sharpening into focus", "breathing in and out"],
   },
 ];
+
+/** Verifica dell'INVARIANTE del ciclo di vita: un canale a progressione deve
+ * avere esattamente CONFIG.ARC_LENGTH_DAYS tappe (e altrettante stageSummaries
+ * se usa il refMode cumulativo), altrimenti l'arco non chiude sul settimo giorno.
+ * Non lancia: logga a caricamento modulo, così l'errore si vede in `wrangler tail`
+ * senza mai mettere offline il canale. */
+for (const c of CHANNELS) {
+  if (c.mode !== "progression") continue;
+  const n = CONFIG.ARC_LENGTH_DAYS;
+  if (c.stageTemplates?.length !== n) {
+    console.error(`[channels] ${c.id}: ${c.stageTemplates?.length} tappe invece di ${n} (ciclo di vita)`);
+  }
+  if (c.refMode === "anchor-cumulative" && c.stageSummaries?.length !== n) {
+    console.error(`[channels] ${c.id}: ${c.stageSummaries?.length} stageSummaries invece di ${n}`);
+  }
+}
 
 /** Solo i canali attivi: il cron genera e il sito mostra soltanto questi.
  * I canali con active:false restano definiti (e il loro archivio resta in KV):

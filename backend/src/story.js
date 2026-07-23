@@ -230,32 +230,36 @@ export async function evolveStory(env, channel, prevState, dateKey) {
 
 
 /* =====================  CANALI A PROGRESSIONE  =====================
-   Un arco = un "progetto" (un quadro che si dipinge, una pianta che cresce)
-   che si completa in esattamente 12 giorni. All'inizio dell'arco si scrive un
-   PIANO di 12 tappe (LLM, con fallback ai template del canale): ogni giorno
+   Un arco = un "progetto" (un'isola che prende vita, una pianta che cresce)
+   che si completa in esattamente CONFIG.ARC_LENGTH_DAYS giorni (7). Il PIANO
+   dell'arco sono le tappe curate del canale (`stageTemplates`): ogni giorno
    mostra la tappa corrispondente — un cambiamento visibile e cumulativo,
-   mentre il resto della scena resta fermo. */
+   mentre il resto della scena resta fermo. Finito il settimo giorno si cambia
+   BASE: nuovo progetto, nuovo keyframe pulito, nuovo seed. */
 
 /** Applica {s} = nome breve del progetto ai template deterministici del canale.
  *  Si usa il `noun` (es. "the sunflower"), MAI il subject completo: nominare il
  *  risultato finale nelle prime tappe fa generare subito il progetto completo. */
 function stagesFromTemplates(channel, project) {
   const name = project.noun ?? project.subject;
-  return channel.stageTemplates.map((t) => t.replaceAll("{s}", name));
+  return channel.stageTemplates
+    .slice(0, CONFIG.ARC_LENGTH_DAYS) // il piano non può essere più lungo del ciclo
+    .map((t) => t.replaceAll("{s}", name));
 }
 
-/** Chiede all'LLM un piano di 12 tappe visive; null se non utilizzabile. */
+/** Chiede all'LLM un piano di ARC_LENGTH_DAYS tappe visive; null se non utilizzabile. */
 async function makePlanWithLLM(env, channel, subject) {
+  const n = CONFIG.ARC_LENGTH_DAYS;
   const sys =
-    "You plan a slow visual story told in 12 daily images of the SAME fixed scene. " +
-    "Reply with EXACTLY 12 numbered lines. Each line: one clearly visible new change " +
+    `You plan a slow visual story told in ${n} daily images of the SAME fixed scene. ` +
+    `Reply with EXACTLY ${n} numbered lines. Each line: one clearly visible new change ` +
     "(something appears, grows or gets completed), purely visual, max 18 words. " +
-    "Line 1 = the very beginning (almost nothing yet). Line 12 = complete. " +
+    `Line 1 = the very beginning (almost nothing yet). Line ${n} = complete. ` +
     "No text in the scene, no people, no violence.";
   const usr =
     `Scene (never changes): ${channel.setting}. ` +
     `Project that progresses day by day: ${subject}. ` +
-    `Write the 12 daily steps.`;
+    `Write the ${n} daily steps.`;
   for (const model of CONFIG.TEXT_MODELS) {
     try {
       const res = await env.AI.run(model, {
@@ -267,9 +271,9 @@ async function makePlanWithLLM(env, channel, subject) {
         .split(/\n+/)
         .map((l) => l.replace(/^\s*\d+[\).\:\-]?\s*/, "").trim())
         .filter((l) => l.length >= 8 && l.length <= 160);
-      if (lines.length >= 10) {
+      if (lines.length >= n) {
         console.log(`[story] piano di progressione scritto da ${model} (${lines.length} tappe)`);
-        return lines.slice(0, 12);
+        return lines.slice(0, n);
       }
       console.warn(`[story] piano LLM non valido da ${model} (${lines.length} righe utili)`);
     } catch (err) {
@@ -282,7 +286,11 @@ async function makePlanWithLLM(env, channel, subject) {
 /** Evoluzione per canali a progressione: piano fisso, una tappa al giorno. */
 async function evolveProgression(env, channel, prevState, dateKey) {
   const dayNumber = dayNumberOf(dateKey);
-  const stagesCount = channel.stageTemplates.length; // 12
+  // Il ciclo di vita è quello configurato (7 giorni); le tappe del canale devono
+  // essere esattamente tante (invariante verificata in channels.js). Il min()
+  // protegge comunque da un canale mal configurato: meglio un arco più corto
+  // che un indice fuori dal piano.
+  const stagesCount = Math.min(channel.stageTemplates.length, CONFIG.ARC_LENGTH_DAYS);
 
   const startArc = async (arcIndex) => {
     const project = channel.projects[arcIndex % channel.projects.length];
@@ -314,7 +322,11 @@ async function evolveProgression(env, channel, prevState, dateKey) {
   // Progetto completato: si apre il successivo (nuovo keyframe, nuova àncora).
   if (dayInArc >= stagesCount) return startArc((prevState.arcIndex ?? 0) + 1);
 
-  const plan = Array.isArray(prevState.plan) && prevState.plan.length >= 10
+  // Il piano salvato vale solo se ha ESATTAMENTE la lunghezza del ciclo attuale:
+  // così, se si cambia la durata dell'arco (o le tappe di un canale), i piani
+  // vecchi rimasti in KV vengono ricostruiti dai template invece di essere
+  // riusati con la lunghezza sbagliata.
+  const plan = Array.isArray(prevState.plan) && prevState.plan.length === stagesCount
     ? prevState.plan
     : stagesFromTemplates(channel, channel.projects[(prevState.arcIndex ?? 0) % channel.projects.length]);
 

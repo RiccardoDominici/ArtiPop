@@ -15,6 +15,7 @@ import { evolveStory, buildImagePrompt, buildEditPrompt, buildProgressPrompt, bu
 import { generateImage, fetchReferenceImage } from "./generate.js";
 import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
 import { renderPage } from "./page.js";
+import { renderHelpPage } from "./help.js";
 
 /** Confronto sicuro della chiave admin (query ?key= oppure header x-artipop-key). */
 function isAuthorized(request, env) {
@@ -281,10 +282,12 @@ export default {
       });
     }
 
-    // ---- Download diretto della Shortcut firmata: /s/<canale>.shortcut ----
+    // ---- Download diretto della Shortcut firmata: /s/<canale>[-base].shortcut ----
     // File .shortcut firmati con `shortcuts sign --mode anyone` (vedi cartella
     // shortcut/ del repo), caricati in KV con `wrangler kv key put shortcut:<id>`.
-    const sMatch = path.match(/^\/s\/([a-z]+)\.shortcut$/);
+    // Il suffisso "-base" serve la variante a 2 azioni (senza aggancio al primo
+    // sfondo): è il piano B documentato nella pagina /aiuto.
+    const sMatch = path.match(/^\/s\/([a-z]+(?:-base)?)\.shortcut$/);
     if (sMatch) {
       const file = await env.KV.get(`shortcut:${sMatch[1]}`, { type: "stream" });
       if (!file) return json({ error: "shortcut non disponibile per questo canale" }, 404);
@@ -452,6 +455,17 @@ export default {
 
     // ---- Healthcheck ----
     if (path === "/health") return json({ ok: true, activeChannels: ACTIVE_CHANNELS.map((c) => c.id) });
+
+    // ---- Pagina di aiuto: troubleshooting + FAQ ----
+    if (path === "/aiuto" || path === "/aiuto.html" || path === "/help") {
+      return new Response(renderHelpPage(), {
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          // Contenuto statico: può stare in cache un'ora.
+          "cache-control": "public, max-age=3600",
+        },
+      });
+    }
 
     // ---- Landing page ----
     if (path === "/" || path === "/index.html") {
