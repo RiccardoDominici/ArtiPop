@@ -203,6 +203,19 @@ function startArc(channel, prevState, dateKey, arcIndex, catalog) {
  * stato di ieri quando punta a una combinazione pubblicata dal catalogo
  * (resolveConcept) — un flusso può benissimo essere a metà arco su un
  * element custom.
+ *
+ * IDEMPOTENZA SULLO STESSO GIORNO. Il cron normale chiama questa funzione al
+ * più una volta per `dateKey` (la guardia sta in runChannel, index.js), ma
+ * `/run/<ch>?force=1` e `/backfill` possono richiamarla più volte sulla
+ * STESSA data, per rifare a mano un giorno venuto male. In quel caso il
+ * calendario non è avanzato di niente, e prima questa funzione avanzava
+ * comunque l'arco di una tappa (un `Math.max(1, ...)` che imponeva un minimo
+ * di un giorno): bastavano poche rigenerazioni per chiudere l'arco settimanale
+ * con giorni di calendario ancora avanzati, rompendo la promessa "un ciclo
+ * completo ogni settimana" di cui sopra. Rigenerare lo stesso giorno resta
+ * però utile per rifarlo MEGLIO: la DOSE (quanto insistere sul cambiamento,
+ * vedi dosePartenza) continua quindi ad aggiornarsi in base all'esito anche a
+ * tappa ferma — è la sola cosa per cui una rigenerazione ha senso.
  */
 export function evolveStory(channel, prevState, dateKey, esito = null, catalog = null) {
   const dayNumber = dayNumberOf(dateKey);
@@ -210,7 +223,27 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
   // Primo giorno in assoluto del flusso.
   if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, 0, catalog);
 
-  const elapsed = Math.max(1, dayNumber - (prevState.dayNumber ?? dayNumber - 1));
+  // Il ripiego a `dayNumber - 1` copre solo gli stati salvati da versioni
+  // precedenti prive del campo `dayNumber`: lì non si sa quanti giorni siano
+  // passati davvero, quindi si assume "un giorno solo", cioè il comportamento
+  // di sempre. Quando `dayNumber` c'è (il caso normale, ormai), si contano i
+  // giorni VERI trascorsi, senza alcun minimo forzato: può essere zero.
+  const prevDayNumber = prevState.dayNumber ?? dayNumber - 1;
+  const elapsed = Math.max(0, dayNumber - prevDayNumber);
+
+  // Stessa data già salvata, rigenerata a mano (vedi il commento della
+  // funzione): la TAPPA non si muove, cambia solo la DOSE in base all'esito.
+  if (elapsed === 0) {
+    const dosePartenza = esito === "poco" ? 1 : esito === "troppo" ? -1 : 0;
+    return {
+      ...prevState,
+      lastDate: dateKey,
+      dayNumber,
+      dosePartenza,
+      esitoPrec: esito ?? null,
+    };
+  }
+
   const dayInArc = (prevState.dayInArc ?? 0) + elapsed;
 
   // Arco concluso (o superato perché il cron ha saltato dei giorni): si cambia

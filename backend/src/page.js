@@ -288,6 +288,7 @@ export function renderPage(metas, origin, dateKey) {
         <h3>Il viaggio finora</h3>
         <button class="playbtn" id="play" hidden>▶ riproduci</button>
       </div>
+      <p class="hint">Lo storico del flusso attraverso le settimane, non solo l'arco in corso — "giorno X di 7" qui sopra racconta invece solo la settimana di oggi.</p>
       <div class="strip" id="strip"><span class="hint">carico l'archivio…</span></div>
     </section>
   </div>
