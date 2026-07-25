@@ -15,6 +15,7 @@ import { CONFIG } from "./config.js";
 import { combine } from "./concepts.js";
 import { resolveProfilo, loadTuning } from "./profiles.js";
 import { FAMILIES } from "./families.js";
+import { allFamilies } from "./catalog.js";
 import { generateDay } from "./daygen.js";
 import { clausesFor } from "./story.js";
 import { encodeFingerprint, formatMeasures } from "./metrics.js";
@@ -28,17 +29,22 @@ const labKey = (runId, n) => `lab:img:${runId}:${n}`;
  * sola generazione al giorno, misura grezza — è la modalità giusta per TARARE,
  * perché mostra dove cadono naturalmente le misure senza che il cancello le
  * spinga dentro il range.
+ *
+ * `catalog` (facoltativo, vedi catalog.js) allarga entrambi gli assi ai
+ * concept/element custom: il lab prova qualunque coppia, anche mista.
  */
-export async function runLabArc(env, { familyId, elementId, days = 7, gate = false, runId }) {
-  const fam = FAMILIES[familyId];
+export async function runLabArc(env, { familyId, elementId, days = 7, gate = false, runId, catalog = null }) {
+  const fams = catalog ? allFamilies(catalog) : FAMILIES;
+  const fam = fams[familyId];
   if (!fam) throw new Error(`concept (schema) sconosciuto: "${familyId}"`);
   const nGiorni = Math.min(Math.max(Number(days) || 7, 2), 7);
 
-  // Range effettivi = default del codice + eventuale override di tuning già in
-  // KV: così il collaudo del lab riflette i valori che si stanno tarando.
+  // Range effettivi = default del codice (o del catalogo) + eventuale override
+  // di tuning già in KV: così il collaudo del lab riflette i valori che si
+  // stanno tarando.
   const tuning = await loadTuning(env);
   const profiloEff = resolveProfilo(fam, tuning);
-  const concept = combine(familyId, elementId, profiloEff);
+  const concept = combine(familyId, elementId, profiloEff, catalog);
 
   const channel = { id: "lab" }; // finto: non tocca KV perché passiamo i byte in memoria
   const giorni = [];

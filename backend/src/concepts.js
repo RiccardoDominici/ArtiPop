@@ -15,6 +15,10 @@
 // soggetto lo richiede; quasi nessuno ne ha bisogno.
 
 import { FAMILIES } from "./families.js";
+// Vedi la nota in cima a catalog.js sul ciclo fra questo file e quello: è
+// innocuo perché nessuno dei due usa questi import al livello superiore del
+// modulo, solo dentro combine() qui sotto, eseguita a richiesta avvenuta.
+import { allFamilies, allElements, resolveConcept } from "./catalog.js";
 
 const CONCEPTS_RAW = [
   /* ===================== CRESCITA (piante) ===================== */
@@ -349,19 +353,35 @@ export function conceptsForFamilies(familyIds) {
    suo concept nativo (con tappe curate); il lab, invece, permette di accoppiare
    QUALSIASI concept con QUALSIASI element, sintetizzando le tappe al volo. */
 
-/** L'elenco degli element (i soggetti), per la UI del lab. */
-export const ELEMENTS = CONCEPTS_RAW.map((c) => ({
-  id: c.id,
-  nome: c.nome,
-  // `soggetto` = nome breve NEUTRO, riusabile con qualunque concept (es. "the
-  // island"); se assente si ripiega su `s`, che però può essere legato al
-  // concept nativo (es. "a lighthouse") e rendere strane certe combinazioni.
-  soggetto: c.soggetto ?? c.s,
-  famigliaNativa: c.famiglia,
-  setting: c.setting,
-  style: c.style,
-  palette: c.palette,
-}));
+/**
+ * L'elenco degli element (i soggetti), per la UI del lab e per /catalogo.
+ *
+ * `tappe`/`extra`: quasi nessun element ne porta di proprie (felce e cactus
+ * sono le eccezioni, vedi CONCEPTS_RAW sopra) — la stragrande maggioranza
+ * eredita quelle della famiglia e qui resta `null`. Quando invece l'element
+ * le definisce, vanno esposte GIÀ RISOLTE (stesso `{s}` sostituito di
+ * CONCEPTS): è per questo che si legge da CONCEPTS (stesso ordine di
+ * CONCEPTS_RAW, uno a uno) invece che da CONCEPTS_RAW grezzo. Senza questo,
+ * GET /catalogo tornerebbe `tappe:null` anche per felce/cactus, nascondendo
+ * proprio le tappe curate che un utente vorrebbe vedere e duplicare.
+ */
+export const ELEMENTS = CONCEPTS_RAW.map((c, i) => {
+  const risolto = CONCEPTS[i]; // stesso id, stesso ordine: {s} già sostituito
+  return {
+    id: c.id,
+    nome: c.nome,
+    // `soggetto` = nome breve NEUTRO, riusabile con qualunque concept (es. "the
+    // island"); se assente si ripiega su `s`, che però può essere legato al
+    // concept nativo (es. "a lighthouse") e rendere strane certe combinazioni.
+    soggetto: c.soggetto ?? c.s,
+    famigliaNativa: c.famiglia,
+    setting: c.setting,
+    style: c.style,
+    palette: c.palette,
+    tappe: c.tappe ? risolto.tappe : null,
+    extra: c.extra ? risolto.extra : null,
+  };
+});
 
 /** L'element con quell'id, o undefined. */
 export function getElement(id) {
@@ -381,16 +401,28 @@ export function getElement(id) {
  *
  * `rangeOverride` (facoltativo) è il profilo effettivo già risolto col tuning:
  * così il lab misura e collauda con i range che si stanno tarando.
+ *
+ * `catalog` (facoltativo) è il catalogo custom già caricato (vedi catalog.js):
+ * quando è passato, famiglia ed element si risolvono dalle mappe UNITE
+ * (built-in + custom), quindi entrambi gli assi possono essere id custom, in
+ * qualsiasi combinazione. Senza `catalog` il comportamento è ESATTAMENTE
+ * quello di prima (retrocompatibile: chi non sa nulla del catalogo continua
+ * a funzionare senza modifiche).
  */
-export function combine(familyId, elementId, rangeOverride = null) {
-  const fam = FAMILIES[familyId];
-  const el = getElement(elementId);
+export function combine(familyId, elementId, rangeOverride = null, catalog = null) {
+  const fams = catalog ? allFamilies(catalog) : FAMILIES;
+  const els = catalog ? allElements(catalog) : ELEMENTS;
+  const fam = fams[familyId];
+  const el = els.find((e) => e.id === elementId);
   if (!fam) throw new Error(`concept (schema) sconosciuto: "${familyId}"`);
   if (!el) throw new Error(`element (soggetto) sconosciuto: "${elementId}"`);
 
   const nativa = fam.id === el.famigliaNativa;
   if (nativa) {
-    const reale = getConcept(elementId);
+    // Con catalogo, resolveConcept copre sia i built-in (delega a getConcept)
+    // sia un element custom "a casa sua" (con le sue tappe o quelle ereditate
+    // dalla famiglia): è la stessa nozione di "coppia nativa", allargata.
+    const reale = catalog ? resolveConcept(elementId, catalog) : getConcept(elementId);
     if (reale) {
       return rangeOverride ? { ...reale, profilo: { ...reale.profilo, ...rangeOverride } } : reale;
     }

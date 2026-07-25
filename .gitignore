@@ -6,3 +6,6 @@ node_modules/
 # Strumento di tuning locale: non fa parte del prodotto, resta fuori dal repo.
 # (HTML + copie del JSON dei range prodotte a mano.)
 tuning/
+
+# Config gemella per pilotare la produzione da locale (bindings remoti).
+backend/wrangler.remote.jsonc

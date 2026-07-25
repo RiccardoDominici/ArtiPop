@@ -25,8 +25,7 @@
 // la Shortcut degli utenti non si rompe mai.
 
 import { CONFIG } from "./config.js";
-import { ACTIVE_CHANNELS, getChannel, resolveChannel, poolFor } from "./channels.js";
-import { getConcept } from "./concepts.js";
+import { ACTIVE_CHANNELS, CHANNELS, getChannel, resolveChannel } from "./channels.js";
 import {
   evolveStory, buildKeyframePrompt, buildDailyPrompt, buildCumulativePrompt,
   buildRealignPrompt, clausesFor, todayKey,
@@ -43,6 +42,13 @@ import { effectiveProfiles, saveTuning, clearTuning, loadTuning, resolveProfilo,
 import { runLabArc, getLabImage } from "./lab.js";
 import { ELEMENTS, getElement, combine } from "./concepts.js";
 import { FAMILIES } from "./families.js";
+// Il catalogo (concept/element aggiunti dall'utente, vedi catalog.js): si
+// carica UNA volta per richiesta e si passa in giro, invece di rileggere KV
+// a ogni chiamata a resolveConcept/poolForWith dentro lo stesso giro.
+import {
+  loadCatalog, saveConcept, saveElement, removeConcept, removeElement,
+  resolveConcept, poolForWith,
+} from "./catalog.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage } from "./help.js";
 
@@ -84,16 +90,19 @@ async function runChannel(env, channelId, { force = false } = {}) {
   //    modello e' corso avanti). E' il segnale con cui il piano si corregge.
   // I range del cancello possono essere stati tarati da fuori (KV `tuning:profili`,
   // vedi profiles.js): li si legge una volta sola e li si usa sia per capire
-  // com'e' andata ieri sia per collaudare oggi.
+  // com'e' andata ieri sia per collaudare oggi. Il catalogo (concept/element
+  // custom, vedi catalog.js) si legge una volta sola per la stessa ragione: un
+  // flusso puo' pescare o essere a meta' arco su una combinazione pubblicata.
+  const catalog = await loadCatalog(env);
   const tuning = await loadTuning(env);
-  const conceptPrec = prevState?.conceptId ? getConcept(prevState.conceptId) : null;
+  const conceptPrec = prevState?.conceptId ? resolveConcept(prevState.conceptId, catalog) : null;
   const esito = conceptPrec
     ? classify(prevState?.misure, resolveProfilo(conceptPrec.famiglia, tuning))
     : null;
 
   // 2. La storia avanza di un giorno, tenendo conto dell'esito.
-  const state = evolveStory(channel, prevState, date, esito);
-  const conceptBase = getConcept(state.conceptId);
+  const state = evolveStory(channel, prevState, date, esito, catalog);
+  const conceptBase = resolveConcept(state.conceptId, catalog);
   const concept = { ...conceptBase, profilo: resolveProfilo(conceptBase.famiglia, tuning) };
   state.improntaPrec = prevState?.impronta ?? null;
 
@@ -161,6 +170,7 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
   if (!channel) throw new Error(`flusso sconosciuto: ${channelId}`);
   if (!channel.active) throw new Error(`flusso in pausa: ${channelId}`);
 
+  const catalog = await loadCatalog(env); // concept/element custom, letti una volta per l'intero backfill
   const tuning = await loadTuning(env); // range tarati da fuori, come nel cron
   let state = null;
   let prevBytes = null;
@@ -172,12 +182,12 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
     const date = todayKey(new Date(Date.now() - i * 86400000));
     // Anche qui l'anello si chiude: l'esito del giorno appena generato decide
     // la tappa del successivo, esattamente come farebbe il cron.
-    const conceptPrec = state?.conceptId ? getConcept(state.conceptId) : null;
+    const conceptPrec = state?.conceptId ? resolveConcept(state.conceptId, catalog) : null;
     const esito = conceptPrec
       ? classify(state?.misure, resolveProfilo(conceptPrec.famiglia, tuning))
       : null;
-    state = evolveStory(channel, state, date, esito);
-    const conceptBase = getConcept(state.conceptId);
+    state = evolveStory(channel, state, date, esito, catalog);
+    const conceptBase = resolveConcept(state.conceptId, catalog);
     const concept = { ...conceptBase, profilo: resolveProfilo(conceptBase.famiglia, tuning) };
     state.improntaPrec = prevFingerprint ? encodeFingerprint(prevFingerprint) : null;
 
@@ -272,16 +282,19 @@ export default {
     const path = url.pathname;
 
     // ---- CORS per lo strumento di tuning (gira da file:// → origine "null") ----
-    // Gli endpoint /tuning e /lab servono la UI locale, quindi devono rispondere
-    // cross-origin. La scrittura resta protetta dalla chiave admin: CORS permette
-    // solo di *tentare* la richiesta, non di autenticarsi.
+    // Gli endpoint /tuning, /lab e /catalogo servono la UI locale, quindi
+    // devono rispondere cross-origin. La scrittura resta protetta dalla
+    // chiave admin: CORS permette solo di *tentare* la richiesta, non di
+    // autenticarsi.
     const CORS = {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
       "access-control-allow-headers": "content-type, x-artipop-key",
       "access-control-max-age": "86400",
     };
-    const isTool = path === "/tuning" || path.startsWith("/lab/");
+    const isTool =
+      path === "/tuning" || path.startsWith("/lab/") ||
+      path === "/catalogo" || path === "/catalogo/concept" || path === "/catalogo/element";
     if (isTool && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -297,9 +310,13 @@ export default {
     // DELETE /tuning      → torna ai default del codice (protetto)
     if (path === "/tuning") {
       if (request.method === "GET") {
+        // Il catalogo entra qui SOLO per i concept (i range dei custom vanno
+        // tarati come quelli built-in). L'elenco `elements` resta quello di
+        // sempre: la forma della risposta è invariata a posta, come da contratto.
+        const catalog = await loadCatalog(env);
         return jsonCors({
-          concepts: await effectiveProfiles(env),
-          defaults: defaultProfiles(),
+          concepts: await effectiveProfiles(env, catalog),
+          defaults: defaultProfiles(catalog),
           elements: ELEMENTS.map((e) => ({
             id: e.id, nome: e.nome, soggetto: e.soggetto, famigliaNativa: e.famigliaNativa,
           })),
@@ -310,13 +327,108 @@ export default {
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ error: "JSON non valido nel corpo della richiesta" }, 400); }
-        const res = await saveTuning(env, body);
+        const catalog = await loadCatalog(env);
+        const res = await saveTuning(env, body, catalog);
         return jsonCors(res, res.ok ? 200 : 400);
       }
       if (request.method === "DELETE") {
         if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
         await clearTuning(env);
         return jsonCors({ ok: true, cleared: true });
+      }
+      return jsonCors({ error: "metodo non ammesso" }, 405);
+    }
+
+    // ---- Catalogo: concept ed element creati dall'utente (vedi catalog.js) ----
+    // GET    /catalogo                  → pubblico: built-in + custom, uniti
+    // PUT    /catalogo/concept          → crea/aggiorna un concept custom (admin)
+    // DELETE /catalogo/concept?id=X     → lo rimuove (admin)
+    // PUT    /catalogo/element          → crea/aggiorna un element custom (admin)
+    // DELETE /catalogo/element?id=X     → lo rimuove (admin)
+    if (path === "/catalogo") {
+      if (request.method !== "GET") return jsonCors({ error: "metodo non ammesso" }, 405);
+      const catalog = await loadCatalog(env);
+
+      // I concept built-in sono le famiglie: stessa forma dei custom, con
+      // `custom:false`. Le tappe restano GREZZE (con {s}): è l'element,
+      // quando ne porta di proprie, a risolverle — qui i built-in non le
+      // portano (vedi ELEMENTS in concepts.js), quindi restano null.
+      const concepts = [
+        ...Object.entries(FAMILIES).map(([id, fam]) => ({
+          id,
+          nome: fam.nome,
+          custom: false,
+          conserva: fam.conserva,
+          tappe: fam.tappe,
+          extra: fam.extra,
+          profilo: {
+            estensione: fam.profilo.estensione,
+            intensita: fam.profilo.intensita,
+            compattezza: fam.profilo.compattezza,
+            monotona: Boolean(fam.profilo.monotona),
+          },
+          maxDeriva: fam.profilo.maxDeriva ?? fam.maxDeriva ?? null,
+          maxDegrado: fam.profilo.maxDegrado ?? fam.maxDegrado ?? null,
+        })),
+        ...Object.values(catalog.concepts).map((c) => ({ ...c, custom: true })),
+      ];
+
+      const elements = [
+        // `tappe`/`extra` vengono da ELEMENTS (concepts.js): null per la
+        // stragrande maggioranza (ereditano quelle della famiglia), già
+        // risolte ({s} sostituito) per i pochi element — felce, cactus — che
+        // ne portano di proprie e dedicate.
+        ...ELEMENTS.map((e) => ({
+          id: e.id,
+          nome: e.nome,
+          custom: false,
+          s: e.soggetto,
+          soggetto: e.soggetto,
+          setting: e.setting,
+          style: e.style,
+          palette: e.palette,
+          famigliaNativa: e.famigliaNativa,
+          tappe: e.tappe,
+          extra: e.extra,
+          pubblicato: true,
+          canale: CHANNELS.find((c) => c.famiglie.includes(e.famigliaNativa))?.id ?? null,
+        })),
+        ...Object.values(catalog.elements).map((e) => ({ ...e, custom: true })),
+      ];
+
+      return jsonCors({ concepts, elements });
+    }
+
+    if (path === "/catalogo/concept") {
+      if (request.method === "PUT" || request.method === "POST") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        let body;
+        try { body = await request.json(); }
+        catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
+        const res = await saveConcept(env, body);
+        return jsonCors(res, res.ok ? 200 : 400);
+      }
+      if (request.method === "DELETE") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        const res = await removeConcept(env, url.searchParams.get("id") || "");
+        return jsonCors(res, res.ok ? 200 : 400);
+      }
+      return jsonCors({ error: "metodo non ammesso" }, 405);
+    }
+
+    if (path === "/catalogo/element") {
+      if (request.method === "PUT" || request.method === "POST") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        let body;
+        try { body = await request.json(); }
+        catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
+        const res = await saveElement(env, body);
+        return jsonCors(res, res.ok ? 200 : 400);
+      }
+      if (request.method === "DELETE") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        const res = await removeElement(env, url.searchParams.get("id") || "");
+        return jsonCors(res, res.ok ? 200 : 400);
       }
       return jsonCors({ error: "metodo non ammesso" }, 405);
     }
@@ -343,7 +455,8 @@ export default {
       // è disponibile. Il runId identifica le immagini temporanee in KV.
       const runId = `${familyId}-${elementId}-${Date.now().toString(36)}`;
       try {
-        const res = await runLabArc(env, { familyId, elementId, days, gate, runId });
+        const catalog = await loadCatalog(env);
+        const res = await runLabArc(env, { familyId, elementId, days, gate, runId, catalog });
         return jsonCors(res);
       } catch (err) {
         console.error(`[lab] ${familyId}+${elementId} fallito: ${err.message}`);
@@ -433,6 +546,7 @@ export default {
 
     // ---- API JSON: stato di tutti i flussi ----
     if (path === "/api/channels") {
+      const catalog = await loadCatalog(env);
       const metas = await Promise.all(ACTIVE_CHANNELS.map((c) => getMeta(env, c.id)));
       return json({
         channels: ACTIVE_CHANNELS.map((c, i) => ({
@@ -443,7 +557,8 @@ export default {
           tagline: c.tagline,
           taglineEn: c.taglineEn,
           famiglie: c.famiglie,
-          concepts: poolFor(c).length,
+          // Pool VERO: built-in più gli element custom pubblicati su questo flusso.
+          concepts: poolForWith(c, catalog).length,
           url: `${url.origin}/w/${c.id}`,
           today: metas[i],
         })),
@@ -501,8 +616,9 @@ export default {
       const channel = getChannel(ch);
       if (!channel || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "servono ?ch= e ?date=" }, 400);
 
+      const catalog = await loadCatalog(env);
       const state = await getState(env, ch);
-      const concept = state?.conceptId ? getConcept(state.conceptId) : null;
+      const concept = state?.conceptId ? resolveConcept(state.conceptId, catalog) : null;
       if (!state?.anchorDate || !concept) {
         return json({ error: "stato non compatibile (serve un flusso già attivo)" }, 400);
       }
@@ -570,8 +686,9 @@ export default {
       }
       const m = compare(fa, fb);
       // Se si indica anche ?concept= si vede il verdetto che avrebbe dato il cancello.
+      // resolveConcept copre anche un id custom (built-in o element pubblicato).
       const conceptId = url.searchParams.get("concept");
-      const concept = conceptId ? getConcept(conceptId) : null;
+      const concept = conceptId ? resolveConcept(conceptId, await loadCatalog(env)) : null;
       return json({
         ok: true, ch, a, b, ms: Date.now() - t0,
         misure: m, riga: formatMeasures(m),
@@ -584,8 +701,11 @@ export default {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const ch = url.searchParams.get("ch") || "";
       const date = url.searchParams.get("date") || "";
+      const catalogVis = await loadCatalog(env);
       const conceptId = url.searchParams.get("concept");
-      const concept = conceptId ? getConcept(conceptId) : getConcept((await getState(env, ch))?.conceptId);
+      const concept = conceptId
+        ? resolveConcept(conceptId, catalogVis)
+        : resolveConcept((await getState(env, ch))?.conceptId, catalogVis);
       if (!concept) return json({ error: "servono ?concept= oppure un flusso già attivo" }, 400);
       const ref = await referenceFor(env, ch, date || null);
       if (!ref) return json({ error: "immagine non recuperabile" }, 404);
@@ -642,10 +762,11 @@ export default {
 
     // ---- Healthcheck ----
     if (path === "/health") {
+      const catalog = await loadCatalog(env);
       return json({
         ok: true,
         flussi: ACTIVE_CHANNELS.map((c) => ({
-          id: c.id, famiglie: c.famiglie, concepts: poolFor(c).length,
+          id: c.id, famiglie: c.famiglie, concepts: poolForWith(c, catalog).length,
         })),
         misuratore: Boolean(env.IMAGES),
       });

@@ -18,8 +18,12 @@
 //      recupera; se ha corso avanti non si sta fermi a guardare.
 
 import { CONFIG } from "./config.js";
-import { poolFor } from "./channels.js";
-import { getConcept } from "./concepts.js";
+// Il pool di produzione include ora anche gli element custom pubblicati: si
+// passa il catalogo, non si legge più solo poolFor() (built-in-only, resta in
+// channels.js per i controlli a caricamento modulo). resolveConcept sostituisce
+// getConcept ovunque si riprenda lo stato di un flusso salvato, perché quello
+// stato può puntare a una combinazione pubblicata dal catalogo.
+import { poolForWith, resolveConcept } from "./catalog.js";
 
 /** Hash FNV-1a → intero positivo stabile: seed riproducibile per flusso+arco. */
 function fnv1a(str) {
@@ -53,9 +57,13 @@ export function dayNumberOf(dateKey) {
  * quelli usati di recente. Quando il serbatoio si esaurisce si riparte da capo,
  * escludendo solo l'ultimo visto: così non capita mai lo stesso concept due
  * settimane di fila, nemmeno al giro di boa.
+ *
+ * `catalog` (facoltativo) allarga il pool con gli element custom pubblicati
+ * su questo flusso (vedi catalog.js: poolForWith). Senza catalogo si pesca
+ * solo fra i built-in, come prima.
  */
-export function pickConcept(channel, prevState, arcIndex) {
-  const pool = poolFor(channel);
+export function pickConcept(channel, prevState, arcIndex, catalog = null) {
+  const pool = poolForWith(channel, catalog);
   if (pool.length === 0) throw new Error(`flusso ${channel.id}: nessun concept disponibile`);
 
   const usati = Array.isArray(prevState?.usati) ? prevState.usati : [];
@@ -161,8 +169,8 @@ export function clausesFor(concept, stage, dose = 0, extraIndex = null) {
  * Apre un arco nuovo: concept nuovo, keyframe pulito, seed nuovo.
  * `arcIndex` cresce all'infinito e serve solo a variare la pescata.
  */
-function startArc(channel, prevState, dateKey, arcIndex) {
-  const { concept, usati } = pickConcept(channel, prevState, arcIndex);
+function startArc(channel, prevState, dateKey, arcIndex, catalog) {
+  const { concept, usati } = pickConcept(channel, prevState, arcIndex, catalog);
   const dayNumber = dayNumberOf(dateKey);
   return {
     lastDate: dateKey,
@@ -189,12 +197,18 @@ function startArc(channel, prevState, dateKey, arcIndex) {
  * "forma" | null). Con `null` il piano avanza a calendario, cioè esattamente il
  * comportamento della versione precedente: è il ripiego per il primo giorno di
  * un arco e per quando la misura non è disponibile.
+ *
+ * `catalog` (facoltativo) è il catalogo custom già caricato: serve sia per
+ * pescare il concept di un arco nuovo (pickConcept) sia per risolvere lo
+ * stato di ieri quando punta a una combinazione pubblicata dal catalogo
+ * (resolveConcept) — un flusso può benissimo essere a metà arco su un
+ * element custom.
  */
-export function evolveStory(channel, prevState, dateKey, esito = null) {
+export function evolveStory(channel, prevState, dateKey, esito = null, catalog = null) {
   const dayNumber = dayNumberOf(dateKey);
 
   // Primo giorno in assoluto del flusso.
-  if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, 0);
+  if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, 0, catalog);
 
   const elapsed = Math.max(1, dayNumber - (prevState.dayNumber ?? dayNumber - 1));
   const dayInArc = (prevState.dayInArc ?? 0) + elapsed;
@@ -203,15 +217,15 @@ export function evolveStory(channel, prevState, dateKey, esito = null) {
   // mondo. Non si "recuperano" i giorni persi di un arco finito: la settimana
   // successiva comincia comunque da un keyframe pulito.
   if (dayInArc >= CONFIG.ARC_LENGTH_DAYS) {
-    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1);
+    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1, catalog);
   }
 
-  const concept = getConcept(prevState.conceptId);
+  const concept = resolveConcept(prevState.conceptId, catalog);
   if (!concept) {
     // Il concept è sparito dalla libreria (rinominato o rimosso): invece di
     // rompersi, il flusso apre un arco nuovo.
     console.warn(`[story] ${channel.id}: concept "${prevState.conceptId}" non più in libreria, riparto`);
-    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1);
+    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1, catalog);
   }
 
   const ultimaTappa = concept.tappe.length - 1;

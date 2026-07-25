@@ -17,6 +17,11 @@
 // nuovi range.
 
 import { FAMILIES } from "./families.js";
+// I concept custom del catalogo entrano nella taratura esattamente come le
+// famiglie built-in: allFamilies() li restituisce già nella stessa forma
+// (profilo, maxDeriva, maxDegrado), quindi da qui in giù non c'è bisogno di
+// distinguerli.
+import { allFamilies } from "./catalog.js";
 
 const TUNING_KEY = "tuning:profili";
 
@@ -50,10 +55,15 @@ function famBase(fam) {
   };
 }
 
-/** Profili di default presi dal codice (famiglia per famiglia). */
-export function defaultProfiles() {
+/**
+ * Profili di default (famiglia per famiglia). Con `catalog` include anche i
+ * concept custom, coi valori scritti nel catalogo stesso come "default" —
+ * non hanno un default nel codice, quindi è quello.
+ */
+export function defaultProfiles(catalog = null) {
   const out = {};
-  for (const [id, fam] of Object.entries(FAMILIES)) {
+  const fams = catalog ? allFamilies(catalog) : FAMILIES;
+  for (const [id, fam] of Object.entries(fams)) {
     out[id] = { nome: fam.nome, ...famBase(fam) };
   }
   return out;
@@ -109,11 +119,16 @@ export function resolveProfilo(family, tuning) {
   return mergeProfilo(famBase(family), tuning?.[family.id]);
 }
 
-/** Profili effettivi di TUTTE le famiglie (per la GET /tuning e la UI). */
-export async function effectiveProfiles(env) {
+/**
+ * Profili effettivi di TUTTE le famiglie (per la GET /tuning e la UI). Con
+ * `catalog` include anche i concept custom, così l'editor dei range li tara
+ * come gli altri.
+ */
+export async function effectiveProfiles(env, catalog = null) {
   const tuning = await loadTuning(env);
   const out = {};
-  for (const [id, fam] of Object.entries(FAMILIES)) {
+  const fams = catalog ? allFamilies(catalog) : FAMILIES;
+  for (const [id, fam] of Object.entries(fams)) {
     const p = mergeProfilo(famBase(fam), tuning[id]);
     out[id] = {
       nome: fam.nome,
@@ -133,18 +148,20 @@ export async function effectiveProfiles(env) {
 /**
  * Valida e salva un JSON di tuning in KV. Ritorna { ok, errori[] }.
  * Accetta un oggetto { profili: { <famigliaId>: {...} } } oppure direttamente
- * la mappa dei profili. Ignora le chiavi che non sono famiglie note.
+ * la mappa dei profili. Ignora le chiavi che non sono famiglie note (built-in
+ * o, con `catalog`, anche concept custom).
  */
-export async function saveTuning(env, incoming) {
+export async function saveTuning(env, incoming, catalog = null) {
   const errori = [];
   const profiliIn = incoming?.profili && typeof incoming.profili === "object" ? incoming.profili : incoming;
   if (!profiliIn || typeof profiliIn !== "object") {
     return { ok: false, errori: ["JSON non valido: manca l'oggetto dei profili"] };
   }
 
+  const fams = catalog ? allFamilies(catalog) : FAMILIES;
   const puliti = {};
   for (const [id, prof] of Object.entries(profiliIn)) {
-    if (!FAMILIES[id]) { errori.push(`concept sconosciuto ignorato: "${id}"`); continue; }
+    if (!fams[id]) { errori.push(`concept sconosciuto ignorato: "${id}"`); continue; }
     if (!prof || typeof prof !== "object") { errori.push(`${id}: profilo non valido`); continue; }
 
     const p = {};
