@@ -65,6 +65,10 @@ export const LEGACY_ALIASES = {
   bloom: "natura",
   studio: "quiete",
   // Canali mai distribuiti agli utenti, mappati per completezza.
+  // `neon` mancava e i suoi sette giorni d'archivio erano irraggiungibili:
+  // /w/neon?date=... rispondeva "flusso sconosciuto" invece di servirli.
+  // Era una città al neon, cioè un timelapse urbano → l'eredità è di `citta`.
+  neon: "citta",
   horizon: "natura",
   atelier: "quiete",
   cosmos: "citta",
