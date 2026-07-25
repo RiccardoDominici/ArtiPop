@@ -292,9 +292,16 @@ export default {
       "access-control-allow-headers": "content-type, x-artipop-key",
       "access-control-max-age": "86400",
     };
+    // Anche le API di sola lettura servono lo strumento: la sua tab "Archivio"
+    // elenca i flussi (/api/channels), le date in archivio (/api/archive/...) e
+    // misura due giorni già pubblicati (/test-metrics). Senza CORS quelle fetch
+    // partono da un'origine "null" e il browser le blocca, quindi la tab resta
+    // vuota pur essendo tutto raggiungibile. Le immagini no: i tag <img> non
+    // passano dal controllo di origine, e infatti quelle si vedevano già.
     const isTool =
       path === "/tuning" || path.startsWith("/lab/") ||
-      path === "/catalogo" || path === "/catalogo/concept" || path === "/catalogo/element";
+      path === "/catalogo" || path === "/catalogo/concept" || path === "/catalogo/element" ||
+      path === "/api/channels" || path.startsWith("/api/archive/") || path === "/test-metrics";
     if (isTool && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -548,7 +555,7 @@ export default {
     if (path === "/api/channels") {
       const catalog = await loadCatalog(env);
       const metas = await Promise.all(ACTIVE_CHANNELS.map((c) => getMeta(env, c.id)));
-      return json({
+      return jsonCors({
         channels: ACTIVE_CHANNELS.map((c, i) => ({
           id: c.id,
           name: c.name,
@@ -570,7 +577,7 @@ export default {
     if (archMatch) {
       const limit = Math.min(Number(url.searchParams.get("limit")) || 60, 365);
       const dates = await listArchiveDates(env, archMatch[1], limit);
-      return json({ channel: archMatch[1], dates });
+      return jsonCors({ channel: archMatch[1], dates });
     }
 
     // ---- Generazione manuale/interna di un flusso: /run/<flusso>?[force=1] ----
@@ -671,25 +678,27 @@ export default {
 
     // ---- Sonda del misuratore (admin): /test-metrics?ch=X&a=DATA&b=DATA ----
     if (path === "/test-metrics") {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      // jsonCors e non json: lo strumento di tuning chiama questa sonda dalla sua
+      // tab Archivio per misurare due giorni gia' pubblicati, e gira da file://.
+      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
       const ch = url.searchParams.get("ch") || "natura";
       const a = url.searchParams.get("a");
       const b = url.searchParams.get("b");
-      if (!a || !b) return json({ error: "servono ?a= e ?b= (due date YYYY-MM-DD)" }, 400);
+      if (!a || !b) return jsonCors({ error: "servono ?a= e ?b= (due date YYYY-MM-DD)" }, 400);
       const t0 = Date.now();
       const [fa, fb] = await Promise.all([
         fingerprintFromArchive(env, ch, a),
         fingerprintFromArchive(env, ch, b),
       ]);
       if (!fa || !fb) {
-        return json({ ok: false, bindingPresente: Boolean(env.IMAGES), diagnosi: await diagnose(env, ch, a) }, 502);
+        return jsonCors({ ok: false, bindingPresente: Boolean(env.IMAGES), diagnosi: await diagnose(env, ch, a) }, 502);
       }
       const m = compare(fa, fb);
       // Se si indica anche ?concept= si vede il verdetto che avrebbe dato il cancello.
       // resolveConcept copre anche un id custom (built-in o element pubblicato).
       const conceptId = url.searchParams.get("concept");
       const concept = conceptId ? resolveConcept(conceptId, await loadCatalog(env)) : null;
-      return json({
+      return jsonCors({
         ok: true, ch, a, b, ms: Date.now() - t0,
         misure: m, riga: formatMeasures(m),
         verdetto: concept ? verdict(m, concept.profilo) : null,
