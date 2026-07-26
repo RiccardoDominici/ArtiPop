@@ -5,8 +5,10 @@
 //    drag/frecce/bottoni su desktop), una card per canale attivo.
 //  - Ogni card mostra il wallpaper di oggi dentro un mockup di iPhone con
 //    orologio live: la "preview" reale di come apparirà la lock screen.
-//  - Galleria "il viaggio": chip con le date dell'archivio permanente; un tap
-//    carica quel giorno nel mockup (le immagini d'archivio hanno cache lunga).
+//  - "Il viaggio finora": l'archivio permanente si sfoglia SOLO dentro il
+//    mockup (niente striscia di miniature, era ridondante col mockup stesso).
+//    Sotto al mockup restano data del fotogramma, posizione "N di M" e le
+//    frecce giorno prec./succ.; le immagini d'archivio hanno cache lunga.
 //  - Sfondo ambient con gradiente animato che segue i colori del canale in cima.
 //  - Nessuna risorsa esterna: font di sistema, CSS e JS inline.
 
@@ -179,7 +181,7 @@ export function renderPage(metas, origin, dateKey) {
   .btn.ghost { background: var(--card); border: 1px solid var(--card-border); color: var(--text); backdrop-filter: blur(14px); }
   .btn.ghost:hover { background: rgba(255,255,255,.11); }
 
-  /* ---------- galleria/viaggio: pellicola di miniature ---------- */
+  /* ---------- galleria/viaggio: sfogliata dentro l'anteprima ---------- */
   section.journey { margin-top: 1.6rem; text-align: center; }
   .journey .jhead { display: flex; align-items: center; justify-content: center; gap: .8rem; margin-bottom: .8rem; }
   .journey h3 { font-size: .82rem; font-weight: 650; color: var(--dim); text-transform: uppercase; letter-spacing: .12em; }
@@ -190,27 +192,23 @@ export function renderPage(metas, origin, dateKey) {
   }
   .playbtn:hover { background: rgba(255,255,255,.12); }
   .playbtn.playing { background: linear-gradient(100deg, var(--a1), var(--a2)); border-color: transparent; color: #fff; }
-  .strip {
-    display: flex; gap: .6rem; overflow-x: auto; padding: .2rem .4rem .6rem;
-    max-width: min(560px, 92vw); margin-inline: auto; scrollbar-width: none;
-    scroll-snap-type: x proximity;
+  /* Niente più striscia di miniature (era ridondante: il mockup già scorre
+     l'archivio col timelapse). Al suo posto, solo i comandi per sfogliare
+     l'anteprima giorno per giorno e capire a che punto del viaggio si è. */
+  .daynav { display: flex; align-items: center; justify-content: center; gap: .9rem; }
+  .dayctrl {
+    width: 2.3rem; height: 2.3rem; border-radius: 50%;
+    border: 1px solid var(--card-border); background: var(--card);
+    backdrop-filter: blur(14px); color: var(--text); font-size: 1.05rem;
+    cursor: pointer; transition: transform .15s ease, background .2s ease;
+    display: grid; place-items: center;
   }
-  .strip::-webkit-scrollbar { display: none; }
-  .thumb {
-    flex: 0 0 auto; width: 64px; aspect-ratio: 6 / 13;
-    border-radius: 12px; overflow: hidden; position: relative;
-    border: 2px solid var(--card-border); background: var(--card);
-    cursor: pointer; padding: 0; scroll-snap-align: center;
-    transition: transform .2s ease, border-color .25s ease;
-  }
-  .thumb:hover { transform: translateY(-3px); }
-  .thumb.on { border-color: var(--a1); box-shadow: 0 4px 18px rgba(0,0,0,.4); }
-  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .thumb .tdate {
-    position: absolute; left: 0; right: 0; bottom: 0; padding: .9rem .2rem .25rem;
-    background: linear-gradient(transparent, rgba(0,0,0,.75));
-    color: #fff; font-size: .58rem; font-weight: 700; letter-spacing: .02em;
-  }
+  .dayctrl:hover { transform: scale(1.09); background: rgba(255,255,255,.12); }
+  .dayctrl:active { transform: scale(.94); }
+  .dayctrl:disabled { opacity: .35; cursor: default; transform: none; }
+  .dayinfo { min-width: 8rem; display: grid; gap: .1rem; }
+  .dayinfo .ddate { font-size: .92rem; font-weight: 650; text-transform: capitalize; }
+  .dayinfo .dpos { font-size: .74rem; color: var(--dim); }
 
   /* ---------- setup ---------- */
   section.setup { margin-top: 3.4rem; }
@@ -288,8 +286,20 @@ export function renderPage(metas, origin, dateKey) {
         <h3>Il viaggio finora</h3>
         <button class="playbtn" id="play" hidden>▶ riproduci</button>
       </div>
-      <p class="hint">Lo storico del flusso attraverso le settimane, non solo l'arco in corso — "giorno X di 7" qui sopra racconta invece solo la settimana di oggi.</p>
-      <div class="strip" id="strip"><span class="hint">carico l'archivio…</span></div>
+      <p class="hint">Lo storico del flusso attraverso le settimane, non solo l'arco in corso — "giorno X di 7" qui sopra racconta invece solo la settimana di oggi. Sfoglialo nell'anteprima con le frecce qui sotto, o lascialo scorrere da solo.</p>
+      <!-- Niente più miniature: l'archivio si guarda nel mockup qui sopra.
+           Qui restano solo data del fotogramma, posizione nel viaggio e le
+           frecce giorno prec./succ. — senza, si perderebbe ogni riferimento
+           a quale giorno si sta vedendo. -->
+      <p class="hint" id="jmsg" hidden></p>
+      <div class="daynav" id="daynav" hidden>
+        <button class="dayctrl" id="dayprev" aria-label="Giorno precedente dell'archivio">‹</button>
+        <div class="dayinfo">
+          <span class="ddate" id="ddate"></span>
+          <span class="dpos" id="dpos"></span>
+        </div>
+        <button class="dayctrl" id="daynext" aria-label="Giorno successivo dell'archivio">›</button>
+      </div>
     </section>
   </div>
 
@@ -358,8 +368,13 @@ const TODAY = ${JSON.stringify(dateKey)};
 
 const deckEl = document.getElementById("deck");
 const dotsEl = document.getElementById("dots");
-const stripEl = document.getElementById("strip");
 const playEl = document.getElementById("play");
+const jmsgEl = document.getElementById("jmsg");
+const daynavEl = document.getElementById("daynav");
+const ddateEl = document.getElementById("ddate");
+const dposEl = document.getElementById("dpos");
+const dayPrevEl = document.getElementById("dayprev");
+const dayNextEl = document.getElementById("daynext");
 const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
@@ -488,21 +503,24 @@ function tickClock() {
 }
 setInterval(tickClock, 10_000);
 
-/* ---------- galleria del viaggio (archivio permanente) ----------
-   Pellicola di miniature: un mini-telefono per ogni giorno archiviato.
-   Le immagini d'archivio hanno cache immutabile, quindi dopo la prima
-   visita le miniature sono gratis; loading=lazy carica solo le visibili. */
+/* ---------- viaggio nell'archivio (sfogliato dentro il mockup) ----------
+   Niente più striscia di miniature: le date d'archivio servono solo a far
+   scorrere l'anteprima avanti/indietro e a mostrare "N di M" sotto al
+   mockup, così si capisce a colpo d'occhio dove si è nel viaggio. */
 async function loadArchive(chId) {
-  stripEl.innerHTML = '<span class="hint">carico l\\'archivio…</span>';
+  jmsgEl.hidden = false;
+  jmsgEl.textContent = "carico l'archivio…";
+  daynavEl.hidden = true;
   playEl.hidden = true;
   try {
     if (!archiveCache[chId]) {
       const res = await fetch(\`/api/archive/\${chId}?limit=30\`);
       archiveCache[chId] = (await res.json()).dates || [];
     }
-    renderStrip(chId);
+    renderJourney(chId);
   } catch {
-    stripEl.innerHTML = '<span class="hint">archivio non disponibile</span>';
+    jmsgEl.hidden = false;
+    jmsgEl.textContent = "archivio non disponibile";
   }
 }
 
@@ -510,38 +528,54 @@ function srcFor(chId, date, isToday) {
   return isToday ? \`/w/\${chId}?v=\${TODAY}\` : \`/w/\${chId}?date=\${date}\`;
 }
 
-function renderStrip(chId) {
+function renderJourney(chId) {
   if (CHANNELS[order[0]].id !== chId) return; // nel frattempo l'utente ha cambiato card
   const dates = archiveCache[chId];
-  if (!dates || dates.length === 0) {
-    stripEl.innerHTML = '<span class="hint">il viaggio inizia oggi ✨</span>';
+  // Con meno di 2 giorni archiviati non c'è nulla da sfogliare: niente
+  // frecce, niente tasto play, solo un avviso — evita comandi inutili.
+  const hasJourney = !!dates && dates.length >= 2;
+  daynavEl.hidden = !hasJourney;
+  playEl.hidden = !hasJourney;
+  jmsgEl.hidden = hasJourney;
+  if (!hasJourney) {
+    jmsgEl.textContent = "il viaggio inizia oggi ✨";
     return;
   }
-  stripEl.innerHTML = "";
-  dates.forEach((d) => {
-    const isToday = d === TODAY;
-    const btn = document.createElement("button");
-    btn.className = "thumb" + ((previewDate ?? TODAY) === d ? " on" : "");
-    btn.title = d;
-    btn.innerHTML =
-      \`<img src="\${srcFor(chId, d, isToday)}" loading="lazy" decoding="async" alt="\${d}" draggable="false" />\` +
-      \`<span class="tdate">\${isToday ? "oggi" : new Date(d + "T00:00:00")
-        .toLocaleDateString("it-IT", { day: "numeric", month: "short" })}</span>\`;
-    btn.dataset.date = d;
-    btn.addEventListener("click", () => { stopPlayback(); previewDay(chId, d, isToday); });
-    stripEl.appendChild(btn);
-  });
-  // Il tasto ▶/⏸ ha senso solo con almeno 2 giorni di viaggio.
-  playEl.hidden = dates.length < 2;
+  updateDayNav(chId);
   // Anteprima "stile GIF": il timelapse parte da solo (salvo motion ridotto).
-  if (dates.length >= 2 && !playing && !prefersStill) startPlayback();
+  if (!playing && !prefersStill) startPlayback();
 }
 
-/* Evidenzia nella pellicola il giorno mostrato nel mockup (senza ricostruire il DOM). */
-function highlightStrip(date) {
-  stripEl.querySelectorAll(".thumb").forEach((t) =>
-    t.classList.toggle("on", t.dataset.date === date));
+/* Aggiorna data e posizione ("N di M") sotto il mockup, e abilita/disabilita
+   le frecce ai bordi dell'archivio (senza ricostruire il DOM). */
+function updateDayNav(chId) {
+  const dates = archiveCache[chId] || [];
+  const date = previewDate ?? TODAY;
+  const idx = dates.indexOf(date); // 0 = oggi (più recente) ... length-1 = il giorno più vecchio
+  ddateEl.textContent = date === TODAY
+    ? "oggi"
+    : new Date(date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" });
+  // Posizione letta come progresso del viaggio: 1 = il giorno più vecchio, M = oggi.
+  dposEl.textContent = dates.length ? \`\${idx === -1 ? "?" : dates.length - idx} di \${dates.length}\` : "";
+  dayPrevEl.disabled = idx === -1 || idx >= dates.length - 1;
+  dayNextEl.disabled = idx <= 0;
 }
+
+/* Un passo avanti/indietro nell'archivio: dir=-1 giorno precedente (più
+   vecchio), dir=+1 giorno successivo (più recente, verso oggi). */
+function stepDay(dir) {
+  const chId = CHANNELS[order[0]].id;
+  const dates = archiveCache[chId] || [];
+  const idx = dates.indexOf(previewDate ?? TODAY);
+  if (idx === -1) return;
+  const targetIdx = idx - dir;
+  if (targetIdx < 0 || targetIdx >= dates.length) return; // già al bordo dell'archivio
+  stopPlayback();
+  const d = dates[targetIdx];
+  previewDay(chId, d, d === TODAY);
+}
+dayPrevEl.addEventListener("click", () => stepDay(-1));
+dayNextEl.addEventListener("click", () => stepDay(1));
 
 /* Mostra un giorno nel mockup della card in cima (crossfade). */
 function previewDay(chId, date, isToday) {
@@ -553,7 +587,7 @@ function previewDay(chId, date, isToday) {
   const pre = new Image();
   pre.onload = () => { top.src = src; top.style.opacity = 1; };
   pre.src = src;
-  highlightStrip(date);
+  updateDayNav(chId);
 }
 
 /* ---------- timelapse "GIF" del viaggio nel mockup ---------- */
