@@ -286,7 +286,11 @@ export function renderPage(metas, origin, dateKey) {
         <h3>Il viaggio finora</h3>
         <button class="playbtn" id="play" hidden>▶ riproduci</button>
       </div>
-      <p class="hint">Lo storico del flusso attraverso le settimane, non solo l'arco in corso — "giorno X di 7" qui sopra racconta invece solo la settimana di oggi. Sfoglialo nell'anteprima con le frecce qui sotto, o lascialo scorrere da solo.</p>
+      <!-- Didascalia volutamente corta: prima erano quattro righe per spiegare
+           due frecce, e pesavano più dei comandi che descrivevano. Resta solo
+           il chiarimento che serviva davvero (è lo storico di tutte le
+           settimane, non i 7 giorni dell'arco in corso). -->
+      <p class="hint">Tutte le settimane, non solo quella in corso.</p>
       <!-- Niente più miniature: l'archivio si guarda nel mockup qui sopra.
            Qui restano solo data del fotogramma, posizione nel viaggio e le
            frecce giorno prec./succ. — senza, si perderebbe ogni riferimento
