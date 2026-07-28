@@ -32,7 +32,7 @@ import {
 } from "./story.js";
 import { generateImage, generateWithGate, referenceFor } from "./generate.js";
 import { generateDay } from "./daygen.js";
-import { getState, putState, putImage, getImage, getMeta, listArchiveDates } from "./storage.js";
+import { getState, putState, putImage, getImage, getMeta, getGiorno, listArchiveDates } from "./storage.js";
 import {
   fingerprintFromBytes, fingerprintFromArchive, compare, verdict, classify,
   encodeFingerprint, decodeFingerprint, formatMeasures, diagnose,
@@ -49,6 +49,7 @@ import {
   loadCatalog, saveConcept, saveElement, removeConcept, removeElement,
   resolveConcept, poolForWith,
 } from "./catalog.js";
+import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage } from "./help.js";
 
@@ -66,6 +67,45 @@ function json(data, status = 200) {
     status,
     headers: { "content-type": "application/json; charset=utf-8" },
   });
+}
+
+/**
+ * Canali storici a tema fisso (vedi CONTRATTO): prima della carta d'identità,
+ * ogni giorno di questi canali era sempre la stessa coppia concept×element —
+ * è l'unico caso in cui ricostruirla a posteriori è ONESTO. Tappa, misure,
+ * tentativi e profilo NON sono deducibili e restano null: erano scelti giorno
+ * per giorno, non fissi.
+ * I tre flussi attivi (natura/citta/quiete) NON sono qui apposta: pescano un
+ * concept diverso ogni settimana, quindi per i loro giorni senza carta
+ * d'identità registrata non c'è niente di onesto da ricostruire (→ "assente").
+ */
+const RICOSTRUZIONE_STORICA = {
+  island: { concept: "costruzione", element: "isola" },
+  bloom: { concept: "crescita", element: "girasole" },
+  studio: { concept: "accumulo", element: "studio" },
+  neon: { concept: "timelapse", element: "neon" },
+};
+
+/** Carta d'identità di un giorno per cui non esiste `giorno:<canale>:<data>` in KV. */
+function giornoRicostruito(canale, data) {
+  const base = {
+    data, canale,
+    concept: null, conceptNome: null, element: null, elementNome: null,
+    arco: null, giornoNellArco: null, tappa: null, testoTappa: null,
+    modello: null, tentativi: null, misure: null, collaudo: null, profilo: null,
+    origine: "assente",
+  };
+  const ric = RICOSTRUZIONE_STORICA[canale];
+  if (!ric) return base;
+  const fam = FAMILIES[ric.concept];
+  const el = getElement(ric.element);
+  if (!fam || !el) return base; // difensivo: non dovrebbe succedere
+  return {
+    ...base,
+    concept: ric.concept, conceptNome: fam.nome,
+    element: ric.element, elementNome: el.nome,
+    origine: "ricostruita",
+  };
 }
 
 /**
@@ -115,17 +155,25 @@ async function runChannel(env, channelId, { force = false } = {}) {
   const img = await generateDay(env, channel, concept, state);
 
   // 4. Persistenza: immagine, metadati, stato (con l'impronta per domani).
+  // La carta d'identità del giorno (giorno:<canale>:<data>, vedi storage.js e
+  // CONTRATTO) vuole anche l'element, il testo della tappa, il verdetto del
+  // collaudo e il PROFILO EFFETTIVO usato — quello già risolto con
+  // resolveProfilo (default più override di tuning) dentro `concept.profilo`.
   await putImage(env, channelId, img, {
     date,
     scene: state.scene,
     conceptId: concept.id,
     conceptNome: concept.nome,
     famiglia: concept.famiglia.id,
+    famigliaNome: concept.famiglia.nome,
     arcIndex: state.arcIndex,
     dayInArc: state.dayInArc,
     stage: state.stage,
+    testoTappa: clausesFor(concept, state.stage, 0, state.extraIndex).join(". "),
     misure: img.misure,
     tentativi: img.tentativi,
+    verdetto: img.verdetto,
+    profilo: concept.profilo,
   });
 
   const { improntaPrec, ...statoDaSalvare } = state;
@@ -205,11 +253,15 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
       conceptId: concept.id,
       conceptNome: concept.nome,
       famiglia: concept.famiglia.id,
+      famigliaNome: concept.famiglia.nome,
       arcIndex: state.arcIndex,
       dayInArc: state.dayInArc,
       stage: state.stage,
+      testoTappa: clausesFor(concept, state.stage, 0, state.extraIndex).join(". "),
       misure: img.misure,
       tentativi: img.tentativi,
+      verdetto: img.verdetto,
+      profilo: concept.profilo,
     }, { archiveOnly: i > 0 });
 
     console.log(
@@ -301,7 +353,8 @@ export default {
     const isTool =
       path === "/tuning" || path.startsWith("/lab/") ||
       path === "/catalogo" || path === "/catalogo/concept" || path === "/catalogo/element" ||
-      path === "/api/channels" || path.startsWith("/api/archive/") || path === "/test-metrics";
+      path === "/api/channels" || path.startsWith("/api/archive/") || path === "/test-metrics" ||
+      path === "/note" || path === "/note/giorno" || path === "/note/assetto";
     if (isTool && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -440,6 +493,43 @@ export default {
       return jsonCors({ error: "metodo non ammesso" }, 405);
     }
 
+    // ---- Note: marcature dei giorni e assetti di tuning salvati (vedi note.js) ----
+    // GET    /note              → pubblico: l'intero documento note:marcature
+    // PUT    /note/giorno       → segna (o smarca) un giorno buono/scarto (admin)
+    // PUT    /note/assetto      → salva un assetto di range con un nome (admin)
+    // DELETE /note/assetto?id=X → lo rimuove (admin)
+    if (path === "/note") {
+      if (request.method !== "GET") return jsonCors({ error: "metodo non ammesso" }, 405);
+      return jsonCors(await loadNote(env));
+    }
+
+    if (path === "/note/giorno") {
+      if (request.method !== "PUT" && request.method !== "POST") return jsonCors({ error: "metodo non ammesso" }, 405);
+      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+      let body;
+      try { body = await request.json(); }
+      catch { return jsonCors({ ok: false, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
+      const res = await putGiornoNota(env, body);
+      return jsonCors(res, res.ok ? 200 : 400);
+    }
+
+    if (path === "/note/assetto") {
+      if (request.method === "PUT" || request.method === "POST") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        let body;
+        try { body = await request.json(); }
+        catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
+        const res = await putAssetto(env, body);
+        return jsonCors(res, res.ok ? 200 : 400);
+      }
+      if (request.method === "DELETE") {
+        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        const res = await removeAssetto(env, url.searchParams.get("id") || "");
+        return jsonCors(res, res.ok ? 200 : 400);
+      }
+      return jsonCors({ error: "metodo non ammesso" }, 405);
+    }
+
     // ---- Lab: elenco concept+element per i menu della UI ----
     if (path === "/lab/elements") {
       return jsonCors({
@@ -572,12 +662,20 @@ export default {
       });
     }
 
-    // ---- API archivio: date disponibili per un flusso ----
+    // ---- API archivio: date disponibili per un flusso, con la carta d'identità di ognuna ----
     const archMatch = path.match(/^\/api\/archive\/([a-z]+)$/);
     if (archMatch) {
+      const canale = archMatch[1];
       const limit = Math.min(Number(url.searchParams.get("limit")) || 60, 365);
-      const dates = await listArchiveDates(env, archMatch[1], limit);
-      return jsonCors({ channel: archMatch[1], dates });
+      const dates = await listArchiveDates(env, canale, limit);
+      // Stesso ordine di `dates`. Per i giorni senza `giorno:<canale>:<data>`
+      // registrata si ripiega sulla ricostruzione onesta (vedi sopra): mai
+      // inventare numeri, solo concept/element quando il canale era a tema
+      // fisso (vedi CONTRATTO).
+      const giorni = await Promise.all(
+        dates.map(async (data) => (await getGiorno(env, canale, data)) ?? giornoRicostruito(canale, data))
+      );
+      return jsonCors({ channel: canale, dates, giorni });
     }
 
     // ---- Generazione manuale/interna di un flusso: /run/<flusso>?[force=1] ----
@@ -624,11 +722,16 @@ export default {
       if (!channel || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "servono ?ch= e ?date=" }, 400);
 
       const catalog = await loadCatalog(env);
+      const tuning = await loadTuning(env);
       const state = await getState(env, ch);
-      const concept = state?.conceptId ? resolveConcept(state.conceptId, catalog) : null;
-      if (!state?.anchorDate || !concept) {
+      const conceptBase = state?.conceptId ? resolveConcept(state.conceptId, catalog) : null;
+      if (!state?.anchorDate || !conceptBase) {
         return json({ error: "stato non compatibile (serve un flusso già attivo)" }, 400);
       }
+      // Stesso profilo EFFETTIVO del cron/backfill: default più override di
+      // tuning. Senza questo /regen-day collaudava (e avrebbe registrato) col
+      // profilo di default anche quando un tuning era in vigore.
+      const concept = { ...conceptBase, profilo: resolveProfilo(conceptBase.famiglia, tuning) };
       const dayInArc =
         Math.floor(Date.parse(date + "T00:00:00Z") / 86400000) -
         Math.floor(Date.parse(state.anchorDate + "T00:00:00Z") / 86400000);
@@ -654,11 +757,15 @@ export default {
           conceptId: concept.id,
           conceptNome: concept.nome,
           famiglia: concept.famiglia.id,
+          famigliaNome: concept.famiglia.nome,
           arcIndex: state.arcIndex,
           dayInArc,
           stage: dayInArc,
+          testoTappa: dayState.scene,
           misure: img.misure,
           tentativi: img.tentativi,
+          verdetto: img.verdetto,
+          profilo: concept.profilo,
         }, { archiveOnly: date !== state.lastDate });
         return json({
           channel: ch, date, dayInArc, model: img.model, tentativi: img.tentativi,

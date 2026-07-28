@@ -9,6 +9,10 @@
 //    mockup (niente striscia di miniature, era ridondante col mockup stesso).
 //    Sotto al mockup restano data del fotogramma, posizione "N di M" e le
 //    frecce giorno prec./succ.; le immagini d'archivio hanno cache lunga.
+//    L'anteprima è limitata all'arco (settimana/concept) in corso, non a
+//    tutto l'archivio: l'archivio attraversa più concept nel tempo, e
+//    sfogliarli tutti di fila mischierebbe storie diverse (es. un cactus
+//    seguito di colpo da un'isola volante). Vedi cardHTML/loadArchive.
 //  - Sfondo ambient con gradiente animato che segue i colori del canale in cima.
 //  - Nessuna risorsa esterna: font di sistema, CSS e JS inline.
 
@@ -37,6 +41,10 @@ export function renderPage(metas, origin, dateKey) {
     // Il concept della settimana in corso: da questa versione un flusso non è
     // più un tema fisso, quindi va detto all'utente COSA sta guardando adesso.
     concept: metas[c.id]?.conceptNome || null,
+    // "Giorno N di 7": N = dayInArc+1. Riusato lato client anche per capire
+    // quanti giorni dell'archivio appartengono all'arco in corso (vedi
+    // loadArchive) — così l'anteprima "Il viaggio finora" combacia con
+    // l'etichetta qui sotto invece di sfogliare concept passati.
     giorno: Number.isInteger(metas[c.id]?.dayInArc) ? metas[c.id].dayInArc + 1 : null,
     date: metas[c.id]?.date || dateKey,
   }));
@@ -287,10 +295,11 @@ export function renderPage(metas, origin, dateKey) {
         <button class="playbtn" id="play" hidden>▶ riproduci</button>
       </div>
       <!-- Didascalia volutamente corta: prima erano quattro righe per spiegare
-           due frecce, e pesavano più dei comandi che descrivevano. Resta solo
-           il chiarimento che serviva davvero (è lo storico di tutte le
-           settimane, non i 7 giorni dell'arco in corso). -->
-      <p class="hint">Tutte le settimane, non solo quella in corso.</p>
+           due frecce, e pesavano più dei comandi che descrivevano. Dice solo
+           quello che serve: qui si sfoglia l'arco/settimana in corso (max 7
+           giorni, un solo concept), non l'intero archivio permanente — che
+           attraversa più concept e mischierebbe storie diverse. -->
+      <p class="hint">Solo questa settimana, giorno per giorno.</p>
       <!-- Niente più miniature: l'archivio si guarda nel mockup qui sopra.
            Qui restano solo data del fotogramma, posizione nel viaggio e le
            frecce giorno prec./succ. — senza, si perderebbe ogni riferimento
@@ -519,7 +528,22 @@ async function loadArchive(chId) {
   try {
     if (!archiveCache[chId]) {
       const res = await fetch(\`/api/archive/\${chId}?limit=30\`);
-      archiveCache[chId] = (await res.json()).dates || [];
+      let dates = (await res.json()).dates || [];
+      // Limita l'anteprima all'arco (settimana/concept) in corso: l'archivio
+      // permanente attraversa più arc nel tempo, e sfogliarli tutti di fila
+      // mischia storie diverse (es. giorni di un cactus seguiti di colpo da
+      // un'isola volante — non un difetto di generazione, solo concept
+      // diversi messi in fila come fossero uno). "giorno" (= dayInArc+1,
+      // calcolato server-side in renderPage) dice quanti giorni dell'arco
+      // corrente esistono; le date arrivano già dal più recente, quindi le
+      // prime "giorno" sono esattamente quelle dell'arco in corso. Se
+      // l'archivio ne ha meno (es. un giorno saltato dal cron), slice si
+      // ferma da sola a quelle disponibili — nessun buco. Se "giorno" manca
+      // (meta di oggi non disponibile) non si indovina: si tiene tutto
+      // l'archivio, comportamento di prima.
+      const ch = CHANNELS.find((c) => c.id === chId);
+      if (Number.isInteger(ch?.giorno)) dates = dates.slice(0, ch.giorno);
+      archiveCache[chId] = dates;
     }
     renderJourney(chId);
   } catch {
