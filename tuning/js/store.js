@@ -288,6 +288,36 @@ function buildUsi() {
   return { concept: usiConcept, element: usiElement };
 }
 
+/** Statistiche della singola COPPIA concept×element (non dell'uno o dell'altro
+    preso da solo): quanti archi/giorni ha già generato in produzione, su
+    quali canali, e i giudizi buono/scarto raccolti. È il dato che il Lab
+    mostra nel pannello "Questa coppia finora" (DESIGN.md, "2. Lab") — un
+    aggregato più stretto di AP.store.usi.concept/.element, che restano per
+    Catalogo (dove serve l'uno o l'altro presi singolarmente).
+    Gli archi si prendono già filtrati dall'indice (ogni arco in
+    usi.concept[c].archi porta anche `element`, vedi buildUsi sopra: nessun
+    nuovo giro sugli archivi); solo i giudizi, che l'indice aggrega per
+    concept o per element ma non per la coppia esatta, richiedono di
+    scandagliare di nuovo i giorni registrati. */
+AP.store.usiCoppia = function usiCoppia(conceptId, elementId) {
+  if (!conceptId || !elementId) return { archi: [], giorni: 0, canali: [], buoni: 0, scarti: 0 };
+  const archi = (AP.store.usi.concept[conceptId]?.archi || []).filter((a) => a.element === elementId);
+  const giorni = archi.reduce((tot, a) => tot + a.nGiorni, 0);
+  const canali = [...new Set(archi.map((a) => a.canale))];
+
+  const noteGiorni = (AP.store.dati.note || {}).giorni || [];
+  let buoni = 0, scarti = 0;
+  for (const [canaleId, arch] of Object.entries(AP.store.dati.archivi || {})) {
+    if (!arch || !Array.isArray(arch.giorni)) continue;
+    for (const g of arch.giorni) {
+      if (g.concept !== conceptId || g.element !== elementId) continue;
+      const n = noteGiorni.find((x) => x.canale === canaleId && x.data === g.data);
+      if (n?.giudizio === "buono") buoni++; else if (n?.giudizio === "scarto") scarti++;
+    }
+  }
+  return { archi, giorni, canali, buoni, scarti };
+};
+
 /* ---------- storico dei run del Lab (localStorage) ---------- */
 /* Persistente fra ricariche e cambi di tab: la UI che lo mostra arriva nel
    redesign del Lab (task 6), qui nasce solo il magazzino. Tetto ~100 run: i più

@@ -351,70 +351,108 @@ function lightboxGiorno(canale, data) {
 }
 AP.comp.lightboxGiorno = lightboxGiorno;
 
-/* ---------- risultato di un run del Lab ----------
-   Stessa funzione di sempre (compresi i due pulsanti d'azione): "proponiRange" e
-   "showPublishPanel" sono definite in tab-lab.js, caricato DOPO questo file, ma
-   qui vengono chiamate solo dentro gli onclick — cioè quando l'utente le preme
-   davvero, a pagina già completamente caricata — non mentre questo script gira,
-   quindi il riferimento in avanti è sicuro (è una normale funzione globale,
-   risolta per nome al momento della chiamata). */
-function renderLab(res, elId) {
-  const prof = res.concept.profilo;
-  const header = document.createElement("div");
-  header.className = "hint";
-  header.style.cssText = "font-size:13px;color:var(--text);margin-bottom:12px";
-  header.innerHTML = chipCoppia(res.concept.schema, elId, { conceptNome: res.concept.nome, elementNome: elementNomeById(elId) });
-  const film = document.createElement("div"); film.className = "film";
-  for (const g of res.giorni) {
-    const m = g.misure || {};
-    const cell = document.createElement("div"); cell.className = "frame";
-    const rows = MEAS.map((k) => {
-      const cls = inRange(m[k], prof[k]);
-      const v = m[k] == null ? "—" : (k === "compattezza" ? m[k].toFixed(2) : m[k].toFixed(1));
-      return `<div class="m"><b>${k.slice(0, 3)}</b><span class="val ${cls}">${v}</span></div>`;
-    }).join("");
-    const extra = m.occupazione != null
-      ? `<div class="m"><b>occ</b><span class="val neutral">${m.occupazione.toFixed(0)}% (${m.avanzamento >= 0 ? '+' : ''}${(m.avanzamento || 0).toFixed(0)})</span></div>` : "";
-    const verd = g.collaudo ? `<div class="verdict ${g.collaudo.ok ? 'ok' : 'no'}">${g.collaudo.ok ? '✓ nel range' : '✗ ' + (g.collaudo.motivi[0] || 'fuori')}</div>` : "";
-    cell.innerHTML = `
-      <img loading="lazy" src="${base()}/lab/img?run=${encodeURIComponent(res.runId)}&n=${g.n}" alt="giorno ${g.n}" />
-      <div class="meta">
-        <div class="t">giorno ${g.n} · tappa ${g.tappa} · ${g.tentativi}t</div>
-        ${rows}${extra}${verd}
-      </div>`;
-    film.appendChild(cell);
+/* ---------- card di un run del Lab (storico persistente) ----------
+   Sostituisce la vecchia renderLab, che disegnava UN SOLO risultato nella
+   closure del click e lo perdeva al run successivo o al cambio tab. Ogni run
+   del Lab ora vive in AP.store.labRuns (localStorage, vedi store.js) e questa
+   funzione sa disegnare la card di UNO qualunque di essi — appena generato o
+   riletto dallo storico dopo un reload, non fa differenza: entrambi i casi
+   passano dallo stesso oggetto `run` (vedi tab-lab.js, eseguiRun()).
+   A differenza della vecchia renderLab, qui i callback delle azioni (rigenera/
+   proponi range/pubblica/rimuovi) sono passati ESPLICITAMENTE in `opts.azioni`
+   invece di un riferimento globale in avanti a funzioni di tab-lab.js: il
+   flusso di ognuna è ormai più corposo (dialoghi di conferma dentro la card,
+   bottoni che si disabilitano da soli), un semplice nome globale non basta
+   più a portare anche lo stato "in quale card, con quale dialogo" serve. */
+function buildRunFrame(run, g, scaduto, onImgError) {
+  const prof = run.profilo || {};
+  const m = g.misure || {};
+  const cell = document.createElement("div");
+  cell.className = "frame";
+  cell.style.cursor = "default"; // la lightbox scheda-giorno è dell'Archivio: qui non c'è un giorno d'archivio da aprire
+  const rows = MEAS.map((k) => {
+    const cls = prof[k] ? inRange(m[k], prof[k]) : "neutral";
+    const v = m[k] == null ? "—" : (k === "compattezza" ? m[k].toFixed(2) : m[k].toFixed(1));
+    return `<div class="m"><b>${k.slice(0, 3)}</b><span class="val ${cls}">${v}</span></div>`;
+  }).join("");
+  const extra = m.occupazione != null
+    ? `<div class="m"><b>occ</b><span class="val neutral">${m.occupazione.toFixed(0)}% (${m.avanzamento >= 0 ? '+' : ''}${(m.avanzamento || 0).toFixed(0)})</span></div>` : "";
+  const verd = g.collaudo
+    ? `<div class="verdict ${g.collaudo.ok ? 'ok' : 'no'}">${g.collaudo.ok ? '✓ nel range' : '✗ ' + esc((g.collaudo.motivi && g.collaudo.motivi[0]) || 'fuori')}</div>`
+    : "";
+  const corpoImg = scaduto
+    ? `<div class="frame-placeholder">immagini scadute</div>`
+    : `<img loading="lazy" src="${base()}/lab/img?run=${encodeURIComponent(run.id)}&n=${g.n}" alt="giorno ${g.n}" />`;
+  cell.innerHTML = `${corpoImg}<div class="meta"><div class="t">giorno ${g.n} · tappa ${g.tappa ?? "—"} · ${g.tentativi ?? "—"}t</div>${rows}${extra}${verd}</div>`;
+  if (!scaduto) {
+    const img = cell.querySelector("img");
+    // le immagini di prova durano un'ora sul Worker (LAB_TTL in lab.js): un run
+    // ancora "giovane" per l'orologio locale può comunque avere l'immagine già
+    // sparita (es. orologio disallineato, o il runId non è mai esistito — vedi
+    // la verifica manuale del task). Un solo onerror per frame, sostituisce SOLO
+    // il proprio segnaposto: non forza un ridisegno dell'intera card, che
+    // chiuderebbe un eventuale dialogo aperto nel frattempo sulla stessa card.
+    img.onerror = () => {
+      const ph = document.createElement("div");
+      ph.className = "frame-placeholder";
+      ph.textContent = "immagini scadute";
+      img.replaceWith(ph);
+      if (typeof onImgError === "function") onImgError(run.id);
+    };
   }
-  // pannello "proponi range" + "pubblica questa combinazione"
-  const actions = document.createElement("div");
-  actions.style.cssText = "margin:14px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center";
-
-  const btnRange = document.createElement("button");
-  btnRange.textContent = `⤵ Proponi range per "${res.concept.nome.split(' · ')[0]}" da questi valori`;
-  btnRange.onclick = () => proposeRange(res);
-  actions.appendChild(btnRange);
-
-  // AP.store.dati.catalogo parte già valorizzato con {concepts:[],elements:[]}
-  // (mai null, vedi store.js): un catalogo genuinamente caricato ha SEMPRE almeno
-  // i concept built-in, quindi la lunghezza è l'indicatore giusto di "disponibile
-  // davvero" — un semplice check di verità non lo sarebbe più.
-  if (AP.store.dati.catalogo?.concepts?.length) {
-    const btnPub = document.createElement("button");
-    btnPub.className = "primary";
-    btnPub.textContent = "📌 Pubblica questa combinazione";
-    btnPub.onclick = () => showPublishPanel(res);
-    actions.appendChild(btnPub);
-  } else {
-    const note = document.createElement("span");
-    note.className = "hint";
-    note.textContent = "(pubblicare richiede il catalogo — non ancora disponibile)";
-    actions.appendChild(note);
-  }
-
-  const out = $("labResult"); out.innerHTML = "";
-  out.appendChild(header); out.appendChild(film); out.appendChild(actions);
-  const panel = document.createElement("div"); panel.id = "publishPanel"; out.appendChild(panel);
+  return cell;
 }
-AP.comp.renderLab = renderLab;
+
+/** AP.comp.buildRunCard(run, opts) — un nodo DOM pronto da appendere allo
+    storico impilato del Lab. `opts.scaduto` (bool) decide se tentare il
+    caricamento delle immagini o mostrare subito il segnaposto (chi chiama,
+    tab-lab.js, lo calcola da `run.quando` + dagli errori immagine già visti in
+    questa sessione). `opts.azioni` = { rigenera, proponi, pubblica, rimuovi },
+    ognuna richiamata con (run, ...) al click del bottone corrispondente. */
+function buildRunCard(run, opts = {}) {
+  const scaduto = !!opts.scaduto;
+  const azioni = opts.azioni || {};
+  const card = document.createElement("div");
+  card.className = "card labrun";
+  card.dataset.run = run.id;
+
+  const quandoTxt = run.quando ? new Date(run.quando).toLocaleString() : "—";
+  const head = document.createElement("div");
+  head.className = "labrun-head";
+  head.innerHTML = `
+    <div class="coppia">${chipCoppia(run.concept, run.element, { nativa: isNativePairing(run.concept, run.element) })}</div>
+    <div class="hint labrun-meta">${run.giorni.length} giorni · cancello ${run.gate ? "on" : "off"} · ${esc(quandoTxt)}${run.virtuale ? " · combinazione libera" : ""}${scaduto ? ' · <span class="pill">immagini scadute</span>' : ""}</div>`;
+  card.appendChild(head);
+
+  const film = document.createElement("div");
+  film.className = "film";
+  for (const g of run.giorni) film.appendChild(buildRunFrame(run, g, scaduto, opts.onImgError));
+  card.appendChild(film);
+
+  const azioniEl = document.createElement("div");
+  azioniEl.className = "labrun-actions";
+  azioniEl.innerHTML = `
+    <button class="ghost" data-act="rigenera" title="rilancia lo stesso run (stessi parametri)">↻ rigenera</button>
+    <button data-act="proponi" title="propone i range del concept dai valori di questo run">⤵ Proponi range</button>
+    <button class="warn" data-act="pubblica" title="manda questa combinazione in produzione">📌 Pubblica in produzione</button>
+    <button class="ghost" data-act="rimuovi" title="toglie questo run dallo storico locale">🗑 rimuovi dallo storico</button>`;
+  card.appendChild(azioniEl);
+
+  // contenitore per gli eventuali dialoghi di conferma (diff range / pubblica):
+  // restano DENTRO la card a cui appartengono, non un pannello unico globale —
+  // con più card impilate non avrebbe senso un solo posto per tutte.
+  const dialogEl = document.createElement("div");
+  dialogEl.className = "labrun-dialog";
+  card.appendChild(dialogEl);
+
+  if (azioni.rigenera) azioniEl.querySelector('[data-act="rigenera"]').onclick = (ev) => azioni.rigenera(run, ev.currentTarget);
+  if (azioni.proponi) azioniEl.querySelector('[data-act="proponi"]').onclick = () => azioni.proponi(run, dialogEl);
+  if (azioni.pubblica) azioniEl.querySelector('[data-act="pubblica"]').onclick = () => azioni.pubblica(run, dialogEl);
+  if (azioni.rimuovi) azioniEl.querySelector('[data-act="rimuovi"]').onclick = () => azioni.rimuovi(run);
+
+  return card;
+}
+AP.comp.buildRunCard = buildRunCard;
 
 /* ---------- listener delegato UNICO per tutti i chip coppia del tool ----------
    Un solo posto che sa cosa fare quando si clicca un chip concept/element,
