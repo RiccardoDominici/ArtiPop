@@ -397,7 +397,7 @@ function renderElementForm() {
   const canaliOpts = canaliAttiviOptions(f.canale);
   const nativeConceptNome = (AP.store.dati.catalogo?.concepts || []).find((c) => c.id === f.famigliaNativa)?.nome || f.famigliaNativa;
   const coppiaHTML = (f.famigliaNativa && f.id)
-    ? `<div class="hint" style="font-size:13px;color:var(--text);margin-bottom:12px">${coppiaLabelHTML(nativeConceptNome, f.famigliaNativa, f.nome, f.id, true)}</div>`
+    ? `<div class="hint" style="font-size:13px;color:var(--text);margin-bottom:12px">${AP.comp.chipCoppia(f.famigliaNativa, f.id, { conceptNome: nativeConceptNome, elementNome: f.nome, nativa: true })}</div>`
     : "";
 
   box.innerHTML = `

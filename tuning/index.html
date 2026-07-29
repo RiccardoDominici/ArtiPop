@@ -92,22 +92,33 @@
     </div>
   </section>
 
-  <!-- ===== TAB ARCHIVIO ===== -->
+  <!-- ===== TAB ARCHIVIO (home) ===== -->
   <section id="tab-archivio">
     <p class="hint" style="margin-bottom:16px">
-      L'archivio è la memoria permanente su KV di ogni sfondo già generato: qui vedi TUTTO quello che il
-      sistema ha prodotto finora, un flusso sotto l'altro, per decidere quali combinazioni concept×element
-      sono venute bene — anche nei momenti in cui il Lab non riesce a generarne uno nuovo (es. il modello
-      immagine è temporaneamente fuori uso). Il filtro qui sotto è facoltativo: isola un solo flusso se ti
-      serve, "tutti" li rimette insieme. Sotto ogni fotogramma trovi come è nato (concept×element, tappa,
-      tentativi, misure colorate sul profilo IN VIGORE quel giorno, e una riga di provenienza) e due comandi
-      per segnarlo <b>buono</b>/<b>scarto</b> con una nota — lo stato marcato resta visibile anche dopo un
-      ricarico. "misura questo arco" con <code>/test-metrics</code> (serve la chiave admin) serve solo per i
-      giorni SENZA misure già registrate: per quelli non c'è un profilo storico noto, quindi i risultati
-      restano senza colore invece di essere confrontati (fuorviante) col range di oggi.
+      L'archivio è la memoria permanente su KV di ogni sfondo già generato, raggruppato per <b>arco</b> (stessa
+      coppia concept×element, stesso arco settimanale): l'intestazione porta la coppia, l'intervallo di date, i
+      conteggi e "⚗ riprova nel Lab" per ripartire proprio da lì. Filtra con la barra qui sotto — canale,
+      concept, element, giudizio — oppure clicca un chip coppia in <b>qualunque punto del tool</b>: il filtro si
+      riflette nell'indirizzo e sopravvive al ricarico. Click su un fotogramma apre la scheda completa del
+      giorno (immagine grande, carta d'identità e marcatura modificabile). I giorni la cui provenienza non
+      permette di ricostruire un arco finiscono in fondo, sotto "Giorni senza arco noto": lì "misura i giorni
+      senza dati registrati" (<code>/test-metrics</code>, serve la chiave admin) resta utile, ma senza un
+      profilo storico noto i risultati restano senza colore invece di essere confrontati (fuorviante) col
+      range di oggi.
     </p>
-    <div class="labctl">
-      <div class="fld"><label>Filtro flusso</label><select id="archFlusso"><option value="tutti">tutti</option></select></div>
+    <div class="labctl archFiltri">
+      <div class="fld"><label>Canale</label><select id="archFiltroCanale"><option value="tutti">tutti i canali</option></select></div>
+      <div class="fld"><label>Concept</label><select id="archFiltroConcept"><option value="tutti">tutti i concept</option></select></div>
+      <div class="fld"><label>Element</label><select id="archFiltroElement"><option value="tutti">tutti gli element</option></select></div>
+      <div class="fld"><label>Giudizio</label>
+        <select id="archFiltroGiudizio">
+          <option value="tutti">tutti</option>
+          <option value="buoni">buoni</option>
+          <option value="scarti">scarti</option>
+          <option value="nonmarcati">non marcati</option>
+        </select>
+      </div>
+      <button id="archFiltriPulisci" class="ghost" title="riporta tutti i filtri a &quot;tutti&quot;">pulisci filtri</button>
       <button id="archReload" class="ghost">↻ Aggiorna tutto</button>
       <span class="status" id="archStatus"></span>
     </div>

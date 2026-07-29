@@ -132,5 +132,20 @@ AP.store.on("catalogo", fillLabSelectors);
 AP.store.on("tuning", fillLabSelectors);
 
 AP.tabs.lab = {
-  onShow() { fillLabSelectors(); },
+  // params.concept/element: chi arriva da un link esterno (il bottone "⚗ riprova
+  // nel Lab" di un blocco-arco in Archivio, o un chip coppia — vedi DESIGN.md,
+  // "1. Archivio" e criterio di accettazione 3) si aspetta i due selettori GIÀ
+  // impostati sulla coppia di provenienza, non un Lab vuoto da ricompilare a
+  // mano. Il pannello "Questa coppia finora" arriva col redesign del Lab (task
+  // 7): qui, in questo task, si preseleziona soltanto.
+  onShow(params = {}) {
+    fillLabSelectors();
+    const cSel = $("labConcept"), eSel = $("labElement");
+    if (params.concept && cSel && [...cSel.options].some((o) => o.value === params.concept)) {
+      cSel.value = params.concept;
+    }
+    if (params.element && eSel && [...eSel.options].some((o) => o.value === params.element)) {
+      eSel.value = params.element;
+    }
+  },
 };

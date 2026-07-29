@@ -259,7 +259,11 @@ async function onNotaSave(canale, data, notaVal, cell, statusEl) {
 
 /* "quaderno di laboratorio": i giorni segnati buono, con la combinazione e i
    range in vigore quel giorno. Vive in #archNotebook (markup della tab Archivio)
-   ma si aggiorna sia da qui sia da tab-archivio.js (via AP.store.giorno). */
+   ma si aggiorna sia da qui sia da tab-archivio.js (via AP.store.giorno).
+   DESIGN.md, "1. Archivio": ogni voce usa il chip cliccabile (mai più il
+   generico messaggio ombrello del vecchio tool) e apre la scheda-giorno
+   completa in lightbox — stesso componente condiviso usato dai fotogrammi
+   dell'Archivio. */
 function renderNotebook() {
   const box = $("archNotebook");
   if (!box) return;
@@ -276,12 +280,16 @@ function renderNotebook() {
   }
   const rows = buoni.map((n) => {
     const g = AP.store.giorno(n.canale, n.data);
-    const coppia = g ? AP.comp.coppiaLabelHTML(g.conceptNome, g.concept, g.elementNome, g.element, AP.comp.isNativePairing(g.concept, g.element))
-      : `<span class="hint">combinazione non nota (apri "↻ Aggiorna" in alto)</span>`;
+    // le 3 provenienze oneste (registrata/ricostruita/assente) passano dal chip
+    // condiviso; solo l'assenza del canale nello STORE (Worker non ancora
+    // ricaricato) resta un caso a parte, distinto e non un generico "non nota".
+    const coppia = g
+      ? AP.comp.chipCoppia(g.concept, g.element, { conceptNome: g.conceptNome, elementNome: g.elementNome, dedotta: g.origine === "ricostruita" })
+      : `<span class="hint">canale non ancora caricato (apri "↻ Aggiorna" in alto)</span>`;
     const profTxt = (g && g.origine === "registrata" && g.profilo)
       ? AP.comp.MEAS.map((k) => `${AP.comp.MEAS_LABEL[k]} ${g.profilo[k][0]}–${g.profilo[k][1]}`).join(" · ")
       : `<span class="hint">range non disponibili (provenienza ${esc(g?.origine || "non disponibile")})</span>`;
-    return `<div style="padding:9px 0;border-bottom:1px solid var(--line)">
+    return `<div class="quaderno-voce" data-canale="${esc(n.canale)}" data-data="${esc(n.data)}" style="padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer" title="clicca per la scheda completa del giorno">
       <div><b>${esc(n.canale)}</b> · ${esc(n.data)} — ${coppia}</div>
       <div class="hint" style="margin-top:3px">${profTxt}</div>
       ${n.nota ? `<div style="margin-top:3px">${esc(n.nota)}</div>` : ""}
@@ -293,6 +301,15 @@ function renderNotebook() {
       fotogramma fu generato.</div>
     ${rows}
   </div>`;
+  // click sulla voce apre la scheda-giorno — TRANNE quando il click è su un
+  // chip (che ha già il suo comportamento: filtra l'Archivio, vedi il listener
+  // delegato in components.js) o su un altro controllo interattivo.
+  box.querySelectorAll(".quaderno-voce").forEach((row) => {
+    row.addEventListener("click", (ev) => {
+      if (ev.target.closest("[data-chip], button, input")) return;
+      AP.comp.lightboxGiorno(row.dataset.canale, row.dataset.data);
+    });
+  });
 }
 
 /* ---------- assetti salvati (tab Range) ---------- */

@@ -1,30 +1,194 @@
-// TAB ARCHIVIO: mostra TUTTO quello che è mai stato generato, un canale (attivo
-// o storico) alla volta, impilati. A differenza del vecchio index.html, i canali
-// e gli archivi arrivano dallo STORE (fetch paralleli, non un `await` dentro un
-// `for`): questa tab si limita a costruire lo scheletro appena arriva l'elenco
-// canali e a riempire ogni sezione appena arriva IL SUO archivio — rendering
-// progressivo, un canale non aspetta l'altro. Le marcature buono/scarto
-// (findNota/applyMarkToFrame/wireMarkControls) vivono in tab-range.js, caricato
-// prima di questo file: vedi il commento in testa a quel file per il perché.
+// TAB ARCHIVIO (home): dentro ogni canale (attivo o storico) i giorni si
+// raggruppano per ARCO (stessa coppia concept×element + stesso `arco`, vedi
+// AP.store.archiDi), più un gruppo finale per i giorni la cui provenienza non
+// permette di dedurre un arco. Canali e archivi arrivano dallo STORE (fetch
+// paralleli, non un `await` dentro un `for`): questa tab si limita a costruire
+// lo scheletro appena arriva l'elenco canali e a riempire ogni sezione appena
+// arriva IL SUO archivio — rendering progressivo, un canale non aspetta
+// l'altro. Le marcature buono/scarto (findNota/applyMarkToFrame/
+// wireMarkControls) vivono in tab-range.js, caricato prima di questo file:
+// vedi il commento in testa a quel file per il perché.
 window.AP = window.AP || {};
 AP.tabs = AP.tabs || {};
 
 const archSectionState = new Map(); // canale -> { abort, measuring }, uno stato indipendente per sezione
 const archSubscribed = new Set();   // canali già agganciati all'evento "archivio:<id>" (evita doppie sottoscrizioni sui reload successivi)
 
+/* ---------- date leggibili: "12–18 lug" (stesso mese), "28 lug – 3 ago" (mesi diversi) ---------- */
+const MESI_IT = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+function formatDataBreve(iso) {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${MESI_IT[m - 1]}`;
+}
+function formatIntervallo(dal, al) {
+  if (dal === al) return formatDataBreve(dal);
+  const [ya, ma] = dal.split("-").map(Number);
+  const [yb, mb] = al.split("-").map(Number);
+  const a = formatDataBreve(dal), b = formatDataBreve(al);
+  if (ya === yb && ma === mb) return `${dal.split("-")[2].replace(/^0/, "")}–${b}`;
+  if (ya === yb) return `${a} – ${b}`;
+  return `${a} ${ya} – ${b} ${yb}`;
+}
+
+/* ================================================================== */
+/* ---------- BARRA FILTRI GLOBALE: canale · concept · element · giudizio ----------
+   Vive nell'hash (#archivio?concept=…&giudizio=…): ricaricare la pagina non
+   perde il filtro, e ogni chip coppia in qualunque punto del tool può
+   "atterrare" qui con un solo parametro (vedi il listener delegato in
+   components.js). I quattro <select> usano "tutti" come valore sentinella
+   (stessa convenzione del vecchio filtro-canale): solo i valori DIVERSI da
+   "tutti" finiscono nell'hash. ================================================================== */
+const FILTRO_SEL = { canale: "archFiltroCanale", concept: "archFiltroConcept", element: "archFiltroElement", giudizio: "archFiltroGiudizio" };
+
+function leggiFiltriSelect() {
+  return {
+    canale: $(FILTRO_SEL.canale)?.value || "tutti",
+    concept: $(FILTRO_SEL.concept)?.value || "tutti",
+    element: $(FILTRO_SEL.element)?.value || "tutti",
+    giudizio: $(FILTRO_SEL.giudizio)?.value || "tutti",
+  };
+}
+/* imposta i 4 <select> dai parametri dell'hash: chiamata sia quando la tab
+   diventa attiva (onShow) sia dopo aver ricostruito le opzioni di un select
+   (canale/concept/element cambiano quando arrivano canali/catalogo) — un
+   valore impostato PRIMA che la sua <option> esista verrebbe silenziosamente
+   ignorato dal browser, per questo va ripetuto dopo ogni ricostruzione. */
+function impostaFiltriSelect(params = {}) {
+  if ($(FILTRO_SEL.canale)) $(FILTRO_SEL.canale).value = params.canale || "tutti";
+  if ($(FILTRO_SEL.concept)) $(FILTRO_SEL.concept).value = params.concept || "tutti";
+  if ($(FILTRO_SEL.element)) $(FILTRO_SEL.element).value = params.element || "tutti";
+  if ($(FILTRO_SEL.giudizio)) $(FILTRO_SEL.giudizio).value = params.giudizio || "tutti";
+}
+function scriviHashDaFiltri() {
+  const f = leggiFiltriSelect();
+  const params = {};
+  if (f.canale !== "tutti") params.canale = f.canale;
+  if (f.concept !== "tutti") params.concept = f.concept;
+  if (f.element !== "tutti") params.element = f.element;
+  if (f.giudizio !== "tutti") params.giudizio = f.giudizio;
+  AP.util.route.vai("archivio", params); // triggera hashchange -> onShow(params) -> impostaFiltriSelect + applyArchFilter
+}
+function riapplicaFiltriDaHash() {
+  impostaFiltriSelect(AP.util.route.leggi().params);
+  applyArchFilter();
+}
+
+/** true se il giorno passa il filtro giudizio corrente. */
+function matchGiudizio(filtro, canale, data) {
+  if (filtro === "tutti") return true;
+  const giud = findNota(canale, data)?.giudizio || null; // findNota: globale da tab-range.js
+  if (filtro === "buoni") return giud === "buono";
+  if (filtro === "scarti") return giud === "scarto";
+  if (filtro === "nonmarcati") return giud == null;
+  return true;
+}
+
+/* applica i 4 filtri al DOM già costruito: nasconde un intero .arco-block se
+   non incrocia canale/concept/element (la coppia è la stessa per TUTTI i
+   giorni di un arco, per costruzione — vedi AP.store.archiDi), altrimenti
+   nasconde solo i singoli .frame che non incrociano il giudizio. Il gruppo
+   "senza arco noto" filtra concept/element/giudizio per singolo giorno,
+   perché lì la coppia (quando c'è, provenienza ricostruita) può variare
+   giorno per giorno. */
+function applyArchFilter() {
+  const f = leggiFiltriSelect();
+  let anyHistoricalVisible = false;
+  document.querySelectorAll("#archSections .arch-section").forEach((sec) => {
+    const showSection = f.canale === "tutti" || sec.dataset.channel === f.canale;
+    sec.style.display = showSection ? "" : "none";
+    if (!showSection) return;
+    if (sec.dataset.kind === "storico") anyHistoricalVisible = true;
+
+    sec.querySelectorAll(".arco-block").forEach((blocco) => {
+      const okConcept = f.concept === "tutti" || blocco.dataset.concept === f.concept;
+      const okElement = f.element === "tutti" || blocco.dataset.element === f.element;
+      let anyFrameVisible = false;
+      blocco.querySelectorAll(".frame").forEach((fr) => {
+        const visible = okConcept && okElement && matchGiudizio(f.giudizio, fr.dataset.canale, fr.dataset.data);
+        fr.style.display = visible ? "" : "none";
+        if (visible) anyFrameVisible = true;
+      });
+      blocco.style.display = anyFrameVisible ? "" : "none";
+    });
+
+    const senzaArco = sec.querySelector(".senza-arco-block");
+    if (senzaArco) {
+      let anyVisible = false;
+      senzaArco.querySelectorAll(".frame").forEach((fr) => {
+        const okConcept = f.concept === "tutti" || fr.dataset.concept === f.concept;
+        const okElement = f.element === "tutti" || fr.dataset.element === f.element;
+        const visible = okConcept && okElement && matchGiudizio(f.giudizio, fr.dataset.canale, fr.dataset.data);
+        fr.style.display = visible ? "" : "none";
+        if (visible) anyVisible = true;
+      });
+      senzaArco.style.display = anyVisible ? "" : "none";
+    }
+  });
+  const hdr = $("archHistoricalHeader");
+  if (hdr) hdr.style.display = anyHistoricalVisible ? "" : "none";
+}
+
+/* ricalcola solo i conteggi "N ok / N scarto" di ogni intestazione d'arco già
+   disegnata (le note possono arrivare dopo che l'arco è già stato costruito:
+   rendering progressivo, vedi store.js) — senza ricostruire il DOM, per non
+   perdere lo stato di un click/testo in corso altrove nella pagina. */
+function aggiornaContiGiudizio() {
+  document.querySelectorAll(".arco-block").forEach((blocco) => {
+    let buoni = 0, scarti = 0;
+    blocco.querySelectorAll(".frame[data-data]").forEach((fr) => {
+      const giud = findNota(fr.dataset.canale, fr.dataset.data)?.giudizio;
+      if (giud === "buono") buoni++; else if (giud === "scarto") scarti++;
+    });
+    const el = blocco.querySelector(".arco-giudizi");
+    if (el) el.textContent = `${buoni} ok / ${scarti} scarto`;
+  });
+}
+
+/* popola il filtro canale: opzioni raggruppate attivi/storici, stessa lista
+   che finiva prima nel select "archFlusso" del vecchio filtro singolo. */
+function buildFiltroCanale(canali) {
+  const sel = $(FILTRO_SEL.canale);
+  if (!sel) return;
+  const attuale = sel.value;
+  const attivi = canali.filter((c) => !c.storico);
+  const storici = canali.filter((c) => c.storico);
+  const optHTML = (c) => `<option value="${esc(c.id)}">${esc(c.emoji || "🗄")} ${esc(c.name || c.id)}</option>`;
+  let html = `<option value="tutti">tutti i canali</option>`;
+  if (attivi.length) html += `<optgroup label="Attivi">${attivi.map(optHTML).join("")}</optgroup>`;
+  if (storici.length) html += `<optgroup label="Storici">${storici.map(optHTML).join("")}</optgroup>`;
+  sel.innerHTML = html;
+  sel.value = (attuale && [...sel.options].some((o) => o.value === attuale)) ? attuale : "tutti";
+}
+
+/* popola i filtri concept/element dal catalogo, con fra parentesi quante
+   generazioni ha ciascuno (dall'indice usi, vedi store.js buildUsi — 0 finché
+   "usi" non è ancora arrivato, corretto appena arriva). */
+function buildFiltroConceptElement() {
+  const selC = $(FILTRO_SEL.concept), selE = $(FILTRO_SEL.element);
+  if (!selC || !selE) return;
+  const cat = AP.store.dati.catalogo || { concepts: [], elements: [] };
+  const usi = AP.store.usi || { concept: {}, element: {} };
+  const curC = selC.value, curE = selE.value;
+  selC.innerHTML = `<option value="tutti">tutti i concept</option>` + (cat.concepts || []).map((c) =>
+    `<option value="${esc(c.id)}">${esc(c.nome)} (${usi.concept[c.id]?.giorni || 0})</option>`).join("");
+  selE.innerHTML = `<option value="tutti">tutti gli element</option>` + (cat.elements || []).map((e) =>
+    `<option value="${esc(e.id)}">${esc(e.nome)} (${usi.element[e.id]?.giorni || 0})</option>`).join("");
+  selC.value = (curC && [...selC.options].some((o) => o.value === curC)) ? curC : "tutti";
+  selE.value = (curE && [...selE.options].some((o) => o.value === curE)) ? curE : "tutti";
+}
+
+/* ================================================================== */
 /* ---------- scheletro: una sezione per canale, nell'ordine con cui li elenca /api/channels ---------- */
 function buildArchSkeleton(canali) {
   const wrap = $("archSections");
   wrap.innerHTML = "";
-  $("archFlusso").innerHTML = `<option value="tutti">tutti</option>`;
   let historicalHeaderEl = null;
 
   for (const ch of canali) {
     if (ch.storico && !historicalHeaderEl) {
       historicalHeaderEl = document.createElement("div");
       historicalHeaderEl.id = "archHistoricalHeader";
-      historicalHeaderEl.style.cssText = "margin:26px 0 12px;padding-top:16px;border-top:1px solid var(--line);"
-        + "color:var(--dim);font-size:12.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase";
+      historicalHeaderEl.className = "arch-historical-header";
       historicalHeaderEl.textContent = 'Archivi storici · canali chiusi, senza generazione "oggi"';
       wrap.appendChild(historicalHeaderEl);
     }
@@ -33,23 +197,13 @@ function buildArchSkeleton(canali) {
     root.dataset.channel = ch.id;
     root.dataset.kind = ch.storico ? "storico" : "active";
     root.innerHTML = `
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <div class="arch-section-head">
         <h3 style="margin:0">${esc(ch.emoji || "")} ${esc(ch.name || ch.id)}</h3>
         <span class="hint archSectionCount"><span class="spinner"></span> carico…</span>
       </div>
       <div class="arch-today" style="margin-bottom:10px"></div>
-      <div class="labctl" style="margin-bottom:8px;display:none">
-        <button class="archSectionMeasure"></button>
-        <button class="archSectionStop ghost" style="display:none">⏹ Interrompi</button>
-        <span class="status archSectionStatus"></span>
-      </div>
-      <div class="film"></div>`;
+      <div class="arch-body"></div>`;
     wrap.appendChild(root);
-
-    const opt = document.createElement("option");
-    opt.value = ch.id;
-    opt.textContent = `${ch.emoji || ""} ${ch.name || ch.id}`.trim();
-    $("archFlusso").appendChild(opt);
 
     // se lo STORE ha già l'archivio di questo canale in cache (es. la tab non era
     // attiva quando è arrivato), riempilo subito invece di aspettare un evento che
@@ -68,8 +222,124 @@ function buildArchSkeleton(canali) {
       });
     }
   }
-  applyArchFilter();
+  buildFiltroCanale(canali);
+  riapplicaFiltriDaHash();
   aggiornaRiepilogo();
+}
+
+/* ---------- un fotogramma: immagine + carta d'identità sintetica ----------
+   Fabbrica UNICA usata sia dai blocchi-arco sia dal gruppo "senza arco noto":
+   marcatura, dataset per il filtro e apertura della lightbox sono identici
+   nei due casi. */
+function creaFrame(canale, date, g, opts = {}) {
+  const imgUrl = `${base()}/w/${encodeURIComponent(canale)}?date=${encodeURIComponent(date)}`;
+  const cell = document.createElement("div");
+  cell.className = "frame";
+  cell.dataset.canale = canale;
+  cell.dataset.data = date;
+  cell.dataset.concept = (g && g.concept) || "";
+  cell.dataset.element = (g && g.element) || "";
+  cell.innerHTML = `
+    <img loading="lazy" src="${imgUrl}" alt="${esc(date)}" title="clicca per la scheda completa del giorno" />
+    <div class="meta">${AP.comp.buildFrameHTML(canale, date, g, opts)}</div>`;
+  // click sul fotogramma apre la lightbox — TRANNE quando il click è su un
+  // controllo interattivo (bottone/input/chip), che ha il suo proprio comportamento.
+  cell.addEventListener("click", (ev) => {
+    if (ev.target.closest("button, input, [data-chip]")) return;
+    AP.comp.lightboxGiorno(canale, date);
+  });
+  applyMarkToFrame(cell, canale, date);
+  wireMarkControls(cell, canale, date);
+  return cell;
+}
+
+/* ---------- un blocco-arco: intestazione (coppia, intervallo, conteggi, "riprova nel Lab") + pellicola ---------- */
+function buildArcoBlockEl(arco, canale) {
+  const el = document.createElement("div");
+  el.className = "arco-block";
+  el.dataset.concept = arco.concept || "";
+  el.dataset.element = arco.element || "";
+
+  let buoni = 0, scarti = 0;
+  for (const g of arco.giorni) {
+    const giud = findNota(canale, g.data)?.giudizio;
+    if (giud === "buono") buoni++; else if (giud === "scarto") scarti++;
+  }
+  const primo = arco.giorni[0] || {};
+  const coppiaHTML = AP.comp.chipCoppia(arco.concept, arco.element, { conceptNome: primo.conceptNome, elementNome: primo.elementNome });
+
+  el.innerHTML = `
+    <div class="arco-header">
+      <span class="arco-num">Arco ${arco.arco + 1}</span>
+      ${coppiaHTML}
+      <span class="hint">${esc(formatIntervallo(arco.dal, arco.al))} · ${arco.giorni.length} giorni · <span class="arco-giudizi">${buoni} ok / ${scarti} scarto</span></span>
+      <button class="ghost arco-retry">⚗ riprova nel Lab</button>
+    </div>
+    <div class="film"></div>`;
+
+  const filmEl = el.querySelector(".film");
+  for (const g of arco.giorni) filmEl.appendChild(creaFrame(canale, g.data, g));
+
+  const retryBtn = el.querySelector(".arco-retry");
+  if (arco.concept && arco.element) {
+    retryBtn.onclick = () => AP.util.route.vai("lab", { concept: arco.concept, element: arco.element });
+  } else {
+    retryBtn.disabled = true;
+    retryBtn.title = "coppia non determinabile per questo arco";
+  }
+  return el;
+}
+
+/* ---------- il gruppo finale: giorni la cui provenienza non permette di dedurre un arco ---------- */
+function buildSenzaArcoBlockEl(canale, giorniSenzaArco, workerTooOld) {
+  const el = document.createElement("div");
+  el.className = "senza-arco-block";
+  el.innerHTML = `
+    <div class="arco-header">
+      <span class="hint" style="font-weight:600">Giorni senza arco noto (provenienza ricostruita o assente)</span>
+    </div>
+    <div class="film"></div>
+    <div class="labctl senza-arco-misura" style="margin-top:8px"></div>`;
+  const filmEl = el.querySelector(".film");
+  for (const { data, giorno } of giorniSenzaArco) filmEl.appendChild(creaFrame(canale, data, giorno, { workerTooOld }));
+  return el;
+}
+
+/* "misura questo arco" (/test-metrics), ora agganciato al gruppo "senza arco
+   noto" (era in cima a ogni sezione): una chiamata per ogni coppia di giorni
+   CONSECUTIVI del canale (serve la cronologia INTERA per trovare l'immagine
+   di ieri, non solo la sotto-lista senza arco) il cui secondo giorno non ha
+   già provenienza registrata. Il profilo storico di questi giorni non è noto,
+   quindi le misure restano SENZA colore invece di essere confrontate col
+   range di oggi, che sarebbe fuorviante. */
+function wireMisuraSenzaArco(blocco, canale, dates) {
+  const frameMap = new Map(); // data -> elemento .measures, solo i fotogrammi di questo gruppo lo hanno
+  blocco.querySelectorAll(".frame[data-data]").forEach((cell) => {
+    const measuresEl = cell.querySelector(".measures");
+    if (measuresEl) frameMap.set(cell.dataset.data, measuresEl);
+  });
+  const missingDates = dates.slice(1).filter((d) => {
+    const g = AP.store.giorno(canale, d);
+    return !(g && g.origine === "registrata" && g.misure);
+  });
+
+  const ctl = blocco.querySelector(".senza-arco-misura");
+  ctl.innerHTML = `
+    <button class="archSectionMeasure"></button>
+    <button class="archSectionStop ghost" style="display:none">⏹ Interrompi</button>
+    <span class="status archSectionStatus"></span>`;
+  const measureBtn = ctl.querySelector(".archSectionMeasure");
+  const stopBtn = ctl.querySelector(".archSectionStop");
+  const statusEl = ctl.querySelector(".archSectionStatus");
+  measureBtn.textContent = missingDates.length
+    ? `📏 Misura i giorni senza dati registrati (${missingDates.length})`
+    : `📏 tutti i giorni hanno già misure registrate`;
+  measureBtn.disabled = !missingDates.length;
+
+  const state = archSectionState.get(canale) || { abort: false, measuring: false };
+  archSectionState.set(canale, state);
+  measureBtn.onclick = () => measureArchSection(canale, dates, frameMap, state, measureBtn, stopBtn, statusEl);
+  stopBtn.onclick = () => { state.abort = true; };
 }
 
 /* ---------- riempie UNA sezione appena il suo archivio è disponibile ---------- */
@@ -80,9 +350,8 @@ function fillArchSection(ch, arch) {
 
   if (!arch || !Array.isArray(arch.dates) || !arch.dates.length) {
     countEl.innerHTML = arch ? "0 giorni" : `<span class="hint">canale non raggiungibile</span>`;
-    root.querySelector(".film").innerHTML = "";
+    root.querySelector(".arch-body").innerHTML = "";
     root.querySelector(".arch-today").innerHTML = "";
-    root.querySelector(".labctl").style.display = "none";
     aggiornaRiepilogo();
     return;
   }
@@ -93,48 +362,21 @@ function fillArchSection(ch, arch) {
   const todayGiorno = ch.today?.date ? AP.store.giorno(ch.id, ch.today.date) : null;
   root.querySelector(".arch-today").innerHTML = ch.storico ? "" : buildTodayCardHTML(ch, todayGiorno);
 
-  const filmEl = root.querySelector(".film");
-  filmEl.innerHTML = "";
-  const frameMap = new Map(); // data -> elemento .measures (solo per chi non ha provenienza registrata)
-  for (const date of dates) {
-    const g = AP.store.giorno(ch.id, date);
-    const imgUrl = `${base()}/w/${encodeURIComponent(ch.id)}?date=${encodeURIComponent(date)}`;
-    const cell = document.createElement("div");
-    cell.className = "frame";
-    cell.dataset.canale = ch.id;
-    cell.dataset.data = date;
-    cell.innerHTML = `
-      <img loading="lazy" src="${imgUrl}" alt="${esc(date)}" style="cursor:pointer" title="apri a piena risoluzione in una scheda nuova" />
-      <div class="meta">${buildFrameHTML(ch.id, date, g)}</div>`;
-    cell.querySelector("img").onclick = () => window.open(imgUrl, "_blank"); // niente lightbox in questo task: solo l'immagine, a piena risoluzione
-    const measuresEl = cell.querySelector(".measures");
-    if (measuresEl) frameMap.set(date, measuresEl);
-    applyMarkToFrame(cell, ch.id, date);
-    wireMarkControls(cell, ch.id, date);
-    filmEl.appendChild(cell);
+  const workerTooOld = !Array.isArray(arch.giorni);
+  const body = root.querySelector(".arch-body");
+  body.innerHTML = "";
+
+  const archi = workerTooOld ? [] : AP.store.archiDi(ch.id); // più recente prima (vedi store.js)
+  for (const arco of archi) body.appendChild(buildArcoBlockEl(arco, ch.id));
+
+  const senzaArco = AP.store.giorniSenzaArco(ch.id); // [{data, giorno}], ascendente
+  if (senzaArco.length) {
+    const blocco = buildSenzaArcoBlockEl(ch.id, senzaArco, workerTooOld);
+    body.appendChild(blocco);
+    wireMisuraSenzaArco(blocco, ch.id, dates);
   }
 
-  // "misura questo arco" è superfluo per i giorni con provenienza già registrata
-  // (misure comprese): resta solo per chi ne è privo.
-  const missingDates = dates.slice(1).filter((d) => {
-    const g = AP.store.giorno(ch.id, d);
-    return !(g && g.origine === "registrata" && g.misure);
-  });
-  const measureBtn = root.querySelector(".archSectionMeasure");
-  const stopBtn = root.querySelector(".archSectionStop");
-  const statusEl = root.querySelector(".archSectionStatus");
-  measureBtn.textContent = missingDates.length
-    ? `📏 Misura i giorni senza dati registrati (${missingDates.length})`
-    : `📏 tutti i giorni hanno già misure registrate`;
-  measureBtn.disabled = !missingDates.length;
-  root.querySelector(".labctl").style.display = "";
-
-  const state = archSectionState.get(ch.id) || { abort: false, measuring: false };
-  archSectionState.set(ch.id, state);
-  measureBtn.onclick = () => measureArchSection(ch.id, dates, frameMap, state, measureBtn, stopBtn, statusEl);
-  stopBtn.onclick = () => { state.abort = true; };
-
-  applyArchFilter(); // riapplica il filtro corrente (utile se era già impostato su un canale)
+  applyArchFilter(); // riapplica il filtro corrente (utile se era già impostato su questo canale/coppia)
   aggiornaRiepilogo();
 }
 
@@ -167,28 +409,11 @@ function aggiornaRiepilogo() {
   }
 }
 
-$("archReload").onclick = () => AP.store.carica();
-$("archFlusso").onchange = applyArchFilter;
-
-/* filtro facoltativo: "tutti" mostra ogni sezione già caricata, un id isola solo
-   quella (e nasconde l'intestazione degli storici se il canale isolato è attivo,
-   o viceversa). */
-function applyArchFilter() {
-  const val = $("archFlusso").value || "tutti";
-  let anyHistoricalVisible = false;
-  document.querySelectorAll("#archSections .arch-section").forEach((sec) => {
-    const show = val === "tutti" || sec.dataset.channel === val;
-    sec.style.display = show ? "" : "none";
-    if (show && sec.dataset.kind === "storico") anyHistoricalVisible = true;
-  });
-  const hdr = $("archHistoricalHeader");
-  if (hdr) hdr.style.display = anyHistoricalVisible ? "" : "none";
-}
-
 /* contenuto del riquadro "oggi": solo per i flussi attivi, legge il meta già
    incluso in /api/channels e, se disponibile, la carta d'identità del giorno
-   odierno. Un flusso attivo SENZA generazione oggi ha un messaggio dedicato
-   invece di restare vuoto in silenzio. */
+   odierno. Resta com'è per i canali attivi (DESIGN.md): l'unica modifica qui è
+   chipCoppia al posto della vecchia coppiaLabelHTML. Un flusso attivo SENZA
+   generazione oggi ha un messaggio dedicato invece di restare vuoto in silenzio. */
 function buildTodayCardHTML(ch, todayGiorno) {
   const t = ch?.today;
   const g = todayGiorno || null;
@@ -201,7 +426,7 @@ function buildTodayCardHTML(ch, todayGiorno) {
   const conceptNome = g?.conceptNome || t.conceptNome || t.conceptId;
   const elementId = g?.element || null;
   const elementNome = g?.elementNome || null;
-  const coppia = coppiaLabelHTML(conceptNome, conceptId, elementNome, elementId, isNativePairing(conceptId, elementId));
+  const coppia = AP.comp.chipCoppia(conceptId, elementId, { conceptNome, elementNome });
   const m = g?.misure || t.misure || {};
   const misureTxt = AP.comp.MEAS.map((k) =>
     `${AP.comp.MEAS_LABEL[k] || k} ${m[k] == null ? "—" : (k === "compattezza" ? m[k].toFixed(2) : m[k].toFixed(1))}`
@@ -225,14 +450,11 @@ function buildTodayCardHTML(ch, todayGiorno) {
   </div>`;
 }
 
-/* "misura questo arco" di UNA sezione: una chiamata /test-metrics per ogni coppia
-   di giorni CONSECUTIVI il cui secondo giorno NON ha già provenienza registrata.
-   In sequenza (sono trasformazioni immagine, non vanno lanciate tutte insieme),
-   interrompibile fra un passaggio e l'altro. Il profilo storico di questi giorni
-   non è noto — quindi le misure restano SENZA colore invece di essere confrontate
-   col range di oggi, che sarebbe fuorviante. Ogni sezione ha il proprio pulsante e
-   il proprio stato: misurare un canale non blocca né interrompe la misurazione
-   di un altro. */
+/* "misura questo arco" di UNA sezione: vedi wireMisuraSenzaArco più sopra per
+   come viene invocata (bersaglio: solo i giorni del gruppo "senza arco noto",
+   ma la ricerca delle coppie [ieri, oggi] usa SEMPRE la cronologia intera del
+   canale). In sequenza (sono trasformazioni immagine, non vanno lanciate tutte
+   insieme), interrompibile fra un passaggio e l'altro. */
 async function measureArchSection(canale, dates, frameMap, state, btn, stopBtn, statusEl) {
   if (state.measuring) return;
   if (!key()) return setStatus(statusEl, "serve la chiave admin (campo in alto): /test-metrics è un endpoint protetto");
@@ -273,14 +495,23 @@ async function measureArchSection(canale, dates, frameMap, state, btn, stopBtn, 
     : `fatto: misurati ${done}/${pairs.length} passaggi senza dati registrati`);
 }
 
+/* ---------- wiring statico della barra filtri (elementi presenti fin dal markup) ---------- */
+Object.values(FILTRO_SEL).forEach((id) => { if ($(id)) $(id).onchange = scriviHashDaFiltri; });
+if ($("archFiltriPulisci")) $("archFiltriPulisci").onclick = () => AP.util.route.vai("archivio", {});
+$("archReload").onclick = () => AP.store.carica();
+
 /* ---------- reazioni agli eventi dello STORE ---------- */
 AP.store.on("canali", (canali) => buildArchSkeleton(canali));
+AP.store.on("catalogo", () => { buildFiltroConceptElement(); riapplicaFiltriDaHash(); });
+AP.store.on("usi", () => { buildFiltroConceptElement(); riapplicaFiltriDaHash(); });
+// le note (giudizi) possono arrivare prima o dopo che un arco sia già stato
+// disegnato: ricalcola solo i conteggi e riapplica il filtro giudizio, senza
+// ricostruire il DOM (vedi aggiornaContiGiudizio).
+AP.store.on("note", () => { aggiornaContiGiudizio(); applyArchFilter(); });
 
 AP.tabs.archivio = {
-  onShow() {
-    // niente da (ri)caricare qui: lo scheletro/le sezioni si aggiornano da soli
-    // reagendo agli eventi dello STORE, anche mentre questa tab non è quella
-    // visibile. Un riapplica-filtro difensivo è comunque a costo zero.
+  onShow(params = {}) {
+    impostaFiltriSelect(params);
     applyArchFilter();
   },
 };

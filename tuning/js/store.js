@@ -184,6 +184,29 @@ AP.store.archiDi = function archiDi(canale) {
   return archi;
 };
 
+/** Giorni di un canale che NON appartengono a nessun arco raggruppato (arco
+    mancante: provenienza ricostruita o assente — vedi archiDi sopra). Uniforme
+    anche nel caso limite di un Worker troppo vecchio per esporre `giorni` in
+    /api/archive: lì NESSUN giorno ha un arco noto, quindi finiscono qui tutti,
+    con `giorno:null` (tab-archivio.js lo riconosce e mostra un messaggio
+    dedicato, diverso dai 3 stati onesti che il backend dichiara per-giorno).
+    Ordine ascendente (dal più vecchio): coerente con l'ordine con cui
+    l'Archivio legge la pellicola di un arco. */
+AP.store.giorniSenzaArco = function giorniSenzaArco(canale) {
+  const arch = AP.store.dati.archivi[canale];
+  if (!arch || !Array.isArray(arch.dates)) return [];
+  if (!Array.isArray(arch.giorni)) {
+    return [...arch.dates].sort().map((data) => ({ data, giorno: null }));
+  }
+  const inArco = new Set();
+  for (const arco of AP.store.archiDi(canale)) for (const g of arco.giorni) inArco.add(g.data);
+  return arch.giorni
+    .filter((g) => !inArco.has(g.data))
+    .slice()
+    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0))
+    .map((g) => ({ data: g.data, giorno: g }));
+};
+
 /* ---------- indice degli usi (client-side, da catalogo + archivi + note) ---------- */
 /* Un concept è "in produzione" su un canale attivo se è nella sua indole
    (`famiglie`) oppure se un element pubblicato su quel canale lo ha come
