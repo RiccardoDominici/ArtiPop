@@ -24,15 +24,13 @@
 // Robustezza: se un flusso fallisce, l'immagine precedente resta al suo posto —
 // la Shortcut degli utenti non si rompe mai.
 
-import { CONFIG } from "./config.js";
 import { ACTIVE_CHANNELS, CHANNELS, resolveChannel, LEGACY_ALIASES } from "./channels.js";
 import { todayKey } from "./story.js";
 import {
   getImage, getMeta, listChannelsWithArchive,
 } from "./storage.js";
 import {
-  fingerprintFromBytes, fingerprintFromArchive, compare, verdict,
-  decodeFingerprint, formatMeasures, diagnose,
+  fingerprintFromArchive, compare, verdict, formatMeasures, diagnose,
 } from "./metrics.js";
 import { effectiveProfiles, saveTuning, clearTuning, defaultProfiles } from "./profiles.js";
 import { runLabArc, getLabImage } from "./lab.js";
