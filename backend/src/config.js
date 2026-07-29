@@ -33,14 +33,10 @@ export const CONFIG = {
     "@cf/meta/llama-3.2-3b-instruct",
   ],
 
-  // Modelli che sanno GUARDARE un'immagine: servono a leggere lo sfondo di ieri
-  // e capire a che punto della storia è arrivato DAVVERO, invece di fidarsi del
-  // calendario. Llama 3.2 Vision richiede un'accettazione di licenza una tantum
-  // (vedi vision.js: la gestisce da solo al primo errore).
-  VISION_MODELS: [
-    "@cf/meta/llama-3.2-11b-vision-instruct",
-    "@cf/llava-hf/llava-1.5-7b-hf",
-  ],
+  // NOTA: qui viveva VISION_MODELS, il modello che leggeva lo sfondo di ieri
+  // per capire a che tappa fosse arrivata la storia. Sostituito dalle misure
+  // di metrics.js — vedi il commento in testa a index.js — e rimosso insieme
+  // a vision.js e alle sue sonde /test-vision, /test-ask.
 
   // --- CANCELLO DI COLLAUDO (vedi metrics.js) ---
   // Quanti tentativi al massimo per far rientrare il cambiamento nel profilo del

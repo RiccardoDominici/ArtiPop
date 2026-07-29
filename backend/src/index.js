@@ -30,15 +30,13 @@ import {
   buildKeyframePrompt, buildDailyPrompt, buildCumulativePrompt,
   buildRealignPrompt, todayKey,
 } from "./story.js";
-import { generateImage, generateWithGate, referenceFor } from "./generate.js";
 import {
-  getState, getImage, getMeta, listChannelsWithArchive,
+  getImage, getMeta, listChannelsWithArchive,
 } from "./storage.js";
 import {
   fingerprintFromBytes, fingerprintFromArchive, compare, verdict,
   decodeFingerprint, formatMeasures, diagnose,
 } from "./metrics.js";
-import { readStage } from "./vision.js";
 import { effectiveProfiles, saveTuning, clearTuning, defaultProfiles } from "./profiles.js";
 import { runLabArc, getLabImage } from "./lab.js";
 import { ELEMENTS, combine } from "./concepts.js";
@@ -291,15 +289,10 @@ export default {
       return jsonCors({ error: "metodo non ammesso" }, 405);
     }
 
-    // ---- Lab: elenco concept+element per i menu della UI ----
-    if (path === "/lab/elements") {
-      return jsonCors({
-        concepts: Object.values(FAMILIES).map((f) => ({ id: f.id, nome: f.nome })),
-        elements: ELEMENTS.map((e) => ({
-          id: e.id, nome: e.nome, soggetto: e.soggetto, famigliaNativa: e.famigliaNativa,
-        })),
-      });
-    }
+    // NOTA: qui viveva /lab/elements, un elenco concept+element per i menu
+    // della UI di tuning. Soppiantato da /catalogo, che è la stessa fonte da
+    // cui il tool costruisce già i suoi menu (built-in + custom uniti):
+    // tenerne due significava rischiare che divergessero.
 
     // ---- Lab: genera un arco di prova (protetto) ----
     // GET/POST /lab/arc?concept=<schema>&element=<soggetto>&days=7&gate=0
@@ -555,54 +548,10 @@ export default {
       });
     }
 
-    // ---- Sonda del lettore di immagini (admin): /test-vision?ch=X&date=D ----
-    if (path === "/test-vision") {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
-      const ch = url.searchParams.get("ch") || "";
-      const date = url.searchParams.get("date") || "";
-      const catalogVis = await loadCatalog(env);
-      const conceptId = url.searchParams.get("concept");
-      const concept = conceptId
-        ? resolveConcept(conceptId, catalogVis)
-        : resolveConcept((await getState(env, ch))?.conceptId, catalogVis);
-      if (!concept) return json({ error: "servono ?concept= oppure un flusso già attivo" }, 400);
-      const ref = await referenceFor(env, ch, date || null);
-      if (!ref) return json({ error: "immagine non recuperabile" }, 404);
-      const t0 = Date.now();
-      const traccia = [];
-      const stage = await readStage(env, concept, ref, traccia);
-      return json({
-        ch, date, concept: concept.id, ms: Date.now() - t0,
-        tappaLetta: stage === null ? null : stage + 1,
-        traccia,
-        tappe: concept.tappe.map((f, i) => `${i + 1}. ${f.join(", ")}`),
-      });
-    }
-
-    // ---- Sonda domanda libera al lettore (admin): /test-ask?ch=X&date=D&q=... ----
-    // Serve a capire QUALE forma di domanda regge il modello di visione: la
-    // scelta fra 7 alternative si è rivelata inaffidabile, una domanda binaria
-    // potrebbe non esserlo.
-    if (path === "/test-ask") {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
-      const ch = url.searchParams.get("ch") || "";
-      const date = url.searchParams.get("date") || "";
-      const q = url.searchParams.get("q") || "";
-      if (!q) return json({ error: "serve ?q=" }, 400);
-      const ref = await referenceFor(env, ch, date || null);
-      if (!ref) return json({ error: "immagine non recuperabile" }, 404);
-      const out = [];
-      for (const model of CONFIG.VISION_MODELS) {
-        const t0 = Date.now();
-        try {
-          const res = await env.AI.run(model, { prompt: q, image: Array.from(ref), max_tokens: 24 });
-          out.push({ model, ms: Date.now() - t0, risposta: res?.response });
-        } catch (err) {
-          out.push({ model, errore: String(err.message).slice(0, 200) });
-        }
-      }
-      return json({ ch, date, q, risposte: out });
-    }
+    // NOTA: qui vivevano /test-vision e /test-ask, le sonde del modello di
+    // visione che leggeva l'immagine di ieri per capire a che tappa fosse
+    // arrivata la storia (vedi il commento in testa al file). Rimosse insieme
+    // a vision.js quando le misure di metrics.js le hanno sostituite.
 
     // ---- Probe risoluzione (admin): /test-size?w=1152&h=2496 ----
     if (path === "/test-size") {
