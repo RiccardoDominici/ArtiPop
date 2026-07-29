@@ -12,26 +12,32 @@ ieri oggi è un po' più in alto sul sentiero, la città neon ha acceso nuove in
 
 ## 🎨 I canali attivi
 
-| Canale | Cosa succede, giorno dopo giorno | URL |
+Un canale non è più un tema fisso: è un'**indole**, e ogni settimana pesca
+dalla libreria una storia diversa (schema di evoluzione + soggetto) da quella
+indole — cambia la sceneggiatura dei 7 giorni, non il carattere del canale.
+
+| Canale | Indole (cosa può capitare) | URL |
 |---|---|---|
-| 🏝️ **Isola** | un'isola fluttuante prende vita: roccia nuda → prato → alberi → cascata → una casetta con le luci accese | `/w/island` |
-| 📚 **Studio** | una scrivania vuota si riempie di vita, un oggetto al giorno | `/w/studio` |
-| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura nello stesso vaso | `/w/bloom` |
-| 🎲 **Random** | ogni giorno un canale a sorpresa | `/w/random` |
+| 🌿 **Natura** | cose che nascono e si costruiscono: una pianta che cresce, un'isola o un edificio che prende forma | `/w/natura` |
+| 🌆 **Città** | luoghi abitati che evolvono nel tempo, e viaggi che li attraversano | `/w/citta` |
+| 🕯️ **Quiete** | spazi intimi che si riempiono di vita, forme che si trasformano | `/w/quiete` |
+| 🎲 **Random** | ogni giorno uno dei tre canali sopra, a sorpresa | `/w/random` |
 
 Tutti gli URL iniziano con `https://artipop.riccardo-dominici.workers.dev`.
 Ogni giorno cambia UN pezzo della scena (una pennellata, una foglia nuova) e il
 resto resta identico: non è un'immagine diversa, è la stessa storia che avanza.
-Altri canali "viaggio" (🏔️ Horizon, 🌃 Neon, 🪐 Cosmos, 🌊 Depths, 🎨 Aurora)
-sono pronti nel codice, in pausa: si attivano con una riga.
+Isola, Studio e Bloom — i canali della versione precedente — vivono ora come
+tre delle tante storie che Natura e Quiete possono pescare; i loro vecchi
+indirizzi (`/w/island`, `/w/studio`, `/w/bloom`) restano attivi e il loro
+archivio resta consultabile per sempre. Dettagli: [GUIDA.md §2.5](GUIDA.md#25-come-sono-fatti-i-canali).
 
 ## ⬇️ Scarica la Shortcut
 
 Shortcut già pronte, con l'URL del canale dentro — scarica, apri, importa:
 
-**[🏝️ Isola](https://artipop.riccardo-dominici.workers.dev/s/island.shortcut)** ·
-**[📚 Studio](https://artipop.riccardo-dominici.workers.dev/s/studio.shortcut)** ·
-**[🌸 Bloom](https://artipop.riccardo-dominici.workers.dev/s/bloom.shortcut)** ·
+**[🌿 Natura](https://artipop.riccardo-dominici.workers.dev/s/natura.shortcut)** ·
+**[🌆 Città](https://artipop.riccardo-dominici.workers.dev/s/citta.shortcut)** ·
+**[🕯️ Quiete](https://artipop.riccardo-dominici.workers.dev/s/quiete.shortcut)** ·
 **[🎲 Random](https://artipop.riccardo-dominici.workers.dev/s/random.shortcut)**
 
 > Se iOS blocca l'import: *Impostazioni → Scorciatoie → Consenti scorciatoie non
@@ -65,7 +71,8 @@ fondo hai uno sfondo a cui tieni, aggiungine uno nuovo qualsiasi e sarà quello.
   keyframe dell'arco = àncora di qualità) — cambia solo il pezzo del giorno.
 - L'immagine è generata da **FLUX.2 klein-4b** (Workers AI) a 960x2048.
 - **Niente va perso**: ogni wallpaper finisce in un archivio permanente,
-  consultabile dal sito ("Il viaggio finora") o via `…/w/horizon?date=YYYY-MM-DD`.
+  consultabile dal sito ("Il viaggio finora") o via `…/w/natura?date=YYYY-MM-DD`
+  (anche per l'archivio storico dei vecchi canali, es. `…/w/island?date=…`).
 - Se una generazione fallisce resta l'immagine di ieri: la Shortcut non si
   rompe mai.
 - Tutto dentro i limiti gratuiti: ~500 neuroni/giorno su 10.000, nessun costo
@@ -75,7 +82,9 @@ fondo hai uno sfondo a cui tieni, aggiungine uno nuovo qualsiasi e sarà quello.
 
 - **[GUIDA.md](GUIDA.md)** — guida completa: uso, gestione, operazioni comuni,
   limiti free tier e cosa fare quando l'archivio cresce.
-- **[backend/README.md](backend/README.md)** — architettura del Worker
-  (~700 righe commentate), costi in neuroni, deploy, endpoint admin.
+- **[backend/README.md](backend/README.md)** — architettura del Worker,
+  costi in neuroni, deploy, endpoint admin.
 - **[shortcut/README.md](shortcut/README.md)** — file `.shortcut` firmati per
-  canale (sperimentali) e pipeline per rigenerarli.
+  canale e pipeline per rigenerarli.
+- **[tuning/README.md](tuning/README.md)** — lo strumento locale per osservare
+  l'archivio, provare combinazioni e tarare i range di produzione.

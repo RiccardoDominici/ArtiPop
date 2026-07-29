@@ -49,17 +49,24 @@ sul telefono, la **Parte 2** a chi lo gestisce. Non serve leggerle entrambe.
 ## 1.2 Scegliere il canale
 
 Vai su **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)**
-e sfoglia le card (si trascinano). Ogni canale è un mondo diverso:
+e sfoglia le card (si trascinano). Un canale non è più un tema fisso: è
+un'**indole**, e ogni settimana pesca dalla libreria una storia diversa —
+cambia la sceneggiatura dei 7 giorni, non cambia il carattere del canale.
 
-| Canale | Cosa succede, giorno dopo giorno | URL |
+| Canale | Indole (cosa può capitare) | URL |
 |---|---|---|
-| 🏝️ **Isola** | un'isola fluttuante prende vita, un pezzo al giorno | `…/w/island` |
-| 📚 **Studio** | una scrivania vuota si riempie di vita, un oggetto al giorno | `…/w/studio` |
-| 🌸 **Bloom** | una pianta cresce dal seme alla fioritura | `…/w/bloom` |
-| 🎲 **Random** | ogni giorno un canale a sorpresa | `…/w/random` |
+| 🌿 **Natura** | cose che nascono e si costruiscono: una pianta che cresce, un'isola o un edificio che prende forma | `…/w/natura` |
+| 🌆 **Città** | luoghi abitati che evolvono nel tempo, e viaggi che li attraversano | `…/w/citta` |
+| 🕯️ **Quiete** | spazi intimi che si riempiono di vita, forme che si trasformano | `…/w/quiete` |
+| 🎲 **Random** | ogni giorno uno dei tre canali sopra, a sorpresa | `…/w/random` |
 
-> I canali "viaggio" (Horizon, Neon, Cosmos, Depths, Aurora) restano nel codice
-> in pausa: si riattivano con una riga, vedi [2.4](#24-operazioni-comuni).
+> Isola, Studio e Bloom — i canali della versione precedente — non sono
+> spariti: sono diventati tre delle tante storie che i canali di oggi possono
+> pescare (Isola e Bloom sotto Natura, Studio sotto Quiete). I loro vecchi
+> indirizzi funzionano ancora — `…/w/island`, `…/w/studio`, `…/w/bloom`
+> mostrano l'immagine di oggi del canale che ne ha raccolto l'eredità — e il
+> loro archivio resta consultabile per sempre sotto il nome di allora
+> (`…/w/island?date=…`, vedi [1.5](#15-uso-quotidiano)).
 
 ## 1.3 Installare la Shortcut
 
@@ -173,8 +180,9 @@ Dettagli tecnici: [`backend/README.md`](backend/README.md).
 
 | Percorso | Cosa c'è |
 |---|---|
-| `backend/src/index.js` | routing HTTP, cron, orchestrazione per canale |
-| `backend/src/channels.js` | definizione dei canali: identità visiva, progetti, tappe |
+| `backend/src/index.js` | routing HTTP: autenticazione, CORS, dispatch delle rotte, cron (fan-out) |
+| `backend/src/handlers.js` | orchestrazione di un giorno di generazione: `runChannel`, `backfillChannel`, `regenDay` |
+| `backend/src/channels.js` | i tre flussi (natura, città, quiete) e gli alias verso i vecchi canali (island, studio, bloom, …) |
 | `backend/src/story.js` | evoluzione giornaliera e ciclo di vita degli archi |
 | `backend/src/generate.js` | catena di generazione immagini con fallback |
 | `backend/src/storage.js` | layout delle chiavi KV |
@@ -182,6 +190,10 @@ Dettagli tecnici: [`backend/README.md`](backend/README.md).
 | `backend/src/help.js` | pagina `/aiuto` (troubleshooting + FAQ) |
 | `backend/src/config.js` | tutti i parametri regolabili, documentati |
 | `shortcut/` | template, build e verifica dei file `.shortcut` firmati |
+| `tuning/` | strumento locale per il maintainer — vedi [`tuning/README.md`](tuning/README.md) |
+
+Dettagli su tutti i moduli (compresi quelli del catalogo e delle misure):
+[`backend/README.md`](backend/README.md).
 
 ## 2.4 Operazioni comuni
 
@@ -195,70 +207,130 @@ npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
 | Voglio… | Come |
 |---|---|
 | Rigenerare tutti i canali | `curl "…/run-all?force=1&key=<ADMIN_KEY>"` |
-| Rigenerare un canale | `…/run/island?force=1&key=<ADMIN_KEY>` |
-| Rigenerare **un solo giorno** venuto male | `…/regen-day?ch=island&date=2026-07-20&key=…` |
-| Ricostruire una settimana di storia | `…/backfill?ch=island&days=7&key=…` (azzera lo stato del canale; 7 = un ciclo intero) |
+| Rigenerare un canale | `…/run/natura?force=1&key=<ADMIN_KEY>` |
+| Rigenerare **un solo giorno** venuto male | `…/regen-day?ch=natura&date=2026-07-20&key=…` |
+| Ricostruire una settimana di storia | `…/backfill?ch=natura&days=7&key=…` (azzera lo stato del canale; 7 = un ciclo intero) |
 | Attivare/disattivare un canale | `active: true/false` in `channels.js` + deploy. L'archivio resta in KV |
-| Aggiungere un canale | nuova voce in `channels.js`. Un canale a progressione vuole **esattamente 7** `stageTemplates` |
+| Aggiungere un soggetto alla libreria | riga in `concepts.js` (rideploy), **oppure** `PUT /catalogo/element` a caldo, senza rideploy |
+| Aggiungere un canale | nuova voce in `channels.js` con `famiglie` **disgiunte** da quelle degli altri canali |
 | Cambiare l'orario di generazione | `triggers.crons` in `backend/wrangler.jsonc` (UTC) |
-| Cambiare la durata del ciclo | `ARC_LENGTH_DAYS` in `config.js` — **e le tappe di ogni canale** |
+| Cambiare la durata del ciclo | `ARC_LENGTH_DAYS` in `config.js` — **e le sette tappe di ogni famiglia in `families.js`** |
 | Vedere i consumi AI | dash.cloudflare.com → AI → Workers AI |
+
+> Gli endpoint che generano accettano anche gli **alias storici**:
+> `…/run/island?force=1` funziona di nuovo (era rotto: rispondeva "flusso
+> sconosciuto" pur essendo qui documentato) e viene instradato sul canale che
+> ne ha raccolto l'eredità — l'immagine di oggi finisce nell'archivio di
+> **natura**, non sotto `island`. Stesso comportamento per `/backfill?ch=island`
+> e `/regen-day?ch=island`.
 
 > La chiave admin è un secret di Wrangler: se la perdi non si recupera, se ne
 > genera una nuova con `npx wrangler secret put ADMIN_KEY`
-> (es. `openssl rand -hex 20`). Protegge `/run`, `/run-all`, `/backfill`,
-> `/regen-day`, `/test-size`, `/test-edit`.
+> (es. `openssl rand -hex 20`).
+
+### Endpoint, in breve
+
+Tutte le scritture e le generazioni vogliono `?key=<ADMIN_KEY>` (o l'header
+`x-artipop-key`); quelle marcate *pubblico* no — sono le stesse GET che usano
+il sito e lo strumento di tuning in sola lettura.
+
+| Endpoint | Cosa fa |
+|---|---|
+| `/run/<flusso>?force=1` | genera l'immagine di oggi (idempotente senza `force`; accetta alias storici) |
+| `/run-all?force=1` | genera tutti i canali attivi |
+| `/backfill?ch=<flusso>&days=N[&gate=0]` | ricostruisce N giorni di storia, stato azzerato |
+| `/regen-day?ch=<flusso>&date=YYYY-MM-DD` | rigenera un solo giorno già passato |
+| `/test-size?w=&h=` | verifica se il modello accetta una risoluzione |
+| `/test-metrics?ch=&a=&b=[&concept=]` | misura il cambiamento fra due giorni d'archivio |
+| `GET /tuning` *(pubblico)* · `PUT`/`DELETE /tuning` | range del cancello: lettura libera, scrittura protetta |
+| `GET /catalogo` *(pubblico)* · `PUT`/`DELETE /catalogo/concept`, `/catalogo/element` | concept/element aggiunti da fuori, senza rideploy |
+| `GET /note` *(pubblico)* · `PUT /note/giorno`, `PUT`/`DELETE /note/assetto` | marcature dei giorni e assetti di tuning salvati |
+| `GET/POST /lab/arc?concept=&element=&days=&gate=` | genera un arco di prova (non tocca la produzione) |
+| `GET /lab/img?run=&n=` *(pubblico)* | serve un'immagine di prova del Lab |
+| `GET /api/channels[?all=1]` *(pubblico)* | stato dei canali attivi; con `all=1` anche i canali storici, marcati `storico:true` |
+| `GET /api/archive/<canale>[?limit=]` *(pubblico)* | date + carta d'identità del canale; `limit` fino a 400 (default 60) |
+| `GET /health` *(pubblico)* | healthcheck |
 
 ## 2.5 Come sono fatti i canali
 
-Ci sono **due motori**, scelti dal campo `mode`:
+Un canale (nel codice, un **flusso**: `backend/src/channels.js`) non è
+legato a un tema fisso. È un'**indole**: un insieme di famiglie di storie da
+cui pescare. Ogni volta che un ciclo di 7 giorni si chiude, il canale ne
+pesca una nuova, diversa dalle ultime usate, e non la rivede finché non ha
+esaurito le altre (`pickConcept` in `story.js`).
 
-**Canali a progressione** (`mode: "progression"` — gli attivi: island, studio, bloom).
-Un arco = un **progetto** che si completa in esattamente
-`CONFIG.ARC_LENGTH_DAYS` = **7 giorni**. Il piano è deterministico e curato a
-mano in `channels.js` (`stageTemplates`, dove `{s}` = nome breve del progetto).
-Ogni giorno mostra una tappa: un cambiamento visibile e cumulativo sulla stessa
-scena fissa. All'ottavo giorno si cambia base.
+Il vocabolario, dal più generale al più specifico:
 
-**Canali "viaggio"** (nessun `mode` — quelli in pausa). Un LLM riscrive ogni
-giorno la scena "un giorno dopo", con una guardia anti-deriva e un fallback
-deterministico. Stesso ciclo di 7 giorni.
+- **CONCEPT** = una **FAMIGLIA** (`backend/src/families.js`): la *forma* di
+  una storia di 7 giorni. Definisce le sette tappe (tappa 0 = stato di
+  partenza; 1-6 = il cambiamento di quel giorno rispetto a ieri) e il
+  *profilo di cambiamento* con cui il cancello giudica se un'immagine è
+  cambiata abbastanza, e non troppo (vedi [2.6](#26-come-è-garantita-la-coerenza-visiva)
+  e `metrics.js`). Esempi: crescita, costruzione, timelapse, attraversamento,
+  accumulo, metamorfosi.
+- **ELEMENT** (`backend/src/concepts.js`) = il *soggetto* che riempie quella
+  forma: setting, stile, palette, e il nome breve che sostituisce `{s}`
+  nelle tappe. Girasole, Isola, Studio, Neon sono tutti element: ciascuno
+  pesca dalla propria famiglia nativa, e può portare tappe proprie quando il
+  copione generico della famiglia non gli si addice (le felci non hanno
+  petali: vedi il commento in testa a `concepts.js`).
+- Un canale ha un'**indole**: le famiglie da cui può pescare (`famiglie` in
+  `channels.js`). Le indoli sono **disgiunte** — nessuna famiglia appartiene
+  a due canali — così due canali non possono mai pescare lo stesso element
+  nella stessa settimana, senza bisogno di coordinamento fra loro.
 
-Due modalità di riferimento visivo (`refMode`):
+| Canale | Indole (famiglie) |
+|---|---|
+| natura | crescita, costruzione |
+| città | timelapse, attraversamento |
+| quiete | accumulo, metamorfosi |
 
-| refMode | Come genera il giorno N | Quando usarlo |
-|---|---|---|
-| *(default)* | edit additivo: `input_image_0` = ieri, `input_image_1` = keyframe | scene illustrate/pittoriche |
-| `anchor-cumulative` | sempre e solo il keyframe + la lista cumulativa di ciò che c'è | scene fotorealistiche lisce, che in catena accumulano artefatti |
+La libreria di element è **estendibile a caldo, senza rideploy**: oltre a
+quelli scritti nel codice (`concepts.js`), un secondo strato in KV
+(`backend/src/catalog.js`) accetta nuovi concept e nuovi element creati da
+fuori — è lo strumento di tuning (tab **Catalogo**) a scriverci, tramite
+`PUT /catalogo/concept` e `PUT /catalogo/element` (vedi
+[2.4](#24-operazioni-comuni)). Da quel momento non c'è più differenza fra un
+element "di fabbrica" e uno custom: `resolveConcept` li tratta allo stesso
+modo ovunque nel sistema.
 
-> **Invariante:** un canale a progressione deve avere esattamente
-> `ARC_LENGTH_DAYS` `stageTemplates` (e altrettante `stageSummaries` se usa
-> `anchor-cumulative`). È verificata a caricamento modulo: se sgarra, lo vedi
-> in `wrangler tail` senza che il canale vada offline.
+> **Invariante:** ogni famiglia deve avere esattamente `ARC_LENGTH_DAYS`
+> (oggi 7) tappe in `families.js`. È verificata a caricamento modulo
+> (`channels.js`): se una famiglia sgarra, lo si vede in `wrangler tail`
+> senza che nessun canale vada offline.
 
 ## 2.6 Come è garantita la coerenza visiva
 
 In ordine di importanza:
 
-1. **Àncora visiva — "anchor, don't chain".** Il primo giorno del ciclo è un
-   *keyframe* generato pulito; i giorni dopo si edita **il keyframe**, mai
-   l'output di ieri. La degradazione da editing iterato (visibile dal 2°-3°
-   passaggio in catena) non si accumula mai. Con archi da 7 giorni la catena è
-   lunga al massimo 6 passaggi. Il keyframe stesso viene riallineato con un
-   auto-edit alla famiglia visiva degli edit.
-2. **Identità fissa.** `style` + `palette` del canale entrano in *ogni* prompt.
+1. **Doppio riferimento visivo.** Il primo giorno del ciclo è un *keyframe*
+   generato pulito (poi riallineato con un auto-edit alla famiglia visiva
+   degli edit, tenuto solo se le misure dicono che non ha perso nulla per
+   strada). Ogni giorno successivo entrano nel modello **due** immagini
+   insieme: quella di ieri (cosa preservare) e il keyframe dell'arco (l'àncora
+   di qualità da cui non allontanarsi troppo) — mai il solo editing a catena
+   dell'output precedente. Se ieri non è recuperabile si riparte dal solo
+   keyframe descrivendo lo stato cumulativo raggiunto; se manca anche quello,
+   si genera da zero, senza riferimento.
+2. **Identità fissa.** `style` + `palette` dell'element entrano in *ogni* prompt.
 3. **Seed stabile per arco.** Composizioni imparentate per tutti i 7 giorni;
    nuovo arco → nuovo seed.
 4. **Tappe quantificate.** Ogni tappa dichiara un cambiamento misurabile
    ("DOUBLED", "HALF of its final height"): vedi [2.10](#210-lezioni-imparate-non-regredire).
-5. **Guardia anti-deriva** (solo canali "viaggio"): la scena proposta dall'LLM
-   è accettata solo se resta nel vocabolario del canale, non ripete quasi
-   identica una scena recente e non contiene elementi vietati; altrimenti
-   scatta il fallback deterministico.
+5. **Il cancello di collaudo** (`metrics.js` + `generate.js`, funzione
+   `generateWithGate`). Prima di pubblicare, l'immagine candidata si confronta
+   con quella di ieri su sei misure (estensione, intensità, compattezza,
+   deriva, degrado, occupazione) e si accetta solo se rientra nel profilo
+   della famiglia; se no si rigenera correggendo la "dose" di descrizione
+   (fino a `MAX_ATTEMPTS` tentativi, poi si pubblica il candidato più vicino
+   al bersaglio). Prima riguardava solo alcuni canali; ora si applica SEMPRE,
+   a ogni canale e ogni giorno.
 
-L'immagine di riferimento va ridotta sotto i 512px: lo fa il resizer gratuito
-`images.weserv.nl`. Se non risponde, quel giorno si genera senza riferimento —
-nessun blocco.
+L'immagine di riferimento va ridotta sotto i 512px perché il modello la
+accetti: se ne occupa il **binding Images di Cloudflare**, sui byte già in
+memoria — nessun servizio esterno, nessuna cache che possa restituire a una
+rigenerazione la miniatura di un run precedente (era un problema reale con
+l'approccio iniziale, vedi [2.10](#210-lezioni-imparate-non-regredire), punto 2).
 
 ## 2.7 Le Shortcut firmate
 
@@ -311,7 +383,6 @@ l'immagine del giorno prima, **zero addebiti**.
 | Un giorno è venuto brutto | — | `…/regen-day?ch=X&date=Y&key=…` |
 | Il canale ripete ieri identico | le tappe sono quantificate? | vedi [2.10](#210-lezioni-imparate-non-regredire), punto 5 |
 | Il progetto completo compare al giorno 1 | la tappa 1 nomina il risultato finale? | vedi [2.10](#210-lezioni-imparate-non-regredire), punto 1 |
-| Miniature di riferimento sbagliate | cache di `images.weserv.nl` | serve un nonce nell'URL sorgente |
 | `/backfill` si ferma a metà | è sincrono di proposito | resta connesso, rilancia se cade |
 | Il DNS non risolve workers.dev | — | `curl --resolve "artipop.riccardo-dominici.workers.dev:443:172.67.176.123" …` |
 | Le Shortcut degli utenti non funzionano in automazione | `python3 shortcut/verify_shortcuts.py` | rigenera e ricarica in KV |
@@ -322,17 +393,25 @@ Tutte verificate sul campo. Cambiarle senza motivo rompe cose che funzionano.
 
 1. **Le tappe iniziali non devono nominare il risultato finale** del progetto,
    né usare `{s}`: il modello lo disegnerebbe subito.
-2. **`images.weserv.nl` cachea per URL**: serve un nonce nell'URL sorgente, o le
-   rigenerazioni ricevono le miniature del run precedente.
+2. **Un resizer esterno per URL cachea per URL**: la prima versione del
+   ridimensionamento del riferimento passava da un servizio esterno chiamato
+   con un URL pubblico, che restituiva alle rigenerazioni la miniatura del
+   run precedente. Risolto spostando il ridimensionamento sul binding Images
+   di Cloudflare, che lavora sui byte già in memoria — quella dipendenza non
+   c'è più. Se in futuro serve di nuovo un resizer esterno per URL, aspettati
+   lo stesso problema: serve un nonce nell'URL sorgente.
 3. **klein non è deterministico** nemmeno a seed fisso: per il giorno storto c'è
    `/regen-day`.
-4. **Il planner LLM delle tappe è disattivato**: produceva tappe fuori bersaglio.
-   Si usano i template curati.
+4. **Il planner LLM delle tappe è stato rimosso**: produceva tappe fuori
+   bersaglio. Si usano le tappe curate a mano in `families.js`.
 5. **Le tappe devono essere QUANTIFICATE** ("raddoppiato", "metà dell'altezza
    finale"): senza numeri il modello, istruito a preservare tutto il resto,
    riproduce ieri quasi identico.
-6. **Le scene fotorealistiche lisce accumulano macchie in catena**: per quelle
-   serve `refMode: "anchor-cumulative"`, o uno stile pittorico/bokeh.
+6. **Le scene fotorealistiche lisce accumulano macchie in catena**: per questo
+   ogni giorno normale usa DUE riferimenti insieme (ieri + keyframe
+   dell'arco, vedi [2.6](#26-come-è-garantita-la-coerenza-visiva)) invece del
+   solo editing a catena — non è una modalità da scegliere per famiglia, è il
+   comportamento di sempre.
 7. **`/backfill` deve restare sincrono**: `ctx.waitUntil` viene ucciso dopo
    ~30-60s dalla risposta.
 8. **Mai backtick nei commenti dentro `page.js`/`help.js`**: l'HTML sta dentro un
