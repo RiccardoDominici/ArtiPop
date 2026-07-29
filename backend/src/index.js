@@ -41,6 +41,7 @@ import {
   encodeFingerprint, decodeFingerprint, formatMeasures, diagnose,
 } from "./metrics.js";
 import { readStage } from "./vision.js";
+import { buildInfoGiorno } from "./giorno.js";
 import { effectiveProfiles, saveTuning, clearTuning, loadTuning, resolveProfilo, defaultProfiles } from "./profiles.js";
 import { runLabArc, getLabImage } from "./lab.js";
 import { ELEMENTS, getElement, combine } from "./concepts.js";
@@ -164,22 +165,9 @@ async function runChannel(env, channelId, { force = false } = {}) {
   // CONTRATTO) vuole anche l'element, il testo della tappa, il verdetto del
   // collaudo e il PROFILO EFFETTIVO usato — quello già risolto con
   // resolveProfilo (default più override di tuning) dentro `concept.profilo`.
-  await putImage(env, id, img, {
-    date,
-    scene: state.scene,
-    conceptId: concept.id,
-    conceptNome: concept.nome,
-    famiglia: concept.famiglia.id,
-    famigliaNome: concept.famiglia.nome,
-    arcIndex: state.arcIndex,
-    dayInArc: state.dayInArc,
-    stage: state.stage,
-    testoTappa: clausesFor(concept, state.stage, 0, state.extraIndex).join(". "),
-    misure: img.misure,
-    tentativi: img.tentativi,
-    verdetto: img.verdetto,
-    profilo: concept.profilo,
-  });
+  // La forma dell'oggetto è decisa in UN SOLO posto (giorno.js): vedi lì il
+  // perché.
+  await putImage(env, id, img, buildInfoGiorno({ date, concept, state, img }));
 
   const { improntaPrec, ...statoDaSalvare } = state;
   await putState(env, id, {
@@ -253,22 +241,7 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
       prevBytes, anchorBytes, maxAttempts: conGate ? null : 1,
     });
 
-    await putImage(env, id, img, {
-      date,
-      scene: state.scene,
-      conceptId: concept.id,
-      conceptNome: concept.nome,
-      famiglia: concept.famiglia.id,
-      famigliaNome: concept.famiglia.nome,
-      arcIndex: state.arcIndex,
-      dayInArc: state.dayInArc,
-      stage: state.stage,
-      testoTappa: clausesFor(concept, state.stage, 0, state.extraIndex).join(". "),
-      misure: img.misure,
-      tentativi: img.tentativi,
-      verdetto: img.verdetto,
-      profilo: concept.profilo,
-    }, { archiveOnly: i > 0 });
+    await putImage(env, id, img, buildInfoGiorno({ date, concept, state, img }), { archiveOnly: i > 0 });
 
     console.log(
       `[backfill] ${id} ${date} (${concept.id} t${state.stage + 1}): ` +
@@ -800,22 +773,11 @@ export default {
       };
       try {
         const img = await generateDay(env, channel, concept, dayState);
-        await putImage(env, id, img, {
-          date,
-          scene: dayState.scene,
-          conceptId: concept.id,
-          conceptNome: concept.nome,
-          famiglia: concept.famiglia.id,
-          famigliaNome: concept.famiglia.nome,
-          arcIndex: state.arcIndex,
-          dayInArc,
-          stage: dayInArc,
-          testoTappa: dayState.scene,
-          misure: img.misure,
-          tentativi: img.tentativi,
-          verdetto: img.verdetto,
-          profilo: concept.profilo,
-        }, { archiveOnly: date !== state.lastDate });
+        await putImage(
+          env, id, img,
+          buildInfoGiorno({ date, concept, state: dayState, img, testoTappa: dayState.scene }),
+          { archiveOnly: date !== state.lastDate }
+        );
         return json({
           channel: id, date, dayInArc, model: img.model, tentativi: img.tentativi,
           misure: img.misure ? formatMeasures(img.misure) : null,
