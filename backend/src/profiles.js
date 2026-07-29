@@ -22,14 +22,18 @@ import { FAMILIES } from "./families.js";
 // (profilo, maxDeriva, maxDegrado), quindi da qui in giù non c'è bisogno di
 // distinguerli.
 import { allFamilies } from "./catalog.js";
+// Stessi limiti di catalog.js/note.js, un'unica fonte di verità (vedi
+// validazione.js): qui servono nella forma {min,max} per il CLAMPING (vedi
+// sotto), non per la validazione che respinge — è la differenza voluta.
+import { LIMITI_RANGE } from "./validazione.js";
 
 const TUNING_KEY = "tuning:profili";
 
 /** I campi di un profilo che si possono tarare, con i limiti di validità. */
 const CAMPI_RANGE = {
-  estensione: { min: 0, max: 100 },
-  intensita: { min: 0, max: 100 },
-  compattezza: { min: 0, max: 1 },
+  estensione: { min: LIMITI_RANGE.estensione[0], max: LIMITI_RANGE.estensione[1] },
+  intensita: { min: LIMITI_RANGE.intensita[0], max: LIMITI_RANGE.intensita[1] },
+  compattezza: { min: LIMITI_RANGE.compattezza[0], max: LIMITI_RANGE.compattezza[1] },
 };
 const CAMPI_SCALARI = {
   maxDeriva: { min: 0, max: 100 },

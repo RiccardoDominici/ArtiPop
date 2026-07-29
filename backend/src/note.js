@@ -18,6 +18,7 @@
 //     (niente `Boolean(...)` su input esterno — vedi il commento in catalog.js).
 
 import { CHANNELS, LEGACY_ALIASES } from "./channels.js";
+import { validaRangeProfilo, validaMonotona, validaScalareONull } from "./validazione.js";
 
 const NOTE_KEY = "note:marcature";
 
@@ -128,46 +129,24 @@ export async function putGiornoNota(env, body) {
 
 /* ===================== SCRITTURA: ASSETTI ===================== */
 
-/** Un profilo dentro `profili.<chiave>`, stessi limiti di catalog.js/profiles.js. */
+/**
+ * Un profilo dentro `profili.<chiave>`, validato dal modulo condiviso
+ * validazione.js (stessi limiti e stessi messaggi di prima — vedi lì).
+ * Differenza voluta rispetto a catalog.js: qui `monotona` si scrive SOLO
+ * quando l'input era già un booleano — in caso d'errore il campo resta
+ * assente invece di essere forzato a `false` (comportamento di sempre).
+ */
 function validaProfiloAssetto(profiloIn, chiave, errori) {
   if (!profiloIn || typeof profiloIn !== "object") {
     errori.push(`profili.${chiave}: profilo non valido`);
     return null;
   }
-  const profilo = {};
-  const campi = { estensione: [0, 100], intensita: [0, 100], compattezza: [0, 1] };
-  for (const [campo, [min, max]] of Object.entries(campi)) {
-    const v = profiloIn[campo];
-    if (!Array.isArray(v) || v.length !== 2 || !v.every((n) => typeof n === "number" && isFinite(n))) {
-      errori.push(`profili.${chiave}.${campo}: servono [min, max] numerici`);
-      continue;
-    }
-    const lo = Math.min(v[0], v[1]);
-    const hi = Math.max(v[0], v[1]);
-    if (lo < min || hi > max) {
-      errori.push(`profili.${chiave}.${campo}: fuori dai limiti [${min}, ${max}]`);
-      continue;
-    }
-    profilo[campo] = [lo, hi];
-  }
-  // NIENTE Boolean(...): vedi la nota in catalog.js — coercerebbe silenziosamente
-  // qualunque valore non vuoto a `true`. Si accetta solo un booleano vero.
-  if (typeof profiloIn.monotona !== "boolean") {
-    errori.push(`profili.${chiave}.monotona: deve essere un booleano (true/false), non ${JSON.stringify(profiloIn.monotona)}`);
-  } else {
-    profilo.monotona = profiloIn.monotona;
-  }
+  const prefisso = `profili.${chiave}`;
+  const profilo = validaRangeProfilo(profiloIn, prefisso, errori);
+  const monotona = validaMonotona(profiloIn, prefisso, errori);
+  if (monotona !== undefined) profilo.monotona = monotona;
   for (const campo of ["maxDeriva", "maxDegrado"]) {
-    const v = profiloIn[campo];
-    if (v === null || v === undefined) {
-      profilo[campo] = null;
-      continue;
-    }
-    if (typeof v !== "number" || !isFinite(v)) {
-      errori.push(`profili.${chiave}.${campo}: deve essere un numero oppure null`);
-      continue;
-    }
-    profilo[campo] = v;
+    profilo[campo] = validaScalareONull(profiloIn[campo], `${prefisso}.${campo}`, errori);
   }
   return profilo;
 }

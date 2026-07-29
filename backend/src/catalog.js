@@ -54,6 +54,7 @@
 import { CONFIG } from "./config.js";
 import { FAMILIES } from "./families.js";
 import { ELEMENTS, getConcept, getElement, conceptsForFamilies } from "./concepts.js";
+import { validaRangeProfilo, validaMonotona, validaScalareONull } from "./validazione.js";
 
 const CATALOG_KEY = "catalogo:custom";
 
@@ -134,45 +135,24 @@ function validaExtra(extra, errori) {
   });
 }
 
-/** Un numero finito, oppure null/assente ("torna alla guardia globale"). */
-function validaScalareONull(v, nome, errori) {
-  if (v === null || v === undefined) return null;
-  if (typeof v !== "number" || !isFinite(v)) {
-    errori.push(`${nome}: deve essere un numero oppure null`);
-    return null;
-  }
-  return v;
-}
-
-/** { estensione, intensita, compattezza, monotona } con gli stessi limiti di profiles.js. */
+/**
+ * { estensione, intensita, compattezza, monotona }: range e guardia
+ * booleana, validati dal modulo condiviso validazione.js (stessi limiti e
+ * stessi messaggi di prima — vedi lì).
+ */
 function validaProfilo(profiloIn, errori) {
   if (!profiloIn || typeof profiloIn !== "object") {
     errori.push("profilo: obbligatorio");
     return null;
   }
-  const profilo = {};
-  const campi = { estensione: [0, 100], intensita: [0, 100], compattezza: [0, 1] };
-  for (const [campo, [min, max]] of Object.entries(campi)) {
-    const v = profiloIn[campo];
-    if (!Array.isArray(v) || v.length !== 2 || !v.every((n) => typeof n === "number" && isFinite(n))) {
-      errori.push(`profilo.${campo}: servono [min, max] numerici`);
-      continue;
-    }
-    const lo = Math.min(v[0], v[1]);
-    const hi = Math.max(v[0], v[1]);
-    if (lo < min || hi > max) {
-      errori.push(`profilo.${campo}: fuori dai limiti [${min}, ${max}]`);
-      continue;
-    }
-    profilo[campo] = [lo, hi];
-  }
+  const profilo = validaRangeProfilo(profiloIn, "profilo", errori);
   // NIENTE Boolean(...): su un input esterno coercerebbe silenziosamente
   // QUALUNQUE stringa non vuota (compresa la stringa "false"!) a `true`. Si
   // accetta solo un booleano vero; qualunque altro tipo è un errore di
-  // validazione esplicito, non una coercizione silenziosa.
-  if (typeof profiloIn.monotona !== "boolean") {
-    errori.push(`profilo.monotona: deve essere un booleano (true/false), non ${JSON.stringify(profiloIn.monotona)}`);
-  }
+  // validazione esplicito, non una coercizione silenziosa. validaMonotona
+  // spinge già l'errore quando serve; qui si scrive comunque SEMPRE il
+  // campo (comportamento invariato rispetto a prima del refactor).
+  validaMonotona(profiloIn, "profilo", errori);
   profilo.monotona = profiloIn.monotona === true;
   return profilo;
 }
