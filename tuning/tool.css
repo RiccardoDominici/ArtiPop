@@ -33,6 +33,7 @@ button:disabled { opacity:.5; cursor:default; }
 .pill { font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--line); color:var(--dim); }
 .pill.on { color:var(--ok); border-color:var(--ok); }
 .pill.off { color:var(--bad); border-color:var(--bad); }
+.pill.warn { color:var(--warn); border-color:var(--warn); }
 .tabs { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
 .tab { padding:7px 15px; border-radius:8px 8px 0 0; cursor:pointer; color:var(--dim); border:1px solid transparent; border-bottom:none; }
 .tab.active { background:var(--panel2); color:var(--text); border-color:var(--line); }
@@ -116,7 +117,16 @@ a { color:var(--accent); }
 /* campo con valore non numerico/vuoto: non tocca lo stato ma si segnala così (fix bug NaN) */
 input.invalid, textarea.invalid { border-color:var(--bad) !important; background:rgba(229,96,94,.08) !important; }
 
-/* ---- Concept / Element: lista + form ---- */
+/* ---- Catalogo: selettore Concept|Element (DESIGN.md "3. Catalogo") ----
+   Segmented control a due stati sopra la lista unica: stesso linguaggio visivo
+   delle .tab in header, ma dentro il toolbar della tab, non nell'header. */
+.segmented { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.segbtn { background:var(--panel2); border:none; border-radius:0; padding:7px 15px; color:var(--dim); cursor:pointer; }
+.segbtn + .segbtn { border-left:1px solid var(--line); }
+.segbtn.active { background:var(--accent2); color:#fff; font-weight:600; }
+.segbtn:hover:not(.active) { background:#262a38; }
+
+/* ---- Catalogo: lista + form (una colonna sola, il tipo la sceglie il segmented control sopra) ---- */
 .split { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
 .listcol { flex:0 0 280px; }
 .formcol { flex:1 1 420px; min-width:320px; }

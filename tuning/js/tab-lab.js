@@ -238,18 +238,12 @@ function calcolaValoriProposti(run) {
 /* "modifiche manuali non ancora lanciate" = l'editor (AP.store.edit, quello
    che Range mostra) differisce da quanto il Worker ha DAVVERO in vigore ORA
    (AP.store.dati.tuning.concepts, già default+override applicato). Se sono
-   uguali non c'è nulla che "proponi range" rischierebbe di far perdere. */
+   uguali non c'è nulla che "proponi range" rischierebbe di far perdere.
+   Stessa funzione di confronto usata dal badge/testo di stato di Range
+   (AP.util.diffProfilo, vedi util.js): un solo posto che decide cosa vuol
+   dire "modificato", non due implementazioni che potrebbero disallinearsi. */
 function haModificheNonLanciate(conceptId) {
-  const edit = AP.store.edit[conceptId];
-  const server = AP.store.dati.tuning?.concepts?.[conceptId];
-  if (!edit || !server) return false; // niente con cui confrontare: nessun rischio da segnalare
-  for (const k of AP.comp.MEAS) {
-    if (edit[k][0] !== server[k][0] || edit[k][1] !== server[k][1]) return true;
-  }
-  if (!!edit.monotona !== !!server.monotona) return true;
-  if ((edit.maxDeriva ?? null) !== (server.maxDeriva ?? null)) return true;
-  if ((edit.maxDegrado ?? null) !== (server.maxDegrado ?? null)) return true;
-  return false;
+  return AP.util.diffProfilo(AP.store.edit[conceptId], AP.store.dati.tuning?.concepts?.[conceptId]).modificato;
 }
 
 function proponiRangeDaRun(run, dialogEl) {

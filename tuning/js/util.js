@@ -102,6 +102,31 @@ function errFromCatch(e) {
 AP.util.api = api;
 AP.util.errFromCatch = errFromCatch;
 
+/* ---------- confronto di un profilo EDIT vs quanto in vigore sul Worker ----------
+   Unica funzione di confronto per i due segnali di modifica che in Range erano
+   indipendenti (badge "tarato" sulla card e testo di stato "modifiche non
+   ancora lanciate", vedi DESIGN.md "4. Range") e che il Lab usa a sua volta
+   per decidere se "⤵ Proponi range" sovrascriverebbe in silenzio una modifica
+   manuale non ancora lanciata. `edit` e `server` hanno la stessa forma di un
+   profilo (estensione/intensita/compattezza/monotona/maxDeriva/maxDegrado —
+   vedi AP.store.edit e AP.store.dati.tuning.concepts). Nessuno dei due può
+   essere assunto presente (un concept nuovissimo nel catalogo potrebbe non
+   avere ancora un pendant sul Worker): senza uno dei due non c'è nulla da
+   confrontare, quindi "non modificato" (nessun rischio da segnalare). */
+function diffProfilo(edit, server) {
+  const campi = [];
+  if (!edit || !server) return { modificato: false, campi };
+  for (const k of ["estensione", "intensita", "compattezza"]) {
+    const e = edit[k] || [], s = server[k] || [];
+    if (e[0] !== s[0] || e[1] !== s[1]) campi.push(k);
+  }
+  if (!!edit.monotona !== !!server.monotona) campi.push("monotona");
+  if ((edit.maxDeriva ?? null) !== (server.maxDeriva ?? null)) campi.push("maxDeriva");
+  if ((edit.maxDegrado ?? null) !== (server.maxDegrado ?? null)) campi.push("maxDegrado");
+  return { modificato: campi.length > 0, campi };
+}
+AP.util.diffProfilo = diffProfilo;
+
 /* ---------- mini event emitter, usato da AP.store (vedi store.js) ---------- */
 // Non è un EventTarget del DOM di proposito: deve funzionare anche per dati che
 // non sono nodi (l'intero STORE), ed è più semplice da leggere per chi arriva dopo.
@@ -123,20 +148,28 @@ function creaEmitter() {
 AP.util.creaEmitter = creaEmitter;
 
 /* ---------- hash-routing: tab attiva e filtri vivono nell'URL ---------- */
-// #<tab>?<filtri>, es. "#archivio?concept=crescita". In questo task le rotte
-// valide sono le 5 tab attuali; il redesign delle viste (task 6-8) ne cambierà i
-// filtri supportati, non il meccanismo. Hash vuoto/non valido → "archivio" (home,
-// vedi DESIGN.md), MAI un'eccezione: un link rotto non deve mai lasciare il tool
-// su una schermata bianca.
-const ROUTE_TABS = ["archivio", "lab", "concept", "element", "range"];
+// #<tab>?<filtri>, es. "#archivio?concept=crescita". Quattro tab finali (DESIGN.md,
+// "Architettura dell'informazione"): Archivio (home) · Lab · Catalogo · Range.
+// Hash vuoto/non valido → "archivio", MAI un'eccezione: un link rotto non deve
+// mai lasciare il tool su una schermata bianca.
+const ROUTE_TABS = ["archivio", "lab", "catalogo", "range"];
 const ROUTE_DEFAULT = "archivio";
+// "concept" ed "element" erano tab a sé finché il task 8 non le ha fuse in
+// Catalogo (selettore Concept|Element, vedi tab-catalogo.js): un vecchio
+// segnalibro o link con quell'hash non deve atterrare su una pagina bianca, si
+// traduce nella rotta equivalente (#catalogo?tipo=concept|element), portando
+// con sé eventuali altri parametri già presenti (es. ?id=...).
+const LEGACY_TAB_TO_TIPO = { concept: "concept", element: "element" };
 
 function routeLeggi() {
   const raw = (location.hash || "").replace(/^#/, "");
   const [tabRaw, qs] = raw.split("?");
-  const tab = ROUTE_TABS.includes(tabRaw) ? tabRaw : ROUTE_DEFAULT;
   const params = {};
   if (qs) for (const [k, v] of new URLSearchParams(qs)) params[k] = v;
+  if (tabRaw in LEGACY_TAB_TO_TIPO) {
+    return { tab: "catalogo", params: { ...params, tipo: LEGACY_TAB_TO_TIPO[tabRaw] } };
+  }
+  const tab = ROUTE_TABS.includes(tabRaw) ? tabRaw : ROUTE_DEFAULT;
   return { tab, params };
 }
 function routeVai(tab, params = {}) {

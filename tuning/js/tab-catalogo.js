@@ -1,7 +1,11 @@
-// TAB CONCEPT + TAB ELEMENT: due sezioni distinte in questo file (la fusione in
-// un'unica tab "Catalogo" è il redesign del task 8, non questo). Leggono/scrivono
-// il catalogo utente (concept ed element custom) tramite AP.store.dati.catalogo;
-// la lista dei canali attivi (per il campo "canale" dell'element) viene da
+// TAB CATALOGO: fonde le vecchie tab Concept ed Element in un'unica vista
+// (DESIGN.md, "3. Catalogo") — selettore Concept|Element sopra una sola
+// colonna lista a sinistra, form di modifica a destra. I form (validazione,
+// campi, salvataggio) sono quelli di sempre, invariati: qui cambia solo
+// l'orchestrazione attorno a loro (quale tipo è attivo, cosa mostra la lista,
+// il pannello "Dove è usato" in testa al form). Leggono/scrivono il catalogo
+// utente (concept ed element custom) tramite AP.store.dati.catalogo; la lista
+// dei canali attivi (per il campo "canale" dell'element) viene da
 // AP.store.dati.canali — non più dalla vecchia costante CANALI scritta a mano.
 window.AP = window.AP || {};
 AP.tabs = AP.tabs || {};
@@ -12,6 +16,42 @@ let CATALOGO_ERROR = null; // messaggio se /catalogo non risponde (Worker più v
 // null, vedi store.js): un array vuoto è "vero" in JS, quindi senza questo flag
 // non sapremmo distinguere "non ancora arrivato" da "arrivato e genuinamente vuoto".
 let catalogoArrivato = false;
+
+/* ---------- quale metà del catalogo è attiva ----------
+   Unica sorgente di verità per "cosa mostra la lista/il form adesso": letta e
+   scritta insieme all'hash (#catalogo?tipo=concept|element&id=...), così un
+   link da un'altra tab (o un vecchio #concept/#element, vedi util.js) può
+   selezionare direttamente il pannello giusto. */
+let catTipo = "concept";
+
+function syncSegButtons() {
+  document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => b.classList.toggle("active", b.dataset.tipo === catTipo));
+}
+/* scrive l'hash dallo stato corrente (tipo + eventuale selezione): richiamata
+   da OGNI azione che cambia cosa si sta guardando (selezione, nuovo, duplica,
+   cambio tipo), così l'indirizzo resta sempre coerente con lo schermo — stessa
+   idea di scriviHashDaFiltri in tab-archivio.js. `skipHashWrite` evita il giro
+   quando lo stato è già stato impostato PARTENDO dall'hash (onShow): altrimenti
+   si riscriverebbe un hash già corretto, innocuo ma inutile. */
+function scriviHashCatalogo(opts = {}) {
+  if (opts.skipHashWrite) return;
+  const id = catTipo === "concept" ? conceptSel : elementSel;
+  const params = { tipo: catTipo };
+  if (id) params.id = id;
+  AP.util.route.vai("catalogo", params);
+}
+/* ridisegna lista + form + pannello "dove è usato" e aggiorna l'hash: il punto
+   unico da cui passano tutte le azioni di selezione/creazione/duplicazione, sia
+   per i concept sia per gli element (il dispatch fra i due lo fanno renderCatList/
+   renderCatForm leggendo `catTipo`, già impostato dal chiamante prima di invocare
+   questa funzione). */
+function afterCatSelectionChange(opts = {}) {
+  syncSegButtons();
+  renderCatList();
+  renderCatForm();
+  renderDoveUsato();
+  scriviHashCatalogo(opts);
+}
 
 /* validazione lato client — rispecchia le regole del Worker per dare un riscontro
    immediato; il Worker resta comunque l'autorità finale (i suoi errori, se
@@ -53,15 +93,39 @@ function canaliAttiviOptions(selezionato) {
    Lab, non solo sulle liste di questa tab. */
 async function ricaricaDopoScrittura() { await AP.store.carica(); }
 
+/* ==================================================================
+   USI: le stringhe che ogni riga della lista porta con sé (DESIGN.md, "3.
+   Catalogo": "ogni riga della lista porta i suoi usi"). Derivate SEMPRE da
+   AP.store.usi (l'indice già calcolato in store.js), mai un aggregato nuovo
+   qui. Chi non è mai stato usato lo dice esplicitamente ("mai generato") al
+   posto di un silenzioso "0 archi · 0 giorni", che sembrerebbe un dato mancante
+   invece di un fatto onesto.
+   ================================================================== */
+function usoConceptTxt(id) {
+  const u = AP.store.usi?.concept?.[id] || { elementiNativi: [], archi: [], giorni: 0, canaliProduzione: [] };
+  const nNativi = u.elementiNativi.length;
+  const nativiTxt = `${nNativi} element nativ${nNativi === 1 ? "o" : "i"}`;
+  const genTxt = u.giorni ? `${u.archi.length} arc${u.archi.length === 1 ? "o" : "hi"} · ${u.giorni} giorn${u.giorni === 1 ? "o" : "i"}` : "mai generato";
+  const canaliTxt = u.canaliProduzione.length ? esc(u.canaliProduzione.join(", ")) : "nessun canale attivo";
+  return `${nativiTxt} · ${genTxt} · ${canaliTxt}`;
+}
+function usoElementTxt(id) {
+  const u = AP.store.usi?.element?.[id] || { concept: null, pubblicatoSu: null, archi: [], giorni: 0 };
+  const nativoTxt = u.concept ? `nativo di ${esc(AP.comp.conceptNomeById(u.concept))}` : "senza concept nativo";
+  const pubTxt = u.pubblicatoSu ? `pubblicato su ${esc(u.pubblicatoSu)}` : "non pubblicato";
+  const genTxt = u.giorni ? `${u.archi.length} arc${u.archi.length === 1 ? "o" : "hi"} · ${u.giorni} giorn${u.giorni === 1 ? "o" : "i"}` : "mai generato";
+  return `${nativoTxt} · ${pubTxt} · ${genTxt}`;
+}
+
 /* ================================================================== */
-/* ---------- TAB CONCEPT ---------- */
+/* ---------- LISTA + FORM: CONCEPT ---------- */
 /* ================================================================== */
 let conceptSel = null;    // id del concept selezionato in lista (null = nessuna selezione)
 let conceptForm = null;   // stato in edit: null finché non si sceglie/crea qualcosa
 let conceptIsNew = false;
 
 function renderConceptList() {
-  const wrap = $("conceptList");
+  const wrap = $("catList");
   const cat = AP.store.dati.catalogo;
   if (CATALOGO_ERROR) { wrap.innerHTML = `<div class="hint">${esc(CATALOGO_ERROR)}</div>`; return; }
   if (!catalogoArrivato) { wrap.innerHTML = `<div class="hint">catalogo non ancora caricato.</div>`; return; }
@@ -70,7 +134,7 @@ function renderConceptList() {
   for (const c of items) {
     const row = document.createElement("div");
     row.className = "itemrow" + (c.id === conceptSel ? " active" : "");
-    row.innerHTML = `<span>${esc(c.nome)}<br><code>${esc(c.id)}</code></span>
+    row.innerHTML = `<span>${esc(c.nome)}<br><code>${esc(c.id)}</code><br><span class="hint" style="font-size:11px">${usoConceptTxt(c.id)}</span></span>
       <span class="badges"><span class="badge ${c.custom ? 'custom' : ''}">${c.custom ? 'custom' : 'built-in'}</span></span>`;
     row.onclick = () => selectConcept(c.id);
     wrap.appendChild(row);
@@ -78,17 +142,18 @@ function renderConceptList() {
   if (!items.length) wrap.innerHTML = `<div class="hint">nessun concept nel catalogo.</div>`;
 }
 
-function selectConcept(id) {
+function selectConcept(id, opts = {}) {
   const c = AP.store.dati.catalogo?.concepts.find((x) => x.id === id);
   if (!c) return;
+  catTipo = "concept";
   conceptSel = id;
   conceptIsNew = false;
   conceptForm = deepClone(c);
-  renderConceptList();
-  renderConceptForm();
+  afterCatSelectionChange(opts);
 }
 
 function newConcept() {
+  catTipo = "concept";
   conceptSel = null;
   conceptIsNew = true;
   conceptForm = {
@@ -98,8 +163,7 @@ function newConcept() {
     profilo: { estensione: [7, 28], intensita: [9, 26], compattezza: [0.4, 0.85], monotona: true },
     maxDeriva: null, maxDegrado: null,
   };
-  renderConceptList();
-  renderConceptForm();
+  afterCatSelectionChange();
 }
 
 function duplicateConcept() {
@@ -108,15 +172,15 @@ function duplicateConcept() {
   base.id = "";
   base.nome = (base.nome || "") + " (copia)";
   base.custom = true;
+  catTipo = "concept";
   conceptSel = null;
   conceptIsNew = true;
   conceptForm = base;
-  renderConceptList();
-  renderConceptForm();
+  afterCatSelectionChange();
 }
 
 function renderConceptForm() {
-  const box = $("conceptForm");
+  const box = $("catForm");
   if (!conceptForm) {
     box.innerHTML = `<div class="hint">Seleziona un concept dalla lista per vederne i dettagli, crea un "Nuovo" concept da zero,
       oppure seleziona un built-in e premi "Duplica" per partire da uno schema già scritto.</div>`;
@@ -301,26 +365,22 @@ async function deleteConcept() {
     await api(`/catalogo/concept?id=${encodeURIComponent(conceptForm.id)}`, { method: "DELETE" });
     conceptForm = null; conceptSel = null;
     await ricaricaDopoScrittura();
-    renderConceptForm();
+    afterCatSelectionChange();
   } catch (e) {
     showConceptErrors(errFromCatch(e));
     setStatus($("conceptFormStatus"), "");
   }
 }
 
-$("conceptNew").onclick = newConcept;
-$("conceptDup").onclick = duplicateConcept;
-$("conceptReload").onclick = () => AP.store.carica();
-
 /* ================================================================== */
-/* ---------- TAB ELEMENT ---------- */
+/* ---------- LISTA + FORM: ELEMENT ---------- */
 /* ================================================================== */
 let elementSel = null;
 let elementForm = null;
 let elementIsNew = false;
 
 function renderElementList() {
-  const wrap = $("elementList");
+  const wrap = $("catList");
   const cat = AP.store.dati.catalogo;
   if (CATALOGO_ERROR) { wrap.innerHTML = `<div class="hint">${esc(CATALOGO_ERROR)}</div>`; return; }
   if (!catalogoArrivato) { wrap.innerHTML = `<div class="hint">catalogo non ancora caricato.</div>`; return; }
@@ -329,7 +389,7 @@ function renderElementList() {
   for (const e of items) {
     const row = document.createElement("div");
     row.className = "itemrow" + (e.id === elementSel ? " active" : "");
-    row.innerHTML = `<span>${esc(e.nome)}<br><code>${esc(e.id)}</code></span>
+    row.innerHTML = `<span>${esc(e.nome)}<br><code>${esc(e.id)}</code><br><span class="hint" style="font-size:11px">${usoElementTxt(e.id)}</span></span>
       <span class="badges">
         <span class="badge ${e.custom ? 'custom' : ''}">${e.custom ? 'custom' : 'built-in'}</span>
         ${e.pubblicato ? `<span class="badge pub">${esc(e.canale || 'pubblicato')}</span>` : ''}
@@ -340,17 +400,18 @@ function renderElementList() {
   if (!items.length) wrap.innerHTML = `<div class="hint">nessun element nel catalogo.</div>`;
 }
 
-function selectElement(id) {
+function selectElement(id, opts = {}) {
   const e = AP.store.dati.catalogo?.elements.find((x) => x.id === id);
   if (!e) return;
+  catTipo = "element";
   elementSel = id;
   elementIsNew = false;
   elementForm = deepClone(e);
-  renderElementList();
-  renderElementForm();
+  afterCatSelectionChange(opts);
 }
 
 function newElement() {
+  catTipo = "element";
   elementSel = null;
   elementIsNew = true;
   elementForm = {
@@ -359,8 +420,7 @@ function newElement() {
     famigliaNativa: AP.store.dati.catalogo?.concepts?.[0]?.id || "",
     tappe: null, extra: null, pubblicato: false, canale: null,
   };
-  renderElementList();
-  renderElementForm();
+  afterCatSelectionChange();
 }
 
 function duplicateElement() {
@@ -371,15 +431,15 @@ function duplicateElement() {
   base.custom = true;
   base.pubblicato = false;
   base.canale = null;
+  catTipo = "element";
   elementSel = null;
   elementIsNew = true;
   elementForm = base;
-  renderElementList();
-  renderElementForm();
+  afterCatSelectionChange();
 }
 
 function renderElementForm() {
-  const box = $("elementForm");
+  const box = $("catForm");
   if (!elementForm) {
     box.innerHTML = `<div class="hint">Seleziona un element dalla lista per vederne i dettagli, crea un "Nuovo" element da zero,
       oppure seleziona un built-in e premi "Duplica" per partire da un soggetto già scritto.</div>`;
@@ -543,48 +603,222 @@ async function deleteElement() {
     await api(`/catalogo/element?id=${encodeURIComponent(elementForm.id)}`, { method: "DELETE" });
     elementForm = null; elementSel = null;
     await ricaricaDopoScrittura();
-    renderElementForm();
+    afterCatSelectionChange();
   } catch (e) {
     showElementErrors(errFromCatch(e));
     setStatus($("elementFormStatus"), "");
   }
 }
 
-$("elementNew").onclick = newElement;
-$("elementDup").onclick = duplicateElement;
-$("elementReload").onclick = () => AP.store.carica();
+/* ================================================================== */
+/* ---------- ORCHESTRAZIONE: selettore tipo, lista e form unificati ---------- */
+/* ================================================================== */
+function renderCatList() { if (catTipo === "element") renderElementList(); else renderConceptList(); }
+function renderCatForm() { if (catTipo === "element") renderElementForm(); else renderConceptForm(); }
+
+document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => {
+  b.onclick = () => {
+    catTipo = (b.dataset.tipo === "element") ? "element" : "concept";
+    afterCatSelectionChange();
+  };
+});
+$("catNew").onclick = () => (catTipo === "element" ? newElement() : newConcept());
+$("catDup").onclick = () => (catTipo === "element" ? duplicateElement() : duplicateConcept());
+$("catReload").onclick = () => AP.store.carica();
+
+/* ==================================================================
+   PANNELLO "DOVE È USATO" — in testa al form della voce selezionata
+   (DESIGN.md, "3. Catalogo"): canali di produzione E PERCHÉ, archi generati
+   (ognuno linka l'Archivio filtrato), ultimo uso, giudizi. Due bottoni:
+   "vedi in archivio" e "⚗ prova nel Lab" (per un concept, la coppia
+   preselezionata nel Lab è quel concept col suo primo element nativo — non
+   esiste "il" concept da solo nel Lab, serve sempre un element per generare).
+   Sempre derivato da AP.store.usi: non è una vista a sé da mantenere.
+   ================================================================== */
+function elencoCanaliAttivi() { return (AP.store.dati.canali || []).filter((c) => !c.storico); }
+
+/* canali attivi in cui un CONCEPT è nel pool di produzione, con il motivo:
+   indole del canale (ch.famiglie) oppure un element pubblicato su quel canale
+   che lo ha come nativo — stessa regola di AP.store.usi (buildUsi in store.js),
+   qui solo per spiegarla riga per riga invece che come semplice conteggio. */
+function canaliConMotivoPerConcept(conceptId) {
+  const risultati = [];
+  for (const ch of elencoCanaliAttivi()) {
+    const motivi = [];
+    if ((ch.famiglie || []).includes(conceptId)) motivi.push("indole del canale");
+    const elementiPubblicati = (AP.store.dati.catalogo?.elements || [])
+      .filter((e) => e.pubblicato && e.canale === ch.id && e.famigliaNativa === conceptId);
+    if (elementiPubblicati.length) motivi.push(`element pubblicat${elementiPubblicati.length === 1 ? 'o' : 'i'}: ${elementiPubblicati.map((e) => esc(e.nome)).join(", ")}`);
+    if (motivi.length) risultati.push({ canale: ch, motivi });
+  }
+  return risultati;
+}
+/* stesso ragionamento per un ELEMENT: pubblicazione esplicita su un canale, o
+   indole del canale che lo raggiunge indirettamente tramite il suo concept nativo. */
+function canaliConMotivoPerElement(elementId) {
+  const el = (AP.store.dati.catalogo?.elements || []).find((e) => e.id === elementId);
+  if (!el) return [];
+  const risultati = [];
+  for (const ch of elencoCanaliAttivi()) {
+    const motivi = [];
+    if (el.pubblicato && el.canale === ch.id) motivi.push("pubblicazione esplicita su questo canale");
+    if (el.famigliaNativa && (ch.famiglie || []).includes(el.famigliaNativa)) motivi.push(`indole del canale (nativo di "${esc(AP.comp.conceptNomeById(el.famigliaNativa))}")`);
+    if (motivi.length) risultati.push({ canale: ch, motivi });
+  }
+  return risultati;
+}
+
+function elencoCanaliHTML(righe) {
+  if (!righe.length) return `<div class="hint">non è nel pool di produzione di nessun canale attivo al momento.</div>`;
+  return `<ul style="margin:4px 0 10px;padding-left:18px;color:var(--dim);font-size:12.5px;line-height:1.6">
+    ${righe.map((r) => `<li>${esc(r.canale.emoji || "")} <b style="color:var(--text)">${esc(r.canale.name || r.canale.id)}</b> — ${r.motivi.join(" · ")}</li>`).join("")}
+  </ul>`;
+}
+/* elenco archi: ognuno linka l'Archivio filtrato sulla coppia ESATTA di
+   quell'arco (non sulla sola voce selezionata: per un concept ogni arco può
+   avere un element diverso, e viceversa — vedi buildUsi in store.js, dove le
+   voci di usi.concept[x].archi portano `element` ma non `concept`, quello di
+   usi.element[x].archi il viceversa). `paraPerArco(a)` sa completare la coppia
+   per la singola voce, il chiamante lo passa già sapendo qual è il lato fisso. */
+function elencoArchiHTML(archi, paraPerArco) {
+  if (!archi.length) return `<div class="hint">nessun arco generato finora.</div>`;
+  const ordinati = archi.slice().sort((a, b) => (a.al < b.al ? 1 : a.al > b.al ? -1 : 0));
+  return `<ul style="margin:4px 0 10px;padding-left:18px;color:var(--dim);font-size:12.5px;line-height:1.7">
+    ${ordinati.map((a) => {
+      const coppia = paraPerArco(a);
+      return `<li><a href="#" class="doveUsatoArco" data-concept="${esc(coppia.concept || "")}" data-element="${esc(coppia.element || "")}">${esc(a.canale)} · arco ${a.arco + 1} · ${esc(a.dal)}–${esc(a.al)} · ${a.nGiorni} giorni</a></li>`;
+    }).join("")}
+  </ul>`;
+}
+
+function doveUsatoConceptHTML(id) {
+  const nome = AP.comp.conceptNomeById(id);
+  const u = AP.store.usi?.concept?.[id] || { archi: [], giorni: 0, buoni: 0, scarti: 0, elementiNativi: [] };
+  const ultimoUso = u.archi.length ? u.archi.reduce((max, a) => (a.al > max ? a.al : max), u.archi[0].al) : null;
+  return `<div class="card" style="margin-bottom:14px">
+    <h3 style="margin-bottom:6px">Dove è usato · ${esc(nome)}</h3>
+    <div class="hint" style="margin-bottom:4px">canali attivi nel cui pool di produzione è presente, e perché:</div>
+    ${elencoCanaliHTML(canaliConMotivoPerConcept(id))}
+    <div class="hint" style="margin-bottom:4px">archi generati (${u.archi.length}):</div>
+    ${elencoArchiHTML(u.archi, (a) => ({ concept: id, element: a.element }))}
+    <div class="row"><label>ultimo uso</label><div>${ultimoUso ? esc(ultimoUso) : "mai"}</div></div>
+    <div class="row"><label>giudizi</label><div>${u.buoni} buon${u.buoni === 1 ? "o" : "i"} · ${u.scarti} scart${u.scarti === 1 ? "o" : "i"}</div></div>
+    <div class="formactions">
+      <button class="ghost" data-act="vaiArchivio">vedi in archivio</button>
+      <button data-act="provaLab">⚗ prova nel Lab</button>
+    </div>
+  </div>`;
+}
+function doveUsatoElementHTML(id) {
+  const el = (AP.store.dati.catalogo?.elements || []).find((e) => e.id === id);
+  const nome = el?.nome || AP.comp.elementNomeById(id);
+  const u = AP.store.usi?.element?.[id] || { archi: [], giorni: 0, buoni: 0, scarti: 0, ultimoUso: null };
+  return `<div class="card" style="margin-bottom:14px">
+    <h3 style="margin-bottom:6px">Dove è usato · ${esc(nome)}</h3>
+    <div class="hint" style="margin-bottom:4px">canali attivi nel cui pool di produzione è presente, e perché:</div>
+    ${elencoCanaliHTML(canaliConMotivoPerElement(id))}
+    <div class="hint" style="margin-bottom:4px">archi generati (${u.archi.length}):</div>
+    ${elencoArchiHTML(u.archi, (a) => ({ concept: a.concept, element: id }))}
+    <div class="row"><label>ultimo uso</label><div>${u.ultimoUso ? esc(u.ultimoUso) : "mai"}</div></div>
+    <div class="row"><label>giudizi</label><div>${u.buoni} buon${u.buoni === 1 ? "o" : "i"} · ${u.scarti} scart${u.scarti === 1 ? "o" : "i"}</div></div>
+    <div class="formactions">
+      <button class="ghost" data-act="vaiArchivio">vedi in archivio</button>
+      <button data-act="provaLab">⚗ prova nel Lab</button>
+    </div>
+  </div>`;
+}
+
+function wireDoveUsato(box, id) {
+  // ogni riga d'arco porta già la coppia ESATTA in data-concept/data-element
+  // (vedi elencoArchiHTML): filtra l'Archivio su quella, non sulla sola voce
+  // selezionata qui.
+  box.querySelectorAll(".doveUsatoArco").forEach((a) => {
+    a.onclick = (ev) => {
+      ev.preventDefault();
+      const params = {};
+      if (a.dataset.concept) params.concept = a.dataset.concept;
+      if (a.dataset.element) params.element = a.dataset.element;
+      AP.util.route.vai("archivio", params);
+    };
+  });
+  const btnArchivio = box.querySelector('[data-act="vaiArchivio"]');
+  const btnLab = box.querySelector('[data-act="provaLab"]');
+  if (catTipo === "concept") {
+    if (btnArchivio) btnArchivio.onclick = () => AP.util.route.vai("archivio", { concept: id });
+    if (btnLab) btnLab.onclick = () => {
+      const primoNativo = (AP.store.usi?.concept?.[id]?.elementiNativi || [])[0] || null;
+      if (!primoNativo) { toast(`"${AP.comp.conceptNomeById(id)}" non ha ancora nessun element nativo: creane uno nel Catalogo, poi prova nel Lab.`, "errore"); return; }
+      AP.util.route.vai("lab", { concept: id, element: primoNativo });
+    };
+  } else {
+    if (btnArchivio) btnArchivio.onclick = () => AP.util.route.vai("archivio", { element: id });
+    if (btnLab) btnLab.onclick = () => {
+      const el = (AP.store.dati.catalogo?.elements || []).find((e) => e.id === id);
+      const concettoNativo = el?.famigliaNativa || AP.store.usi?.element?.[id]?.concept || null;
+      if (!concettoNativo) { toast("questo element non ha un concept nativo: impossibile aprirlo nel Lab.", "errore"); return; }
+      AP.util.route.vai("lab", { concept: concettoNativo, element: id });
+    };
+  }
+}
+
+function renderDoveUsato() {
+  const box = $("catDoveUsato");
+  if (!box) return;
+  const id = catTipo === "concept" ? conceptSel : elementSel;
+  if (!id || !catalogoArrivato) { box.innerHTML = ""; return; }
+  box.innerHTML = catTipo === "concept" ? doveUsatoConceptHTML(id) : doveUsatoElementHTML(id);
+  wireDoveUsato(box, id);
+}
 
 /* ---------- reazioni agli eventi dello STORE ---------- */
 AP.store.on("catalogo", () => {
   CATALOGO_ERROR = null;
   catalogoArrivato = true;
   const cat = AP.store.dati.catalogo;
-  setStatus($("conceptStatus"), `caricato · ${cat.concepts.length} concept (${cat.concepts.filter((c) => c.custom).length} custom)`);
-  setStatus($("elementStatus"), `caricato · ${cat.elements.length} element (${cat.elements.filter((e) => e.custom).length} custom)`);
-  renderConceptList();
-  renderElementList();
+  setStatus($("catStatus"), `caricato · ${cat.concepts.length} concept (${cat.concepts.filter((c) => c.custom).length} custom) · ${cat.elements.length} element (${cat.elements.filter((e) => e.custom).length} custom)`);
   // se la selezione corrente si riferisce a un item sparito (es. eliminato da
   // un'altra scheda), il form torna al placeholder invece di mostrare dati stantii.
-  if (conceptSel && !cat.concepts.some((c) => c.id === conceptSel)) { conceptSel = null; conceptForm = null; renderConceptForm(); }
-  if (elementSel && !cat.elements.some((e) => e.id === elementSel)) { elementSel = null; elementForm = null; renderElementForm(); }
+  if (conceptSel && !cat.concepts.some((c) => c.id === conceptSel)) { conceptSel = null; conceptForm = null; }
+  if (elementSel && !cat.elements.some((e) => e.id === elementSel)) { elementSel = null; elementForm = null; }
+  renderCatList();
+  renderCatForm();
+  renderDoveUsato();
 });
 AP.store.on("errore", (info) => {
   if (info.sezione === "catalogo") {
     CATALOGO_ERROR = `questo Worker non espone ancora /catalogo: aggiornalo per creare concept ed element. `
       + `(dettaglio: ${info.errore.message}) — Range e Lab restano comunque usabili nel frattempo.`;
-    setStatus($("conceptStatus"), CATALOGO_ERROR);
-    setStatus($("elementStatus"), CATALOGO_ERROR);
-    renderConceptList();
-    renderElementList();
+    setStatus($("catStatus"), CATALOGO_ERROR);
+    renderCatList();
   }
 });
 AP.store.on("canali", () => {
-  // i canali attivi alimentano il <select> "canale" dell'element pubblicato: se
-  // arrivano DOPO il catalogo, il form va ridisegnato per mostrarli.
-  if (elementForm) renderElementForm();
+  // i canali attivi alimentano sia il <select> "canale" dell'element pubblicato
+  // sia le righe del pannello "dove è usato": se arrivano DOPO il catalogo,
+  // form e pannello vanno ridisegnati per mostrarli.
+  if (elementForm) renderCatForm();
+  renderDoveUsato();
 });
+// "usi" arriva a fine caricamento (rendering progressivo di TUTTI gli archivi
+// concluso, vedi store.js): solo allora i conteggi in lista e il pannello
+// "dove è usato" sono completi, non parziali.
+AP.store.on("usi", () => { renderCatList(); renderDoveUsato(); });
 
+/* ---------- rotta: #catalogo?tipo=concept|element&id=... ---------- */
 AP.tabs.catalogo = {
-  concept: { onShow() { renderConceptList(); renderConceptForm(); } },
-  element: { onShow() { renderElementList(); renderElementForm(); } },
+  onShow(params = {}) {
+    catTipo = (params.tipo === "element") ? "element" : "concept";
+    syncSegButtons();
+    if (params.id) {
+      if (catTipo === "element") selectElement(params.id, { skipHashWrite: true });
+      else selectConcept(params.id, { skipHashWrite: true });
+    } else {
+      // nessun id nell'hash: non tocca una selezione già in corso in questa
+      // sessione (utile tornando sul Catalogo da un'altra tab), ma ridisegna
+      // comunque con lo stato più fresco dello STORE.
+      renderCatList();
+      renderCatForm();
+      renderDoveUsato();
+    }
+  },
 };

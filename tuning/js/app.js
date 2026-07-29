@@ -14,8 +14,7 @@ function attivaTab(tab, params) {
   // attiva, per mostrare sempre lo stato più fresco dello STORE (i dati intanto
   // possono essere arrivati mentre la tab non era visibile).
   if (tab === "range") AP.tabs.range?.onShow(params);
-  else if (tab === "concept") AP.tabs.catalogo?.concept.onShow(params);
-  else if (tab === "element") AP.tabs.catalogo?.element.onShow(params);
+  else if (tab === "catalogo") AP.tabs.catalogo?.onShow(params);
   else if (tab === "archivio") AP.tabs.archivio?.onShow(params);
   else if (tab === "lab") AP.tabs.lab?.onShow(params);
 }

@@ -21,6 +21,53 @@ let noteArrivato = false;
 /* ---------- RANGE: cards, editor, push/reset, download/upload ---------- */
 /* ================================================================== */
 
+/* ---------- segnale di modifica: badge sulla card + testo di stato (unico, DESIGN.md "4. Range") ----------
+   Prima erano due segnali indipendenti (il badge "tarato" leggeva p.overridden,
+   cioè "il Worker ha un override diverso dal default del codice"; il testo di
+   stato scattava a ogni tocco di un campo, indipendentemente dal fatto che il
+   nuovo valore corrispondesse o no a quanto già in vigore). Ora entrambi
+   derivano dalla STESSA funzione di confronto EDIT-vs-server (AP.util.diffProfilo,
+   la stessa che il Lab usa per "⤵ Proponi range"): un concept ha il badge
+   acceso se e solo se l'editor differisce da quanto il Worker applicherebbe
+   ORA — non da quanto era il default del codice. */
+function badgeInfo(id) {
+  const server = AP.store.dati.tuning?.concepts?.[id];
+  const diff = AP.util.diffProfilo(AP.store.edit[id], server);
+  return diff.modificato
+    ? { cls: "pill on", txt: "modificato", title: `differisce da quanto in vigore sul Worker: ${diff.campi.join(", ")} — non ancora lanciato` }
+    : { cls: "pill", txt: "", title: "" };
+}
+function aggiornaBadgeCard(id) {
+  const el = $(`chgBadge-${id}`);
+  if (!el) return;
+  const b = badgeInfo(id);
+  el.className = b.cls; el.textContent = b.txt; el.title = b.title;
+}
+function aggiornaStatoGlobale() {
+  const tuning = AP.store.dati.tuning;
+  if (!tuning || !tuning.concepts) { setStatus($("rangeStatus"), ""); return; }
+  const modificati = Object.keys(AP.store.edit).filter((id) => AP.util.diffProfilo(AP.store.edit[id], tuning.concepts[id]).modificato);
+  if (modificati.length) setStatus($("rangeStatus"), `modifiche non ancora lanciate · ${modificati.length} concept`, "changed");
+  else setStatus($("rangeStatus"), "caricato");
+}
+function refreshChangeSignals(id) { aggiornaBadgeCard(id); aggiornaStatoGlobale(); }
+
+/* ---------- "usato da" (DESIGN.md "4. Range"): n. element nativi/pubblicati e
+   canali attivi coinvolti, sempre dall'indice AP.store.usi (nessun aggregato
+   nuovo). ⚠ "in produzione" quando canaliProduzione non è vuoto: cambiare il
+   range di questo concept ha effetto sulla generazione di STANOTTE su quei
+   canali, non è un cambiamento innocuo. */
+function usatoDaHTML(id) {
+  const u = AP.store.usi?.concept?.[id] || { elementiNativi: [], elementiPubblicati: [], canaliProduzione: [] };
+  const inProduzione = u.canaliProduzione.length > 0;
+  return `<div class="hint" style="margin-bottom:10px">
+    usato da: ${u.elementiNativi.length} element nativ${u.elementiNativi.length === 1 ? "o" : "i"} ·
+    ${u.elementiPubblicati.length} pubblicat${u.elementiPubblicati.length === 1 ? "o" : "i"} ·
+    ${u.canaliProduzione.length} canal${u.canaliProduzione.length === 1 ? "e" : "i"} attiv${u.canaliProduzione.length === 1 ? "o" : "i"}
+    ${inProduzione ? `<span class="pill warn" title="in produzione su ${esc(u.canaliProduzione.join(", "))}: il cambio ha effetto già stanotte">⚠ in produzione</span>` : ""}
+  </div>`;
+}
+
 function renderCards() {
   const tuning = AP.store.dati.tuning;
   const wrap = $("cards"); wrap.innerHTML = "";
@@ -29,10 +76,12 @@ function renderCards() {
     const def = tuning.defaults[id];
     const e = AP.store.edit[id];
     if (!e) continue; // difensivo: un concept apparso in /tuning ma non ancora rispecchiato in EDIT (non dovrebbe succedere)
+    const b = badgeInfo(id);
     const card = document.createElement("div");
     card.className = "card";
-    card.innerHTML = `<h3>${p.nome} ${p.overridden ? '<span class="pill on">tarato</span>' : ''}</h3>
-      <div class="sub">concept · <code>${id}</code></div>`;
+    card.innerHTML = `<h3>${p.nome} <span class="${b.cls}" id="chgBadge-${id}" title="${esc(b.title)}">${esc(b.txt)}</span></h3>
+      <div class="sub">concept · <code>${id}</code></div>
+      ${usatoDaHTML(id)}`;
     for (const k of AP.comp.MEAS) {
       const step = k === "compattezza" ? 0.01 : 1;
       const row = document.createElement("div");
@@ -56,11 +105,17 @@ function renderCards() {
       <label>maxDeriva <input type="text" inputmode="decimal" data-c="${id}" data-flag="maxDeriva" value="${e.maxDeriva ?? ''}" placeholder="auto" style="width:64px;text-align:right"/></label>
       <label>maxDegrado <input type="text" inputmode="decimal" data-c="${id}" data-flag="maxDegrado" value="${e.maxDegrado ?? ''}" placeholder="auto" style="width:64px;text-align:right"/></label>`;
     card.appendChild(flags);
+    const azioni = document.createElement("div");
+    azioni.className = "formactions";
+    azioni.innerHTML = `<button class="ghost lanciaSoloBtn" data-c="${id}" title="lancia SOLO questo concept: rilegge lo stato del Worker ora, ci fonde sopra la modifica di questo concept, gli altri restano com'erano">🚀 Lancia solo questo</button>
+      <span class="status lanciaSoloStatus" id="lanciaSoloStatus-${id}"></span>`;
+    card.appendChild(azioni);
     wrap.appendChild(card);
     AP.comp.MEAS.forEach((k) => drawBar(id, k));
   }
   wrap.querySelectorAll('input[type=number][data-k]').forEach((inp) => inp.oninput = onRangeInput);
   wrap.querySelectorAll('input[data-flag]').forEach((inp) => inp.oninput = onFlagInput);
+  wrap.querySelectorAll('.lanciaSoloBtn').forEach((btn) => btn.onclick = () => lanciaSoloConcetto(btn.dataset.c, btn));
 }
 
 function drawBar(id, k) {
@@ -81,28 +136,27 @@ function onRangeInput(ev) {
   const v = parseFloat(raw);
   if (raw.trim() === "" || !Number.isFinite(v)) {
     ev.target.classList.add("invalid");
-    markChanged(c);
+    refreshChangeSignals(c);
     return; // EDIT[c][k][i] resta al suo ultimo valore valido
   }
   ev.target.classList.remove("invalid");
   AP.store.edit[c][k][+i] = v;
   drawBar(c, k);
-  markChanged(c);
+  refreshChangeSignals(c);
 }
 function onFlagInput(ev) {
   const { c, flag } = ev.target.dataset;
-  if (flag === "monotona") { AP.store.edit[c].monotona = ev.target.checked; markChanged(c); return; }
+  if (flag === "monotona") { AP.store.edit[c].monotona = ev.target.checked; refreshChangeSignals(c); return; }
   // per maxDeriva/maxDegrado un campo VUOTO è un valore legittimo (= guardia globale
   // di default, non un errore); solo un valore non-numerico va segnalato.
   const raw = ev.target.value.trim();
-  if (raw === "") { AP.store.edit[c][flag] = null; ev.target.classList.remove("invalid"); markChanged(c); return; }
+  if (raw === "") { AP.store.edit[c][flag] = null; ev.target.classList.remove("invalid"); refreshChangeSignals(c); return; }
   const v = strictNumber(raw);
-  if (!Number.isFinite(v)) { ev.target.classList.add("invalid"); markChanged(c); return; } // EDIT[c][flag] resta al suo ultimo valore valido: MAI azzerato in silenzio
+  if (!Number.isFinite(v)) { ev.target.classList.add("invalid"); refreshChangeSignals(c); return; } // EDIT[c][flag] resta al suo ultimo valore valido: MAI azzerato in silenzio
   ev.target.classList.remove("invalid");
   AP.store.edit[c][flag] = v;
-  markChanged(c);
+  refreshChangeSignals(c);
 }
-function markChanged() { setStatus($("rangeStatus"), "modifiche non ancora lanciate ·", "changed"); }
 
 /* costruisce il documento JSON dei profili dallo stato AP.store.edit */
 function buildDoc() {
@@ -129,6 +183,58 @@ function sanitizePair(pair, fallback) {
   return [a, b];
 }
 
+/* ==================================================================
+   "🚀 Lancia solo questo concept" (DESIGN.md "4. Range"): il lancio globale
+   (bottone "🚀 Lancia nel Worker" in alto) manda TUTTO AP.store.edit, quindi
+   se un altro concept ha valori diversi nell'editor locale (mai lanciati, o
+   lanciati da un'altra scheda nel frattempo) finirebbero anche loro nel PUT.
+   Qui si rilegge /tuning ADESSO (non una foto vecchia già in AP.store.dati.tuning:
+   un'altra scheda potrebbe aver lanciato qualcosa nel frattempo), ci si fonde
+   sopra la SOLA modifica del concept scelto, e si manda il documento completo:
+   gli altri concept arrivano al Worker esattamente come il Worker li aveva. */
+async function lanciaSoloConcetto(id, btn) {
+  if (btn.disabled) return; // niente doppi invii
+  if (!key()) { toast("serve la chiave admin per lanciare", "errore"); $("key").focus(); return; }
+  const statusEl = $(`lanciaSoloStatus-${id}`);
+  const originaleHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span> lancio…`;
+  if (statusEl) statusEl.textContent = "";
+  try {
+    const fresh = await api("/tuning"); // stato del server ORA, non una copia vecchia
+    if (!fresh.concepts || !fresh.concepts[id]) {
+      throw new Error(`il concept "${id}" non esiste più sul Worker: ricarica ("↻ Carica dal Worker") e riprova`);
+    }
+    const profiliFusi = {};
+    for (const [cid, p] of Object.entries(fresh.concepts)) {
+      // tutti gli altri concept: esattamente come il Worker li ha ORA, non come
+      // sono (eventualmente) nell'editor locale.
+      profiliFusi[cid] = {
+        estensione: [...p.estensione], intensita: [...p.intensita], compattezza: [...p.compattezza],
+        monotona: p.monotona, maxDeriva: p.maxDeriva ?? null, maxDegrado: p.maxDegrado ?? null,
+      };
+    }
+    const e = AP.store.edit[id];
+    const def = fresh.defaults?.[id] || {};
+    profiliFusi[id] = { // SOLO questo concept prende i valori dell'editor
+      estensione: sanitizePair(e.estensione, def.estensione),
+      intensita: sanitizePair(e.intensita, def.intensita),
+      compattezza: sanitizePair(e.compattezza, def.compattezza),
+      monotona: !!e.monotona,
+      maxDeriva: Number.isFinite(e.maxDeriva) ? e.maxDeriva : null,
+      maxDegrado: Number.isFinite(e.maxDegrado) ? e.maxDegrado : null,
+    };
+    await api("/tuning", { method: "PUT", body: JSON.stringify({ version: 1, profili: profiliFusi }) });
+    toast(`"${AP.comp.conceptNomeById(id)}" lanciato da solo nel Worker · gli altri concept restano come erano`, "ok");
+    await AP.store.carica(); // rilegge tutto: renderCards() ridisegna con badge/status coerenti col nuovo stato server
+  } catch (e2) {
+    toastErrore(e2, "lancio singolo concept");
+    if (statusEl) statusEl.textContent = errFromCatch(e2).join(" · ");
+    btn.disabled = false;
+    btn.innerHTML = originaleHTML;
+  }
+}
+
 $("reload").onclick = () => AP.store.carica(); // bottone storico: ora ricarica l'intero STORE, non solo /tuning (vedi istruzioni task 5)
 $("download").onclick = () => {
   const blob = new Blob([JSON.stringify(buildDoc(), null, 2)], { type: "application/json" });
@@ -150,8 +256,9 @@ $("upload").onchange = (ev) => {
         if ("maxDeriva" in p) AP.store.edit[id].maxDeriva = p.maxDeriva;
         if ("maxDegrado" in p) AP.store.edit[id].maxDegrado = p.maxDegrado;
       }
-      renderCards();
-      setStatus($("rangeStatus"), "JSON caricato (non ancora lanciato)", "changed");
+      renderCards(); // ridisegna anche i badge (badgeInfo confronta di nuovo contro il server)
+      toast("JSON caricato nell'editor (non ancora lanciato)", "ok");
+      aggiornaStatoGlobale(); // stesso segnale unico del badge, non un messaggio a parte
     } catch (e) { setStatus($("rangeStatus"), "JSON non valido: " + e.message); }
   };
   r.readAsText(f);
@@ -353,8 +460,9 @@ function loadAssettoIntoEditor(id) {
       monotona: !!prof.monotona, maxDeriva: prof.maxDeriva ?? null, maxDegrado: prof.maxDegrado ?? null,
     };
   }
-  renderCards();
-  setStatus($("rangeStatus"), `assetto "${a.nome}" caricato nell'editor (non ancora lanciato)`, "changed");
+  renderCards(); // ridisegna anche i badge (badgeInfo confronta di nuovo contro il server)
+  toast(`assetto "${a.nome}" caricato nell'editor (non ancora lanciato)`, "ok");
+  aggiornaStatoGlobale(); // stesso segnale unico del badge, non un messaggio a parte
 }
 
 async function deleteAssetto(id) {
@@ -436,7 +544,12 @@ async function fetchNoteEQuietRefresh() {
 }
 
 /* ---------- reazioni agli eventi dello STORE ---------- */
-AP.store.on("tuning", () => { renderCards(); setStatus($("rangeStatus"), "caricato"); });
+// fetchTuning ricostruisce AP.store.edit dal server ad ogni caricamento
+// (rebuildEdit in store.js): appena "tuning" arriva, EDIT e server coincidono
+// per costruzione, quindi aggiornaStatoGlobale() qui mostrerà sempre "caricato"
+// — ma passa dalla stessa funzione delle altre volte invece di un messaggio
+// scritto a mano, per restare l'unica fonte di verità del segnale.
+AP.store.on("tuning", () => { renderCards(); aggiornaStatoGlobale(); });
 AP.store.on("note", () => { NOTE_ERROR = null; noteArrivato = true; renderAssettiList(); renderNotebook(); refreshAllMarks(); });
 AP.store.on("errore", (info) => {
   if (info.sezione === "note") {
@@ -448,9 +561,10 @@ AP.store.on("errore", (info) => {
 });
 // "usi" arriva dopo che TUTTI gli archivi sono stati elaborati (rendering
 // progressivo terminato): è il momento in cui il quaderno può arricchirsi con la
-// combinazione/profilo di ogni giorno segnato "buono" (AP.store.giorno ora sa
-// rispondere per ogni canale, non solo per quelli caricati per primi).
-AP.store.on("usi", () => { renderNotebook(); });
+// combinazione/profilo di ogni giorno segnato "buono", e in cui la riga "usato
+// da" di ogni card ha i conteggi definitivi (AP.store.usi.concept, vedi
+// usatoDaHTML) invece di quelli parziali del primo canale arrivato.
+AP.store.on("usi", () => { renderNotebook(); renderCards(); });
 
 AP.tabs.range = {
   onShow() {

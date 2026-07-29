@@ -17,81 +17,14 @@
     <button id="globalReload" class="primary" title="ricarica canali, archivi, catalogo, note e profili">↻ Aggiorna</button>
   </div>
   <div class="tabs">
-    <div class="tab" data-tab="range">Range per concept</div>
-    <div class="tab" data-tab="concept">Concept</div>
-    <div class="tab" data-tab="element">Element</div>
     <div class="tab active" data-tab="archivio">Archivio</div>
     <div class="tab" data-tab="lab">Lab · prova combinazioni</div>
+    <div class="tab" data-tab="catalogo">Catalogo</div>
+    <div class="tab" data-tab="range">Range per concept</div>
   </div>
 </header>
 
 <main>
-  <!-- ===== TAB RANGE ===== -->
-  <section id="tab-range" style="display:none">
-    <div class="toolbar">
-      <button id="reload">↻ Carica dal Worker</button>
-      <button id="download">⬇ Scarica JSON</button>
-      <button id="uploadBtn">⬆ Carica JSON</button>
-      <input type="file" id="upload" accept="application/json" style="display:none" />
-      <button id="push" class="primary">🚀 Lancia nel Worker (KV)</button>
-      <button id="reset" class="ghost">Ripristina default</button>
-      <button id="assettoSave" class="ghost">💾 Salva questo assetto</button>
-      <span class="status" id="rangeStatus"></span>
-    </div>
-    <p class="hint" style="margin-top:-6px;margin-bottom:16px">
-      Il JSON qui è la fonte di verità. Modifica i valori, <b>scaricalo</b> per tenerne copia, e quando sei pronto
-      <b>lancialo nel Worker</b>: da quel momento ogni generazione userà questi range. Il tratteggio sulla barra è il default del codice.
-      Sei misure, ma solo tre sono un range per concept: <code>estensione</code> (quanta immagine cambia),
-      <code>intensità</code> (quanto forte), <code>compattezza</code> (evento localizzato ↔ diffuso).
-      <code>maxDeriva</code>/<code>maxDegrado</code> sono guardie (vuoto = guardia globale di default), <code>monotona</code> = la scena non può tornare indietro.
-      Include anche i concept custom creati nella tab "Concept". "💾 Salva questo assetto" fotografa TUTTI questi
-      range con un nome, per poterci tornare o confrontarli in seguito — senza lanciarli.
-    </p>
-    <div class="grid" id="cards"></div>
-    <div id="assettiList" style="margin-top:26px"></div>
-  </section>
-
-  <!-- ===== TAB CONCEPT ===== -->
-  <section id="tab-concept" style="display:none">
-    <p class="hint" style="margin-bottom:16px">
-      Un <b>concept</b> è lo schema di evoluzione: le 7 tappe che attraversa qualunque sfondo, la frase
-      "conserva" (cosa non deve mai cambiare nell'immagine) e i range con cui il cancello giudica se un giorno
-      generato è nella norma. I concept <b>built-in</b> (le famiglie scritte nel codice) sono di sola lettura
-      qui: usa "Duplica" per farne una tua versione modificabile, oppure "Nuovo" per partire da zero.
-    </p>
-    <div class="toolbar">
-      <button id="conceptNew">+ Nuovo</button>
-      <button id="conceptDup" class="ghost" title="Seleziona prima un concept dalla lista, poi premi qui per farne una copia modificabile">⧉ Duplica</button>
-      <button id="conceptReload" class="ghost">↻ Aggiorna catalogo</button>
-      <span class="status" id="conceptStatus"></span>
-    </div>
-    <div class="split">
-      <div class="listcol"><div id="conceptList" class="itemlist"></div></div>
-      <div class="formcol"><div id="conceptForm"></div></div>
-    </div>
-  </section>
-
-  <!-- ===== TAB ELEMENT ===== -->
-  <section id="tab-element" style="display:none">
-    <p class="hint" style="margin-bottom:16px">
-      Un <b>element</b> è il soggetto dello sfondo: setting, stile e palette del prompt, il soggetto inglese
-      (<code>s</code>) usato per risolvere le frasi del concept, e il concept nativo che segue di default.
-      Tappe ed extra qui sono <b>facoltative</b>: lasciale vuote per ereditare quelle del concept nativo, compilale
-      solo se questo soggetto deve raccontarsi in modo diverso dagli altri della stessa famiglia.
-      "Pubblicato" + un canale mette la combinazione concept×element nel pool di produzione di quel flusso.
-    </p>
-    <div class="toolbar">
-      <button id="elementNew">+ Nuovo</button>
-      <button id="elementDup" class="ghost" title="Seleziona prima un element dalla lista, poi premi qui per farne una copia modificabile">⧉ Duplica</button>
-      <button id="elementReload" class="ghost">↻ Aggiorna catalogo</button>
-      <span class="status" id="elementStatus"></span>
-    </div>
-    <div class="split">
-      <div class="listcol"><div id="elementList" class="itemlist"></div></div>
-      <div class="formcol"><div id="elementForm"></div></div>
-    </div>
-  </section>
-
   <!-- ===== TAB ARCHIVIO (home) ===== -->
   <section id="tab-archivio">
     <p class="hint" style="margin-bottom:16px">
@@ -149,6 +82,65 @@
       di mandarlo davvero in rotazione.
     </p>
     <div id="labResult"></div>
+  </section>
+
+  <!-- ===== TAB CATALOGO (fonde le vecchie tab Concept + Element, DESIGN.md "3. Catalogo") ===== -->
+  <section id="tab-catalogo" style="display:none">
+    <p class="hint" style="margin-bottom:16px">
+      Il catalogo raccoglie i <b>concept</b> (schema di evoluzione: le 7 tappe, la frase "conserva", i range con
+      cui il cancello giudica un giorno) e gli <b>element</b> (il soggetto: setting/style/palette, il concept
+      nativo che seguono di default, l'eventuale pubblicazione su un canale). I built-in (scritti nel codice) sono
+      di sola lettura qui: usa "Duplica" per farne una tua versione modificabile, oppure "Nuovo" per partire da
+      zero. Ogni riga della lista porta i suoi usi (archi generati, giorni, canali) calcolati dall'indice; chi non
+      è mai stato usato lo dice invece di restare muto. Seleziona una voce per vedere il pannello "Dove è usato" e
+      il suo form.
+    </p>
+    <div class="toolbar">
+      <div class="segmented" id="catTipoSel">
+        <button class="segbtn active" data-tipo="concept">Concept</button>
+        <button class="segbtn" data-tipo="element">Element</button>
+      </div>
+      <button id="catNew">+ Nuovo</button>
+      <button id="catDup" class="ghost" title="Seleziona prima una voce dalla lista, poi premi qui per farne una copia modificabile">⧉ Duplica</button>
+      <button id="catReload" class="ghost">↻ Aggiorna catalogo</button>
+      <span class="status" id="catStatus"></span>
+    </div>
+    <div class="split">
+      <div class="listcol"><div id="catList" class="itemlist"></div></div>
+      <div class="formcol">
+        <div id="catDoveUsato"></div>
+        <div id="catForm"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TAB RANGE (per concept) ===== -->
+  <section id="tab-range" style="display:none">
+    <div class="toolbar">
+      <button id="reload">↻ Carica dal Worker</button>
+      <button id="download">⬇ Scarica JSON</button>
+      <button id="uploadBtn">⬆ Carica JSON</button>
+      <input type="file" id="upload" accept="application/json" style="display:none" />
+      <button id="push" class="primary">🚀 Lancia nel Worker (KV)</button>
+      <button id="reset" class="ghost">Ripristina default</button>
+      <button id="assettoSave" class="ghost">💾 Salva questo assetto</button>
+      <span class="status" id="rangeStatus"></span>
+    </div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:16px">
+      Il JSON qui è la fonte di verità. Modifica i valori, <b>scaricalo</b> per tenerne copia, e quando sei pronto
+      <b>lancialo nel Worker</b>: da quel momento ogni generazione userà questi range. Il tratteggio sulla barra è il default del codice.
+      Sei misure, ma solo tre sono un range per concept: <code>estensione</code> (quanta immagine cambia),
+      <code>intensità</code> (quanto forte), <code>compattezza</code> (evento localizzato ↔ diffuso).
+      <code>maxDeriva</code>/<code>maxDegrado</code> sono guardie (vuoto = guardia globale di default), <code>monotona</code> = la scena non può tornare indietro.
+      Include anche i concept custom creati nel Catalogo. "🚀 Lancia solo questo" (su ogni card) fonde la sola
+      modifica di quel concept con lo stato attuale del server: gli altri concept restano com'erano — utile
+      quando vuoi tarare un concept alla volta senza toccare gli altri. Il badge "modificato" e il testo di stato
+      qui sopra raccontano sempre la stessa cosa: valori nell'editor diversi da quelli in vigore sul Worker.
+      "💾 Salva questo assetto" fotografa TUTTI questi range con un nome, per poterci tornare o confrontarli in
+      seguito — senza lanciarli.
+    </p>
+    <div class="grid" id="cards"></div>
+    <div id="assettiList" style="margin-top:26px"></div>
   </section>
 </main>
 
