@@ -3,9 +3,9 @@ node_modules/
 .dev.vars
 .DS_Store
 
-# Strumento di tuning locale: non fa parte del prodotto, resta fuori dal repo.
-# (HTML + copie del JSON dei range prodotte a mano.)
-tuning/
+# Il tool di tuning (tuning/) e' versionato: e' uno strumento del progetto.
+# Restano fuori solo eventuali copie del JSON dei range scaricate a mano.
+tuning/*.json
 
 # Config gemella per pilotare la produzione da locale (bindings remoti).
 backend/wrangler.remote.jsonc
