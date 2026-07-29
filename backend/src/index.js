@@ -25,14 +25,17 @@
 // la Shortcut degli utenti non si rompe mai.
 
 import { CONFIG } from "./config.js";
-import { ACTIVE_CHANNELS, CHANNELS, getChannel, resolveChannel } from "./channels.js";
+import { ACTIVE_CHANNELS, CHANNELS, resolveChannel, requireActiveChannel, LEGACY_ALIASES } from "./channels.js";
 import {
   evolveStory, buildKeyframePrompt, buildDailyPrompt, buildCumulativePrompt,
   buildRealignPrompt, clausesFor, todayKey,
 } from "./story.js";
 import { generateImage, generateWithGate, referenceFor } from "./generate.js";
 import { generateDay } from "./daygen.js";
-import { getState, putState, putImage, getImage, getMeta, getGiorno, listArchiveDates } from "./storage.js";
+import {
+  getState, putState, putImage, getImage, getMeta, getGiorno, listArchiveDates,
+  listChannelsWithArchive,
+} from "./storage.js";
 import {
   fingerprintFromBytes, fingerprintFromArchive, compare, verdict, classify,
   encodeFingerprint, decodeFingerprint, formatMeasures, diagnose,
@@ -113,16 +116,18 @@ function giornoRicostruito(canale, data) {
  * Idempotente: se l'immagine di oggi esiste già e non è richiesto `force`, esce.
  */
 async function runChannel(env, channelId, { force = false } = {}) {
-  const channel = getChannel(channelId);
-  if (!channel) throw new Error(`flusso sconosciuto: ${channelId}`);
-  if (!channel.active) throw new Error(`flusso in pausa: ${channelId}`);
+  // Risolve anche gli alias storici (/run/island → flusso "natura"): da qui in
+  // poi si usa SEMPRE `id` (il flusso REALE), mai `channelId` (l'id richiesto),
+  // altrimenti si scriverebbero stato e immagini sotto un canale fantasma.
+  const channel = requireActiveChannel(channelId);
+  const id = channel.id;
 
   const date = todayKey();
-  const prevState = await getState(env, channelId);
+  const prevState = await getState(env, id);
 
   if (!force && prevState?.lastDate === date) {
-    console.log(`[run] ${channelId}: già generato per ${date}, salto`);
-    return { channel: channelId, date, skipped: true };
+    console.log(`[run] ${id}: già generato per ${date}, salto`);
+    return { channel: id, date, skipped: true };
   }
 
   // 1. Com'e' andato ieri? Lo dicono le misure salvate ieri stesso, confrontate
@@ -147,7 +152,7 @@ async function runChannel(env, channelId, { force = false } = {}) {
   state.improntaPrec = prevState?.impronta ?? null;
 
   console.log(
-    `[run] ${channelId} ${date}: concept "${concept.id}" arco ${state.arcIndex} ` +
+    `[run] ${id} ${date}: concept "${concept.id}" arco ${state.arcIndex} ` +
     `giorno ${state.dayInArc} tappa ${state.stage + 1}/${concept.tappe.length} — "${state.scene}"`
   );
 
@@ -159,7 +164,7 @@ async function runChannel(env, channelId, { force = false } = {}) {
   // CONTRATTO) vuole anche l'element, il testo della tappa, il verdetto del
   // collaudo e il PROFILO EFFETTIVO usato — quello già risolto con
   // resolveProfilo (default più override di tuning) dentro `concept.profilo`.
-  await putImage(env, channelId, img, {
+  await putImage(env, id, img, {
     date,
     scene: state.scene,
     conceptId: concept.id,
@@ -177,7 +182,7 @@ async function runChannel(env, channelId, { force = false } = {}) {
   });
 
   const { improntaPrec, ...statoDaSalvare } = state;
-  await putState(env, channelId, {
+  await putState(env, id, {
     ...statoDaSalvare,
     impronta: img.impronta ? encodeFingerprint(img.impronta) : null,
     // L'impronta del keyframe resta per tutto l'arco: e' il metro con cui si
@@ -190,7 +195,7 @@ async function runChannel(env, channelId, { force = false } = {}) {
   });
 
   return {
-    channel: channelId,
+    channel: id,
     date,
     concept: concept.id,
     famiglia: concept.famiglia.id,
@@ -214,9 +219,10 @@ async function runChannel(env, channelId, { force = false } = {}) {
  * propagazione.
  */
 async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
-  const channel = getChannel(channelId);
-  if (!channel) throw new Error(`flusso sconosciuto: ${channelId}`);
-  if (!channel.active) throw new Error(`flusso in pausa: ${channelId}`);
+  // Come in runChannel: risolve l'alias storico e da qui in poi usa SEMPRE
+  // `id` (il flusso reale) per KV e log, mai `channelId` (l'id richiesto).
+  const channel = requireActiveChannel(channelId);
+  const id = channel.id;
 
   const catalog = await loadCatalog(env); // concept/element custom, letti una volta per l'intero backfill
   const tuning = await loadTuning(env); // range tarati da fuori, come nel cron
@@ -247,7 +253,7 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
       prevBytes, anchorBytes, maxAttempts: conGate ? null : 1,
     });
 
-    await putImage(env, channelId, img, {
+    await putImage(env, id, img, {
       date,
       scene: state.scene,
       conceptId: concept.id,
@@ -265,7 +271,7 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
     }, { archiveOnly: i > 0 });
 
     console.log(
-      `[backfill] ${channelId} ${date} (${concept.id} t${state.stage + 1}): ` +
+      `[backfill] ${id} ${date} (${concept.id} t${state.stage + 1}): ` +
       `${img.model}, ${img.tentativi} tentativi${img.misure ? ", " + formatMeasures(img.misure) : ""}`
     );
 
@@ -292,7 +298,7 @@ async function backfillChannel(env, channelId, days, { conGate = true } = {}) {
   }
 
   const { improntaPrec, ...statoDaSalvare } = state;
-  await putState(env, channelId, {
+  await putState(env, id, {
     ...statoDaSalvare,
     impronta: prevFingerprint ? encodeFingerprint(prevFingerprint) : null,
   });
@@ -645,28 +651,62 @@ export default {
     if (path === "/api/channels") {
       const catalog = await loadCatalog(env);
       const metas = await Promise.all(ACTIVE_CHANNELS.map((c) => getMeta(env, c.id)));
-      return jsonCors({
-        channels: ACTIVE_CHANNELS.map((c, i) => ({
-          id: c.id,
-          name: c.name,
-          emoji: c.emoji,
-          accent: c.accent,
-          tagline: c.tagline,
-          taglineEn: c.taglineEn,
-          famiglie: c.famiglie,
-          // Pool VERO: built-in più gli element custom pubblicati su questo flusso.
-          concepts: poolForWith(c, catalog).length,
-          url: `${url.origin}/w/${c.id}`,
-          today: metas[i],
-        })),
-      });
+      const channels = ACTIVE_CHANNELS.map((c, i) => ({
+        id: c.id,
+        name: c.name,
+        emoji: c.emoji,
+        accent: c.accent,
+        tagline: c.tagline,
+        taglineEn: c.taglineEn,
+        famiglie: c.famiglie,
+        // Pool VERO: built-in più gli element custom pubblicati su questo flusso.
+        concepts: poolForWith(c, catalog).length,
+        storico: false,
+        url: `${url.origin}/w/${c.id}`,
+        today: metas[i],
+      }));
+
+      // `?all=1`: in coda anche i canali storici che hanno un archivio ma non
+      // sono più attivi (island, bloom, studio, neon…), per lo strumento di
+      // tuning — che così scopre i canali dall'API invece di tenerne una
+      // lista scritta a mano. SENZA `?all=1` la risposta resta byte per byte
+      // quella di sempre, perché la consuma anche il sito (page.js).
+      if (url.searchParams.get("all") === "1") {
+        const attivi = new Set(ACTIVE_CHANNELS.map((c) => c.id));
+        const storici = await listChannelsWithArchive(env);
+        for (const [id, info] of storici) {
+          if (attivi.has(id)) continue;
+          channels.push({
+            id,
+            name: id,
+            emoji: "🗄",
+            accent: null,
+            tagline: null,
+            taglineEn: null,
+            famiglie: [],
+            concepts: 0,
+            storico: true,
+            ereditaDa: LEGACY_ALIASES[id] ?? null,
+            giorni: info.giorni,
+            prima: info.prima,
+            ultima: info.ultima,
+            url: `${url.origin}/w/${id}`,
+            today: null,
+          });
+        }
+      }
+
+      return jsonCors({ channels });
     }
 
     // ---- API archivio: date disponibili per un flusso, con la carta d'identità di ognuna ----
     const archMatch = path.match(/^\/api\/archive\/([a-z]+)$/);
     if (archMatch) {
       const canale = archMatch[1];
-      const limit = Math.min(Number(url.searchParams.get("limit")) || 60, 365);
+      // 400 e non 365: l'indice degli usi del tool di tuning ha bisogno di
+      // vedere l'archivio intero di un canale, non solo il più recente
+      // (il default resta 60, invariato per chi non lo specifica).
+      const limit = Math.min(Number(url.searchParams.get("limit")) || 60, 400);
       const dates = await listArchiveDates(env, canale, limit);
       // Stesso ordine di `dates`. Per i giorni senza `giorno:<canale>:<data>`
       // registrata si ripiega sulla ricostruzione onesta (vedi sopra): mai
@@ -718,12 +758,21 @@ export default {
       if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
       const ch = url.searchParams.get("ch") || "";
       const date = url.searchParams.get("date") || "";
-      const channel = getChannel(ch);
-      if (!channel || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "servono ?ch= e ?date=" }, 400);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "servono ?ch= e ?date=" }, 400);
+      // Risolve anche gli alias storici (/regen-day?ch=island): un id
+      // sconosciuto dà così "flusso sconosciuto: xxx" invece del generico
+      // messaggio sopra, che ora riguarda solo la data mancante/malformata.
+      let channel;
+      try {
+        channel = requireActiveChannel(ch);
+      } catch (err) {
+        return json({ error: err.message }, 400);
+      }
+      const id = channel.id;
 
       const catalog = await loadCatalog(env);
       const tuning = await loadTuning(env);
-      const state = await getState(env, ch);
+      const state = await getState(env, id);
       const conceptBase = state?.conceptId ? resolveConcept(state.conceptId, catalog) : null;
       if (!state?.anchorDate || !conceptBase) {
         return json({ error: "stato non compatibile (serve un flusso già attivo)" }, 400);
@@ -751,7 +800,7 @@ export default {
       };
       try {
         const img = await generateDay(env, channel, concept, dayState);
-        await putImage(env, ch, img, {
+        await putImage(env, id, img, {
           date,
           scene: dayState.scene,
           conceptId: concept.id,
@@ -768,7 +817,7 @@ export default {
           profilo: concept.profilo,
         }, { archiveOnly: date !== state.lastDate });
         return json({
-          channel: ch, date, dayInArc, model: img.model, tentativi: img.tentativi,
+          channel: id, date, dayInArc, model: img.model, tentativi: img.tentativi,
           misure: img.misure ? formatMeasures(img.misure) : null,
         });
       } catch (err) {

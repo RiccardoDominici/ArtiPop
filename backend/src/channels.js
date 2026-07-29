@@ -97,6 +97,23 @@ export function resolveChannel(id) {
   return { channel: undefined, isLegacy: false, requestedId: id };
 }
 
+/**
+ * Risolve un id di flusso — anche un alias storico (island, bloom, studio,
+ * neon, …) — nel flusso ATTIVO che ne ha raccolto l'eredità. Lancia un errore
+ * parlante se l'id non esiste o se il flusso è in pausa.
+ * È il punto unico usato da tutte le rotte che GENERANO (/run, /backfill,
+ * /regen-day): prima chiamavano getChannel() diretto e "/run/island" —
+ * documentato in GUIDA.md — falliva con "flusso sconosciuto: island" mentre
+ * /w/island funzionava benissimo.
+ */
+export function requireActiveChannel(id) {
+  const { channel, isLegacy } = resolveChannel(id);
+  if (!channel) throw new Error(`flusso sconosciuto: ${id}`);
+  if (!channel.active) throw new Error(`flusso in pausa: ${id}`);
+  if (isLegacy) console.log(`[channels] alias storico "${id}" → flusso "${channel.id}"`);
+  return channel;
+}
+
 /** I concept fra cui questo flusso può pescare. */
 export function poolFor(channel) {
   return conceptsForFamilies(channel.famiglie);

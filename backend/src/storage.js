@@ -161,6 +161,41 @@ export async function listArchiveDates(env, channelId, limit = 60) {
   return dates.reverse().slice(0, limit);
 }
 
+/**
+ * Id dei canali che hanno almeno un giorno in archivio (`archive:<canale>:<data>`),
+ * inclusi quelli storici ormai spenti (island, bloom, studio, neon…). Serve al
+ * tool di tuning per smettere di tenere due liste di canali scritte a mano.
+ * Costa una scansione delle chiavi `archive:*` (poche migliaia): la si fa SOLO
+ * su richiesta esplicita (/api/channels?all=1), mai nel giro di produzione.
+ * Ritorna una Map id → { giorni, prima, ultima }.
+ */
+export async function listChannelsWithArchive(env) {
+  const risultato = new Map();
+  try {
+    const re = /^archive:([a-z0-9_-]+):(\d{4}-\d{2}-\d{2})$/;
+    let cursor = undefined;
+    for (;;) {
+      const page = await env.KV.list({ prefix: "archive:", cursor, limit: 1000 });
+      for (const k of page.keys) {
+        const m = re.exec(k.name);
+        if (!m) continue; // chiave imprevista: ignorata in silenzio
+        const [, canale, data] = m;
+        const voce = risultato.get(canale) ?? { giorni: 0, prima: data, ultima: data };
+        voce.giorni += 1;
+        if (data < voce.prima) voce.prima = data;
+        if (data > voce.ultima) voce.ultima = data;
+        risultato.set(canale, voce);
+      }
+      if (page.list_complete) break;
+      cursor = page.cursor;
+    }
+  } catch (err) {
+    console.warn(`[storage] listChannelsWithArchive fallita, considerata vuota: ${err.message}`);
+    return new Map();
+  }
+  return risultato;
+}
+
 /** Metadati leggeri del canale per la pagina web (o null se mai generato). */
 export async function getMeta(env, channelId) {
   return env.KV.get(metaKey(channelId), { type: "json" });
