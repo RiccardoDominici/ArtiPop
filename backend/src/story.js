@@ -13,9 +13,11 @@
 //      cambia. Il calendario è affar nostro, non suo.
 //
 //   2. IL PIANO SI ADATTA A CIÒ CHE SI VEDE. Quale tappa mostrare oggi si
-//      decide guardando a che punto è arrivata davvero l'immagine di ieri
-//      (vedi vision.js), non contando i giorni. Se ieri è rimasta indietro si
-//      recupera; se ha corso avanti non si sta fermi a guardare.
+//      decide guardando a che punto è arrivata davvero ieri, secondo l'esito
+//      misurato da metrics.classify (non più letto guardando l'immagine, vedi
+//      il commento in testa a index.js), non contando i giorni. Se ieri è
+//      rimasta indietro si recupera; se ha corso avanti non si sta fermi a
+//      guardare.
 
 import { CONFIG } from "./config.js";
 // Il pool di produzione include ora anche gli element custom pubblicati: si
@@ -45,8 +47,8 @@ export function todayKey(now = new Date()) {
   }).format(now);
 }
 
-/** Giorni interi trascorsi dall'epoch per una data YYYY-MM-DD. */
-export function dayNumberOf(dateKey) {
+/** Giorni interi trascorsi dall'epoch per una data YYYY-MM-DD. Usata solo qui dentro. */
+function dayNumberOf(dateKey) {
   return Math.floor(Date.parse(dateKey + "T00:00:00Z") / 86400000);
 }
 
@@ -96,8 +98,10 @@ export function pickConcept(channel, prevState, arcIndex, catalog = null) {
  * se qualche giorno è andato storto, senza mai concentrare tutto il recupero in
  * un salto solo. L'ultimo giorno la tappa finale è obbligatoria, comunque siano
  * andati i sei prima.
+ *
+ * Mai importata fuori da questo modulo (verificato con grep): privata.
  */
-export function targetStage(prevStage, dayInArc, ultimaTappa) {
+function targetStage(prevStage, dayInArc, ultimaTappa) {
   if (dayInArc >= ultimaTappa) return ultimaTappa;
   const giorniRimasti = ultimaTappa - dayInArc + 1; // oggi compreso
   const tappeRimaste = ultimaTappa - prevStage;
@@ -186,7 +190,9 @@ function startArc(channel, prevState, dateKey, arcIndex, catalog) {
     usati,
     extraIndex: null,
     dosePartenza: 0,
-    esitoPrec: null,
+    // (qui viveva `esitoPrec`: scritto a ogni giorno e mai riletto da
+    // nessuno — vedi la nota più sotto in evolveStory. Non reintrodurlo
+    // senza un lettore reale.)
   };
 }
 
@@ -240,7 +246,7 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
       lastDate: dateKey,
       dayNumber,
       dosePartenza,
-      esitoPrec: esito ?? null,
+      // (esitoPrec rimosso: campo di stato scritto e mai riletto, vedi sotto)
     };
   }
 
@@ -291,7 +297,12 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
     stage,
     extraIndex,
     dosePartenza,
-    esitoPrec: esito ?? null,
+    // NOTA: qui si scriveva anche `esitoPrec: esito ?? null`, un campo dello
+    // stato mai riletto da nessuna parte (verificato con grep su tutto il
+    // repo): lo stato di oggi si ricostruisce sempre da `esito` fresco,
+    // passato a evolveStory ogni volta. Rimosso come codice morto; gli stati
+    // già salvati in KV che lo contengono restano innocui, il campo sparisce
+    // da solo alla prossima scrittura.
     scene: clausesFor(concept, stage, 0, extraIndex).join(". "),
     prevDate: prevState.lastDate,
     // seed e anchorDate restano quelli dell'arco

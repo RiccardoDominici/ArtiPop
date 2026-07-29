@@ -18,12 +18,11 @@
 
 import { ACTIVE_CHANNELS } from "./channels.js";
 
-/** Escape minimo per testo inserito nell'HTML. */
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
-}
+// NOTA: qui viveva esc(), un escape HTML mai chiamato nel file — i campi del
+// template (ch.name, ch.tagline, ch.scene, ch.concept) vengono inseriti senza
+// escaping già oggi. Rimuovere la funzione morta non cambia questo: NON
+// iniziare a usarla sui campi del template senza che sia una scelta a parte,
+// perché cambierebbe cosa il sito mostra.
 
 /**
  * Renderizza la pagina. `metas` è una mappa channelId → meta (da storage.getMeta),

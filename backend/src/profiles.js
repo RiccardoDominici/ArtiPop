@@ -88,8 +88,10 @@ export async function loadTuning(env) {
  * Fonde un override sul profilo di default di UNA famiglia. L'override può
  * essere parziale: quel che non specifica resta al default. Ritorna un profilo
  * pronto per metrics.verdict (stessa forma di family.profilo).
+ *
+ * Mai importata fuori da questo modulo (verificato con grep): privata.
  */
-export function mergeProfilo(famProfilo, override) {
+function mergeProfilo(famProfilo, override) {
   const base = {
     estensione: [...famProfilo.estensione],
     intensita: [...famProfilo.intensita],

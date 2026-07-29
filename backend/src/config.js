@@ -27,16 +27,12 @@ export const CONFIG = {
   // e comunque il giorno dopo si torna al modello primario.
   POLLINATIONS_URL: "https://image.pollinations.ai/prompt/",
 
-  // Modelli testo per l'evoluzione giornaliera della storia, in ordine di preferenza.
-  TEXT_MODELS: [
-    "@cf/meta/llama-3.1-8b-instruct",
-    "@cf/meta/llama-3.2-3b-instruct",
-  ],
-
-  // NOTA: qui viveva VISION_MODELS, il modello che leggeva lo sfondo di ieri
-  // per capire a che tappa fosse arrivata la storia. Sostituito dalle misure
-  // di metrics.js — vedi il commento in testa a index.js — e rimosso insieme
-  // a vision.js e alle sue sonde /test-vision, /test-ask.
+  // NOTA: qui vivevano TEXT_MODELS (evoluzione testuale via LLM, disattivata
+  // da tempo: zero riferimenti nel repo) e VISION_MODELS (il modello che
+  // leggeva lo sfondo di ieri per capire a che tappa fosse arrivata la
+  // storia, sostituito dalle misure di metrics.js — vedi il commento in
+  // testa a index.js — e rimosso insieme a vision.js e alle sue sonde
+  // /test-vision, /test-ask).
 
   // --- CANCELLO DI COLLAUDO (vedi metrics.js) ---
   // Quanti tentativi al massimo per far rientrare il cambiamento nel profilo del

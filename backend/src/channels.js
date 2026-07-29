@@ -114,8 +114,13 @@ export function requireActiveChannel(id) {
   return channel;
 }
 
-/** I concept fra cui questo flusso può pescare. */
-export function poolFor(channel) {
+/**
+ * I concept fra cui questo flusso può pescare (solo built-in: chi ha bisogno
+ * anche dei custom pubblicati usa poolForWith in catalog.js). Usata solo qui
+ * dentro, dai self-check a caricamento modulo qui sotto: mai importata
+ * altrove (verificato con grep), quindi resta privata.
+ */
+function poolFor(channel) {
   return conceptsForFamilies(channel.famiglie);
 }
 

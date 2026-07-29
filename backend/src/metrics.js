@@ -15,8 +15,11 @@
 import { CONFIG } from "./config.js";
 import { getImage } from "./storage.js";
 
-export const THUMB_W = 48;
-export const THUMB_H = 96;
+// Usate solo qui dentro (mai importate altrove, verificato con grep): niente
+// `export`, per non far credere a chi legge index.js che siano un'API del
+// modulo.
+const THUMB_W = 48;
+const THUMB_H = 96;
 const THUMB_N = THUMB_W * THUMB_H;
 
 /* ============================ MINIATURA ============================ */
@@ -34,7 +37,7 @@ const THUMB_N = THUMB_W * THUMB_H;
  * Ritorna Uint8Array(THUMB_N) oppure null se non è stato possibile misurare.
  * `null` non è un errore fatale: il chiamante pubblica senza cancello.
  */
-export async function fingerprintFromStream(env, stream) {
+async function fingerprintFromStream(env, stream) {
   if (!env.IMAGES) {
     console.warn("[metrics] binding IMAGES assente: impossibile misurare");
     return null;
@@ -254,8 +257,10 @@ function mean(a) {
  * vicine). Se crolla da un giorno all'altro, l'immagine è diventata poltiglia —
  * è il degrado da editing ripetuto, quello che aveva sciolto il davanzale di
  * Bloom in una macchia grigia nel giro di cinque giorni.
+ *
+ * Mai importata fuori da questo modulo (verificato con grep): privata.
  */
-export function sharpness(a) {
+function sharpness(a) {
   let s = 0, n = 0;
   for (let y = 0; y < THUMB_H; y++) {
     for (let x = 0; x < THUMB_W; x++) {

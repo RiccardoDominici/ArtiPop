@@ -199,12 +199,7 @@ export const FAMILIES = {
   },
 };
 
-/** Numero di tappe di una famiglia (deve coincidere con CONFIG.ARC_LENGTH_DAYS). */
-export function stageCount(family) {
-  return family.tappe.length;
-}
-
-/** La famiglia con quell'id, o undefined. */
-export function getFamily(id) {
-  return FAMILIES[id];
-}
+// NOTA: qui vivevano stageCount() e getFamily(), mai importate da nessuno —
+// chi ha bisogno di una famiglia usa direttamente FAMILIES[id] o, per
+// includere anche i custom, allFamilies() (catalog.js). Non reintrodurle
+// senza un chiamante reale.
