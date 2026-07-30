@@ -1,0 +1,9 @@
+{
+  "name": "artipop-tooling",
+  "private": true,
+  "type": "module",
+  "description": "Dipendenze di sviluppo per gli script del repo (visual-check.mjs). Non e' il worker: nessuna dipendenza runtime del backend vive qui.",
+  "devDependencies": {
+    "playwright": "1.62.0"
+  }
+}
