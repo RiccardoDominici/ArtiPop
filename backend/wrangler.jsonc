@@ -39,5 +39,39 @@
 
   // Origine pubblica del worker: serve al cron (che non ha una request) per
   // costruire gli URL d'archivio da passare al resizer esterno.
-  "vars": { "PUBLIC_ORIGIN": "https://artipop.riccardo-dominici.workers.dev" }
+  "vars": { "PUBLIC_ORIGIN": "https://artipop.riccardo-dominici.workers.dev" },
+
+  // Ambiente di preview: worker separato per testare i deploy del loop autonomo
+  // PRIMA di toccare la produzione. Ogni binding va ripetuto per intero perché
+  // in wrangler kv_namespaces/vars/services/ai/images NON sono ereditati dal
+  // top level quando si usa un environment nominato — vanno dichiarati qui.
+  "env": {
+    "preview": {
+      "name": "artipop-preview",
+      "main": "src/index.js",
+      "compatibility_date": "2026-07-01",
+      "workers_dev": true,
+
+      // KV DEDICATO al preview: mai lo stesso namespace della produzione.
+      "kv_namespaces": [
+        { "binding": "KV", "id": "f77b927e7cfb478f90fa1779a1dd7758" }
+      ],
+
+      "ai": { "binding": "AI" },
+      "images": { "binding": "IMAGES" },
+
+      // Fan-out verso se stesso, ma sull'istanza preview (mai verso "artipop" prod).
+      "services": [
+        { "binding": "SELF", "service": "artipop-preview" }
+      ],
+
+      // Nessun cron in preview: la generazione va innescata a mano (endpoint /run).
+      "triggers": { "crons": [] },
+
+      "observability": { "enabled": true },
+
+      // Origine pubblica del worker preview (sotto-dominio workers.dev dedicato).
+      "vars": { "PUBLIC_ORIGIN": "https://artipop-preview.riccardo-dominici.workers.dev" }
+    }
+  }
 }
