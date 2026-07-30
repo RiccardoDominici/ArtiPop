@@ -9,3 +9,11 @@ tuning/*.json
 
 # Config gemella per pilotare la produzione da locale (bindings remoti).
 backend/wrangler.remote.jsonc
+
+# Sistema autonomo (loop): stato e output di ogni ciclo, mai versionati.
+logs/
+artifacts/
+PLAN.md
+VERDICT.md
+CONTROL
+.runcount
