@@ -17,3 +17,4 @@ PLAN.md
 VERDICT.md
 CONTROL
 .runcount
+__pycache__/
