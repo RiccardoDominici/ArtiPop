@@ -11,6 +11,7 @@
 
 import { ACTIVE_CHANNELS } from "./channels.js";
 import { CONFIG } from "./config.js";
+import { FAVICON_TAG } from "./head.js";
 
 /** Voci di troubleshooting: sintomo → causa → rimedio. `priority` le mette in cima. */
 const PROBLEMI = [
@@ -172,6 +173,7 @@ export function renderShortcutMancante(flusso) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ArtiPop — Shortcut non disponibile</title>
 <meta name="theme-color" content="#0a0b10" />
+${FAVICON_TAG}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
@@ -232,6 +234,7 @@ export function renderErroreTemporaneo() {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ArtiPop — qualcosa non ha funzionato</title>
 <meta name="theme-color" content="#0a0b10" />
+${FAVICON_TAG}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
@@ -295,6 +298,7 @@ export function renderHelpPage() {
 <title>ArtiPop — aiuto e problemi comuni</title>
 <meta name="description" content="Perché l'automazione dello sfondo non parte, e tutte le altre domande su ArtiPop." />
 <meta name="theme-color" content="#0a0b10" />
+${FAVICON_TAG}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
