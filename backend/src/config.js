@@ -104,14 +104,25 @@ export const CONFIG = {
 };
 
 // --- FAMIGLIE SOSPESE DAI POOL DI PESCA (M9) ---
-// `attraversamento` è dichiaratamente NON TARATA (vedi families.js:146-154):
-// il primo giorno di prova (concept "canoa") ha sforato il range di
-// estensione (40% misurato contro un massimo di 12%), e finché le tappe non
-// saranno riformulate consuma CONFIG.MAX_ATTEMPTS tentativi ogni giorno senza
-// mai rientrare nel profilo. Le famiglie qui elencate sono escluse dalla
-// PESCA di un concept nuovo (vedi poolForWith in catalog.js, il punto unico
-// che applica il filtro): la famiglia resta nel codice, e un arco già in
-// corso o già archiviato su una di queste famiglie non viene toccato — il
-// filtro agisce solo a monte, sulla scelta di un concept NUOVO.
-// M10 (dipende da M9) tara i range via lab e poi la toglie da qui.
-export const FAMIGLIE_SOSPESE = ["attraversamento"];
+// Le famiglie qui elencate sono escluse dalla PESCA di un concept nuovo
+// (vedi poolForWith in catalog.js, il punto unico che applica il filtro):
+// una famiglia sospesa resta nel codice, e un arco già in corso o già
+// archiviato su di essa non viene toccato — il filtro agisce solo a monte,
+// sulla scelta di un concept NUOVO.
+//
+// M10 (2026-07-31): `attraversamento` tarata via lab su preview e riammessa.
+// Il difetto sistemico (families.js la documentava: un edit diluito su gran
+// parte della scena invece che concentrato sul soggetto, non un edit troppo
+// forte) è risolto dalla riformulazione delle tappe in cancella-e-ridipingi.
+// Arco gated di verifica (attraversamento×veliero, 7 giorni): 1.83 tentativi/
+// giorno in media, sotto la soglia di 2 richiesta.
+// Riserva nota, lasciata come materiale per un ciclo POLISH (budget standard
+// da 10 generazioni/ciclo): solo veliero è stato validato con un arco gated
+// completo; canoa (l'element già segnalato rotto prima di M9) fallisce
+// ancora con la stessa riformulazione — la compattezza scende sotto il
+// minimo, un difetto nuovo di edit sparso, mai visto prima — e gli altri 8
+// element del roster non sono stati testati. Il cancello pubblica comunque
+// il candidato migliore quando i tentativi finiscono (vedi generateWithGate
+// in generate.js), quindi il rischio su questi element è di qualità/budget
+// nei giorni in cui vengono pescati, non di rottura.
+export const FAMIGLIE_SOSPESE = [];

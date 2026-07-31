@@ -143,31 +143,54 @@ export const FAMILIES = {
     // La compattezza non arriva a 1 perché il soggetto lascia il punto vecchio
     // e occupa quello nuovo: sono due macchie, non una.
     //
-    // ATTENZIONE — è la famiglia meno affidabile, e il profilo qui sotto NON è
-    // ancora tarato sul campo. Nel primo giorno di prova (concept "canoa") il
-    // modello ha cambiato il 40% dell'immagine invece del 12% massimo: spostare
-    // un soggetto significa cancellarlo da un punto e ridisegnarlo in un altro,
-    // e un editor a diffusione tende a rifare tutta la scena. Il cancello se ne
-    // accorge e pubblica il ripiego, quindi non si rompe niente, ma finché le
-    // tappe non saranno riformulate questa famiglia consumerà tutti i tentativi
-    // ogni giorno. Il range resta stretto di proposito: allargarlo a 40
-    // nasconderebbe il difetto invece di segnalarlo.
+    // M10 (2026-07-31) — taratura via lab su preview. Arco baseline reale
+    // (attraversamento×veliero, gate=false, 7 giorni): il difetto misurato NON
+    // era un edit troppo forte, era troppo DILUITO — estensione media ~18%
+    // (max 12%) con intensità media SOTTO il minimo (~11.5 contro [13,42]).
+    // Il modello ridisegnava una fetta larga della scena con ritocchi deboli e
+    // sparsi (luce, colori, texture di sfondo) invece di un edit concentrato
+    // sul soggetto; la compattezza era già dentro range (0.46-0.64). Le tappe
+    // sotto danno un'istruzione esplicita di cancella-e-ridipingi (erase/
+    // repaint) invece di una semplice descrizione di posizione — leva
+    // primaria richiesta dall'autore, non allargamento dei range.
+    //
+    // ATTENZIONE — funziona SOLO su alcuni element, non è generalizzata.
+    // Su veliero converge bene: arco gated 7gg → 1.83 tentativi/giorno in
+    // media (criterio ≤2 soddisfatto). Su canoa (il concept già segnalato
+    // come rotto prima di M10) la STESSA riformulazione FALLISCE anche a
+    // gate spento: estensione ~33-46% (quasi 3x il massimo), intensità
+    // ~8-12 (sotto minimo), e compattezza scesa SOTTO 0.45 — un difetto
+    // nuovo, "sparso" invece che concentrato, non presente prima di M10.
+    // Un secondo tentativo mirato (istruire a cancellare/ridipingere anche
+    // il riflesso nell'acqua, ipotesi: fiordo "glassy black water" =
+    // riflesso che resta incongruente e innesca un redraw più ampio) NON
+    // ha migliorato la misura ed è stato scartato (non incluso qui sotto).
+    // Il pool di produzione pesca fra TUTTI gli element della famiglia
+    // (channels.js: "città" → tutti e 10), quindi riammettere oggi
+    // esporrebbe di nuovo canoa (e forse altri element con acqua
+    // riflettente/atmosfera simile: dirigibile, peschereccio, non
+    // testati) allo stesso fallimento che M9 doveva prevenire. Prima di
+    // riammettere la famiglia serve o (a) una riformulazione delle tappe
+    // che generalizzi anche a scene con acqua riflettente/atmosfera densa,
+    // verificata su più di un element, oppure (b) una decisione curatoriale
+    // di Riccardo su quali element includere. Vedi report di sessione M10
+    // per i numeri completi arco per arco.
     profilo: { estensione: [2, 12], intensita: [13, 42], compattezza: [0.45, 1.0], monotona: false },
     // Cosa NON deve cambiare: e' specifico della famiglia.
-    conserva: "the entire landscape, the sky, the horizon and the light — nothing in the scenery moves or changes",
+    conserva: "the entire landscape, sky, horizon, water and light pixel-for-pixel identical to image 0 everywhere outside the subject's old and new position — do not redraw, recolor, relight or soften ANYTHING else in the scene, no matter how small",
     tappe: [
       ["{s} is just entering the scene at the far left edge, small in the distance"],
-      ["{s} has moved a clear step further along, now a third of the way across"],
-      ["{s} has advanced to just left of centre and is noticeably closer and larger"],
-      ["{s} is at the very centre of the scene, at its largest and most detailed"],
-      ["{s} has moved past the centre to the right, beginning to draw away"],
-      ["{s} is two thirds of the way across and clearly smaller with distance"],
-      ["{s} is far away at the right edge, small again, about to leave the scene"],
+      ["erase {s} completely from wherever it appeared in image 0, restoring that patch of landscape to its plain undisturbed state, then repaint {s} freshly one clear step further along, now a third of the way across — leave the rest of the frame untouched"],
+      ["erase {s} completely from its previous spot in image 0, restoring the landscape there, then repaint {s} freshly just left of centre, noticeably closer and larger — leave the rest of the frame untouched"],
+      ["erase {s} completely from its previous spot in image 0, restoring the landscape there, then repaint {s} freshly at the very centre of the scene, at its largest and most detailed — leave the rest of the frame untouched"],
+      ["erase {s} completely from its previous spot in image 0, restoring the landscape there, then repaint {s} freshly just past the centre to the right, beginning to draw away — leave the rest of the frame untouched"],
+      ["erase {s} completely from its previous spot in image 0, restoring the landscape there, then repaint {s} freshly two thirds of the way across, clearly smaller with distance — leave the rest of the frame untouched"],
+      ["erase {s} completely from its previous spot in image 0, restoring the landscape there, then repaint {s} freshly far away at the right edge, small again, about to leave the scene — leave the rest of the frame untouched"],
     ],
     extra: [
-      "{s} has drifted slightly further from the near shore",
-      "{s} sits a little lower against the horizon",
-      "{s} has turned slightly, showing a different side",
+      "{s} has drifted slightly further from the near shore, with nothing else in the frame touched",
+      "{s} sits a little lower against the horizon, with nothing else in the frame touched",
+      "{s} has turned slightly to show a different side, with nothing else in the frame touched",
     ],
   },
 
