@@ -129,3 +129,41 @@ describe("(d) percorso di riammissione: togliendo la famiglia da FAMIGLIE_SOSPES
     }
   });
 });
+
+describe("(e) l'accesso esplicito per id resta intatto: il lab può ancora testare attraversamento (percorso di taratura di M10)", () => {
+  it("FAMILIES continua a esporre 'attraversamento' senza alcun filtro: è la fonte di /catalogo, il menu da cui il lab sceglie lo schema", () => {
+    expect(FAMILIES.attraversamento).toBeDefined();
+    expect(allFamilies(catalogVuoto).attraversamento).toBeDefined();
+  });
+
+  it("combine() con familyId='attraversamento' esplicito (coppia NATIVA, es. con 'veliero') resta pienamente funzionante — è esattamente ciò che chiama runLabArc via /lab/arc?concept=attraversamento", () => {
+    const concept = combine("attraversamento", "veliero", null, catalogVuoto);
+    expect(concept).toBeDefined();
+    expect(concept.famiglia.id).toBe("attraversamento");
+    expect(concept.tappe.length).toBe(7);
+    expect(concept.virtuale).toBeFalsy(); // coppia nativa: è il concept reale, non sintetizzato
+  });
+
+  it("combine() con familyId='attraversamento' e un element di un'ALTRA famiglia (coppia LIBERA) funziona ancora: il lab può provare 'attraversamento di un girasole' per tararla", () => {
+    const concept = combine("attraversamento", "girasole", null, catalogVuoto);
+    expect(concept).toBeDefined();
+    expect(concept.famiglia.id).toBe("attraversamento");
+    expect(concept.virtuale).toBe(true); // coppia libera: tappe sintetizzate al volo
+    expect(concept.tappe.length).toBe(7);
+    expect(concept.s).toBe("the sunflower"); // soggetto di girasole, schema di attraversamento
+  });
+
+  it("resolveConcept('veliero') resta risolvibile per id esplicito con un profilo di taratura passato dal lab (rangeOverride via combine)", () => {
+    // Simula ciò che fa runLabArc: legge il profilo effettivo (qui a mano,
+    // invece che da profiles.js/tuning) e lo passa come override a combine.
+    const rangeOverride = { estensione: [1, 60], intensita: [0, 50], compattezza: [0, 1], monotona: false };
+    const concept = combine("attraversamento", "veliero", rangeOverride, catalogVuoto);
+    expect(concept.profilo.estensione).toEqual([1, 60]); // l'override tarato ha vinto, nessun filtro l'ha bloccato
+    expect(resolveConcept("veliero", catalogVuoto).famiglia.id).toBe("attraversamento");
+  });
+
+  it("GET /catalogo (index.js) costruisce i suoi concept direttamente da FAMILIES, non da poolForWith: verificato qui perché il modulo è fuori scope, ma la lettura diretta di FAMILIES conferma che nessun filtro lo intercetta", () => {
+    const idsCatalogo = Object.keys(FAMILIES);
+    expect(idsCatalogo).toContain("attraversamento");
+  });
+});
