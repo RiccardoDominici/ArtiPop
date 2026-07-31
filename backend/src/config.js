@@ -102,3 +102,16 @@ export const CONFIG = {
     "no text, no watermark, no logo, no borders, no UI elements, " +
     "crisp detail, high quality, cohesive colors",
 };
+
+// --- FAMIGLIE SOSPESE DAI POOL DI PESCA (M9) ---
+// `attraversamento` è dichiaratamente NON TARATA (vedi families.js:146-154):
+// il primo giorno di prova (concept "canoa") ha sforato il range di
+// estensione (40% misurato contro un massimo di 12%), e finché le tappe non
+// saranno riformulate consuma CONFIG.MAX_ATTEMPTS tentativi ogni giorno senza
+// mai rientrare nel profilo. Le famiglie qui elencate sono escluse dalla
+// PESCA di un concept nuovo (vedi poolForWith in catalog.js, il punto unico
+// che applica il filtro): la famiglia resta nel codice, e un arco già in
+// corso o già archiviato su una di queste famiglie non viene toccato — il
+// filtro agisce solo a monte, sulla scelta di un concept NUOVO.
+// M10 (dipende da M9) tara i range via lab e poi la toglie da qui.
+export const FAMIGLIE_SOSPESE = ["attraversamento"];

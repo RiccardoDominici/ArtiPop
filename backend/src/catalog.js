@@ -51,7 +51,7 @@
 // cui i moduli ES risolvono un ciclo del genere: non toccarlo per "pulizia"
 // senza aver riletto questa nota.
 
-import { CONFIG } from "./config.js";
+import { CONFIG, FAMIGLIE_SOSPESE } from "./config.js";
 import { FAMILIES } from "./families.js";
 import { ELEMENTS, getConcept, getElement, conceptsForFamilies } from "./concepts.js";
 import { validaRangeProfilo, validaMonotona, validaScalareONull } from "./validazione.js";
@@ -414,6 +414,24 @@ export function resolveConcept(id, catalog) {
  * gli element custom pubblicati su quel flusso, materializzati come concept
  * veri e propri. È il pool di PRODUZIONE — poolFor() in channels.js resta
  * built-in-only apposta, per i controlli a caricamento modulo.
+ *
+ * FAMIGLIE SOSPESE (M9, vedi config.js): il filtro vive QUI, dopo aver unito
+ * built-in e custom, non dentro conceptsForFamilies — è il primo punto in cui
+ * le due sorgenti sono già nello stesso array, quindi un ipotetico element
+ * custom con famigliaNativa in una famiglia sospesa viene coperto insieme ai
+ * built-in, con un solo filtro invece di due sparsi. È anche il punto che
+ * copre sia la pesca settimanale di produzione (story.js: pickConcept, unico
+ * chiamante di produzione) sia le informazioni di pool che il lab/tuning tool
+ * legge da qui (index.js: /health, /api/channels contano poolForWith().length
+ * per canale). NON copre invece — di proposito — il lab quando testa una
+ * combinazione ESPLICITA (runLabArc → combine(familyId, elementId, ...) in
+ * lab.js, che non passa da poolForWith): M10 deve poter continuare a chiedere
+ * esplicitamente "attraversamento" per tararla, anche mentre è sospesa qui.
+ *
+ * Agisce SOLO sulla pesca di un concept NUOVO: resolveConcept() di uno stato
+ * ESISTENTE (story.js: evolveStory, quando riprende l'arco di ieri) non passa
+ * da questa funzione, quindi un arco già in corso su una famiglia sospesa
+ * continua a evolvere e chiude comunque i suoi 7 giorni.
  */
 export function poolForWith(channel, catalog) {
   const builtins = conceptsForFamilies(channel.famiglie);
@@ -421,5 +439,5 @@ export function poolForWith(channel, catalog) {
     .filter((el) => el.pubblicato === true && el.canale === channel.id)
     .map((el) => resolveConcept(el.id, catalog))
     .filter(Boolean);
-  return [...builtins, ...customi];
+  return [...builtins, ...customi].filter((c) => !FAMIGLIE_SOSPESE.includes(c.famiglia.id));
 }
