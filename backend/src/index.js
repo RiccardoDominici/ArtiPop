@@ -45,7 +45,7 @@ import {
 } from "./catalog.js";
 import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
-import { renderHelpPage } from "./help.js";
+import { renderHelpPage, renderShortcutMancante } from "./help.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
@@ -434,8 +434,25 @@ export default {
     // ---- Download della Shortcut firmata: /s/<flusso>[-base].shortcut ----
     const sMatch = path.match(/^\/s\/([a-z]+(?:-base)?)\.shortcut$/);
     if (sMatch) {
-      const file = await env.KV.get(`shortcut:${sMatch[1]}`, { type: "stream" });
-      if (!file) return json({ error: "shortcut non disponibile per questo flusso" }, 404);
+      // Stessa pagina 404 sia se la chiave manca sia se il binding KV lancia
+      // (principio 3, robustezza): mai un JSON grezzo né l'errore generico di
+      // Cloudflare al posto della Shortcut (coerente con M4 su /w/).
+      let file = null;
+      try {
+        file = await env.KV.get(`shortcut:${sMatch[1]}`, { type: "stream" });
+      } catch {
+        file = null;
+      }
+      if (!file) {
+        return new Response(renderShortcutMancante(sMatch[1]), {
+          status: 404,
+          headers: {
+            "content-type": "text/html; charset=utf-8",
+            "cache-control": "no-store",
+            ...SECURITY_HEADERS,
+          },
+        });
+      }
       return new Response(file, {
         headers: {
           "content-type": "application/octet-stream",

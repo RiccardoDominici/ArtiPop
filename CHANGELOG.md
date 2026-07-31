@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-shortcut-mai-json-al-browser
+- `backend/src/help.js`: nuova `renderShortcutMancante(flusso)`, stessa spec visiva di
+  `renderHelpPage()` (M6), con i link di download presi da `ACTIVE_CHANNELS` (mai una lista scritta
+  a mano) e un rimando a `/aiuto`.
+- `backend/src/index.js`: `/s/<flusso>.shortcut` non risponde più JSON grezzo quando la chiave manca
+  in KV — stesso difetto già chiuso da M4 su `/w/`, lasciato aperto sulla rotta gemella di download.
+  La lettura da KV è in try/catch: se il binding lancia, l'utente vede comunque la pagina 404 HTML e
+  non l'errore generico di Cloudflare (principio 3). Header di sicurezza (M8) applicati anche qui.
+- `backend/tests/integration/shortcut-download.test.js`: copre chiave assente, KV che lancia, e il
+  ramo felice invariato byte per byte.
+
 ## 2026-07-31 — m2-recupero-suite-orfana-ciclo-3
 - `backend/tests/helpers/fakeEnv.js`: KV in-memory (get/getWithMetadata/put/delete/list) più stub
   AI/IMAGES/SELF che lanciano se invocati — garanzia strutturale di zero generazioni AI nel ciclo,
