@@ -107,7 +107,10 @@ Brusco (solo se il loop non risponde): `docker stop artipop-loop`. Può lasciare
 a metà: v. Troubleshooting sotto.
 
 ## Lettura della TUI (`monitor.py`, fuori dal container)
-Via facile: doppio click su `monitor.command` dal Finder (o `./monitor.command`).
+Via facilissima: doppio click su **"ArtiPop Monitor.app"** sulla Scrivania (apre il Terminale
+con la TUI). Per rigenerarla se sparisce:
+`osacompile -o ~/Desktop/"ArtiPop Monitor.app" <(echo 'tell app "Terminal" to do script "exec '"'"'/Users/riccardo/Developer/Python/ArtiPop/ArtiPop v3/monitor.command'"'"'"')`
+Via facile alternativa: doppio click su `monitor.command` dal Finder (o `./monitor.command`).
 Equivalente a mano:
 ```bash
 cd "/Users/riccardo/Developer/Python/ArtiPop/ArtiPop v3"
