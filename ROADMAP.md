@@ -17,13 +17,21 @@ comando, e un rollback reale è stato eseguito e verificato.
 deploy preview+seed+smoke verdi; deploy production di prova `f77c23c4` con smoke 5/5;
 rollback reale alla versione `1fe2f82b` eseguito dal container e verificato con smoke 5/5.*
 
-### M2 — Test d'integrazione su router e orchestrazione · APERTA
+### M2 — Test d'integrazione su router e orchestrazione · FATTA
 Oltre la base minima pure-logic del setup: test con binding simulati
 (@cloudflare/vitest-pool-workers o mock manuali di KV/AI/IMAGES/SELF) per:
 auth su tutte le rotte protette (401/403), 404 fallback, CORS, idempotenza di
 `runChannel` (stesso giorno → skip), `/w/<flusso>?date=` byte-stabile,
 body malformati → 400 con messaggio chiaro.
 **Fatta quando**: le rotte critiche hanno almeno un test felice + un test d'errore ciascuna, suite verde.
+*Nota: chiusa il 2026-07-31 con mock manuali di KV/AI/IMAGES/SELF (`backend/tests/helpers/fakeEnv.js`,
+niente devDependency nuova): le 16 rotte guardate da `isAuthorized` (contate a grep) rifiutano senza
+chiave, `GET`/`PUT /tuning` hanno anche il caso felice; 404 fallback, CORS sul preflight e body
+malformato → 400 su `/tuning`, `/catalogo/concept`, `/note/giorno`; idempotenza di `runChannel` e
+byte-stabilità di `/w/<flusso>?date=` con stub AI/IMAGES che lanciano se invocati (zero generazioni).
+I tre tentativi precedenti erano caduti per motivi procedurali (perimetro dei `FILE:` dichiarati,
+falso negativo del parser sulla sentinella), non per il merito dell'impianto di test: questo ciclo
+ha recuperato via cherry-pick il lavoro verde e orfano del ciclo 3.*
 
 ### M3 — Scritture admin robuste · APERTA
 try/catch attorno a ogni scrittura KV in `/tuning`, `/catalogo/*`, `/note/*`
