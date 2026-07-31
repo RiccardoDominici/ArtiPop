@@ -17,6 +17,7 @@
 //  - Nessuna risorsa esterna: font di sistema, CSS e JS inline.
 
 import { ACTIVE_CHANNELS } from "./channels.js";
+import { FAVICON_TAG, metaAnteprima } from "./head.js";
 
 // NOTA: qui viveva esc(), un escape HTML mai chiamato nel file — i campi del
 // template (ch.name, ch.tagline, ch.scene, ch.concept) vengono inseriti senza
@@ -48,14 +49,20 @@ export function renderPage(metas, origin, dateKey) {
     date: metas[c.id]?.date || dateKey,
   }));
 
+  const pageTitle = "ArtiPop — un wallpaper nuovo ogni giorno, che evolve";
+  const pageDescription =
+    "Wallpaper AI gratuiti per iPhone che evolvono giorno per giorno. Nessuna app: solo una Shortcut.";
+
   return `<!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>ArtiPop — un wallpaper nuovo ogni giorno, che evolve</title>
-<meta name="description" content="Wallpaper AI gratuiti per iPhone che evolvono giorno per giorno. Nessuna app: solo una Shortcut." />
+<title>${pageTitle}</title>
+<meta name="description" content="${pageDescription}" />
 <meta name="theme-color" content="#0a0b10" />
+${FAVICON_TAG}
+${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
 <style>
   :root {
     --bg: #0a0b10;

@@ -111,3 +111,19 @@ Chiusura integrale della roadmap per sbloccare la fase POLISH:
   Coda dichiarata: canoa fuori range e 8 element non testati → materiale POLISH.
 Suite: 94 → 181 test. Incidente rientrato: i commit dello sprint erano finiti sul branch
 di un ciclo del loop avviato per errore in parallelo, recuperati integralmente dal reflog.
+
+## 2026-07-31 — s-anteprima-e-icona-quando-il-link-viene-condiviso
+- Nuovo `backend/src/head.js`: unica fonte di verità per `FAVICON_TAG` (icona SVG inline, solo
+  colori `--bg`/accenti natura di VISUAL_SPECS §1.1) e `metaAnteprima()` (tag Open Graph +
+  Twitter Card). ArtiPop si diffonde per link mandato a un amico: prima arrivava su
+  iMessage/WhatsApp/Telegram come URL nudo, niente titolo/immagine/icona in tab.
+- `backend/src/page.js`: `<head>` di `/` ora include l'icona e i tag og:/twitter:. `og:image`
+  riusa `/w/natura?v=<oggi>` — la variante cacheabile un'ora del ciclo precedente, nessuna
+  immagine nuova da generare o mantenere. `twitter:card` è `summary` (non `summary_large_image`):
+  l'immagine è verticale 960×2048, il formato large la taglierebbe.
+- `backend/src/help.js`: solo `FAVICON_TAG` su `/aiuto`, "Shortcut non disponibile" ed "errore
+  temporaneo" — niente Open Graph su queste pagine di servizio, non sono ciò che si condivide, e
+  le loro firme non ricevono `origin` (aggiungerlo sarebbe lavoro non richiesto).
+- `backend/tests/integration/anteprima-social.test.js`: icona + soli colori ammessi, tag og:
+  completi e assoluti, `og:image`/`twitter:card` esatti, coerenza carattere-per-carattere con
+  title/description, e le tre pagine di servizio senza tag og:.
