@@ -119,7 +119,7 @@ viene fuso sopra i default (`profiles.js`).
   genera un arco USA-E-GETTA (non tocca la produzione, immagini con TTL 1h) e
   restituisce le sei misure giorno per giorno — serve a tarare i range con dati
   alla mano e a provare combinazioni libere (`timelapse`×`girasole`, ecc.)
-- `GET /lab/img?run=<id>&n=<n>` → serve un'immagine di prova
+- `GET /lab/img?run=<id>&n=<n>` (chiave) → serve un'immagine di prova
 
 Lo **strumento visuale** è in [`../tuning/`](../tuning/README.md), dentro il
 repo: si apre da `file://` senza build, edita i range per concept, prova le

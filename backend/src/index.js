@@ -98,6 +98,15 @@ export default {
       "access-control-allow-headers": "content-type, x-artipop-key",
       "access-control-max-age": "86400",
     };
+    // Header di sicurezza sulle DUE pagine HTML pubbliche (/ e /aiuto). Niente
+    // CSP: la pagina usa JS/CSS inline (page.js/help.js) e introdurla senza
+    // riscriverle sarebbe una modifica ben oltre l'essenzialità (ROADMAP M8).
+    const SECURITY_HEADERS = {
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "x-frame-options": "DENY",
+    };
+
     // Anche le API di sola lettura servono lo strumento: la sua tab "Archivio"
     // elenca i flussi (/api/channels), le date in archivio (/api/archive/...) e
     // misura due giorni già pubblicati (/test-metrics). Senza CORS quelle fetch
@@ -117,6 +126,18 @@ export default {
         status,
         headers: { "content-type": "application/json; charset=utf-8", ...CORS },
       });
+
+    // Avvolge una scrittura admin (KV.put/delete e dintorni): se `fn` lancia
+    // (es. KV irraggiungibile), risponde 500 con una frase UMANA costante,
+    // uguale per tutte e 9 le rotte — mai `err.message`/stack/env nel corpo
+    // (divieto segreti), il dettaglio tecnico va solo nel log del Worker.
+    const scritturaProtetta = async (etichetta, fn) => {
+      try { return await fn(); }
+      catch (err) {
+        console.error(`[scrittura] ${etichetta} fallita: ${err.message}`);
+        return jsonCors({ ok: false, error: "salvataggio non riuscito, riprova" }, 500);
+      }
+    };
 
     // ---- Tuning dei range (concept = schema di evoluzione) ----
     // GET  /tuning        → default del codice + valori effettivi + elenco element
@@ -141,14 +162,18 @@ export default {
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ error: "JSON non valido nel corpo della richiesta" }, 400); }
-        const catalog = await loadCatalog(env);
-        const res = await saveTuning(env, body, catalog);
-        return jsonCors(res, res.ok ? 200 : 400);
+        return scritturaProtetta("PUT /tuning", async () => {
+          const catalog = await loadCatalog(env);
+          const res = await saveTuning(env, body, catalog);
+          return jsonCors(res, res.ok ? 200 : 400);
+        });
       }
       if (request.method === "DELETE") {
         if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
-        await clearTuning(env);
-        return jsonCors({ ok: true, cleared: true });
+        return scritturaProtetta("DELETE /tuning", async () => {
+          await clearTuning(env);
+          return jsonCors({ ok: true, cleared: true });
+        });
       }
       return jsonCors({ error: "metodo non ammesso" }, 405);
     }
@@ -219,13 +244,17 @@ export default {
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
-        const res = await saveConcept(env, body);
-        return jsonCors(res, res.ok ? 200 : 400);
+        return scritturaProtetta("PUT /catalogo/concept", async () => {
+          const res = await saveConcept(env, body);
+          return jsonCors(res, res.ok ? 200 : 400);
+        });
       }
       if (request.method === "DELETE") {
         if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
-        const res = await removeConcept(env, url.searchParams.get("id") || "");
-        return jsonCors(res, res.ok ? 200 : 400);
+        return scritturaProtetta("DELETE /catalogo/concept", async () => {
+          const res = await removeConcept(env, url.searchParams.get("id") || "");
+          return jsonCors(res, res.ok ? 200 : 400);
+        });
       }
       return jsonCors({ error: "metodo non ammesso" }, 405);
     }
@@ -236,13 +265,17 @@ export default {
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
-        const res = await saveElement(env, body);
-        return jsonCors(res, res.ok ? 200 : 400);
+        return scritturaProtetta("PUT /catalogo/element", async () => {
+          const res = await saveElement(env, body);
+          return jsonCors(res, res.ok ? 200 : 400);
+        });
       }
       if (request.method === "DELETE") {
         if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
-        const res = await removeElement(env, url.searchParams.get("id") || "");
-        return jsonCors(res, res.ok ? 200 : 400);
+        return scritturaProtetta("DELETE /catalogo/element", async () => {
+          const res = await removeElement(env, url.searchParams.get("id") || "");
+          return jsonCors(res, res.ok ? 200 : 400);
+        });
       }
       return jsonCors({ error: "metodo non ammesso" }, 405);
     }
@@ -263,8 +296,10 @@ export default {
       let body;
       try { body = await request.json(); }
       catch { return jsonCors({ ok: false, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
-      const res = await putGiornoNota(env, body);
-      return jsonCors(res, res.ok ? 200 : 400);
+      return scritturaProtetta("PUT /note/giorno", async () => {
+        const res = await putGiornoNota(env, body);
+        return jsonCors(res, res.ok ? 200 : 400);
+      });
     }
 
     if (path === "/note/assetto") {
@@ -273,13 +308,17 @@ export default {
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
-        const res = await putAssetto(env, body);
-        return jsonCors(res, res.ok ? 200 : 400);
+        return scritturaProtetta("PUT /note/assetto", async () => {
+          const res = await putAssetto(env, body);
+          return jsonCors(res, res.ok ? 200 : 400);
+        });
       }
       if (request.method === "DELETE") {
         if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
-        const res = await removeAssetto(env, url.searchParams.get("id") || "");
-        return jsonCors(res, res.ok ? 200 : 400);
+        return scritturaProtetta("DELETE /note/assetto", async () => {
+          const res = await removeAssetto(env, url.searchParams.get("id") || "");
+          return jsonCors(res, res.ok ? 200 : 400);
+        });
       }
       return jsonCors({ error: "metodo non ammesso" }, 405);
     }
@@ -313,6 +352,7 @@ export default {
     // ---- Lab: serve un'immagine di prova ----
     const labImgMatch = path === "/lab/img";
     if (labImgMatch) {
+      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
       const runId = url.searchParams.get("run") || "";
       const n = Number(url.searchParams.get("n"));
       const img = await getLabImage(env, runId, n);
@@ -578,7 +618,10 @@ export default {
     // ---- Pagina di aiuto ----
     if (path === "/aiuto" || path === "/aiuto.html" || path === "/help") {
       return new Response(renderHelpPage(), {
-        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" },
+        headers: {
+          "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
+          ...SECURITY_HEADERS,
+        },
       });
     }
 
@@ -591,7 +634,10 @@ export default {
         })
       );
       return new Response(renderPage(metas, url.origin, todayKey()), {
-        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" },
+        headers: {
+          "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300",
+          ...SECURITY_HEADERS,
+        },
       });
     }
 

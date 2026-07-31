@@ -382,7 +382,7 @@ function buildRunFrame(run, g, scaduto, onImgError) {
     : "";
   const corpoImg = scaduto
     ? `<div class="frame-placeholder">immagini scadute</div>`
-    : `<img loading="lazy" src="${base()}/lab/img?run=${encodeURIComponent(run.id)}&n=${g.n}" alt="giorno ${g.n}" />`;
+    : `<img loading="lazy" src="${base()}/lab/img?run=${encodeURIComponent(run.id)}&n=${g.n}&key=${encodeURIComponent(key())}" alt="giorno ${g.n}" />`;
   cell.innerHTML = `${corpoImg}<div class="meta"><div class="t">giorno ${g.n} · tappa ${g.tappa ?? "—"} · ${g.tentativi ?? "—"}t</div>${rows}${extra}${verd}</div>`;
   if (!scaduto) {
     const img = cell.querySelector("img");

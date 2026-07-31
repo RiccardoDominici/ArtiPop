@@ -62,6 +62,17 @@ export function makeKV() {
   };
 }
 
+// KV che legge normalmente ma le cui scritture falliscono: serve a esercitare
+// il ramo `scritturaProtetta` (src/index.js) fino in fondo, dopo aver seminato
+// stato con un KV sano — get/getWithMetadata/list restano quelli di `kv`.
+export function kvChePerdeLeScritture(kv = makeKV()) {
+  return {
+    ...kv,
+    async put() { throw new Error("KV.put non disponibile (simulato)"); },
+    async delete() { throw new Error("KV.delete non disponibile (simulato)"); },
+  };
+}
+
 // AI/IMAGES/SELF lanciano se invocati: garanzia STRUTTURALE (non un conteggio
 // a posteriori) che nessun test di router/orchestrazione esegua una
 // generazione reale — coerente col budget AI dichiarato 0 di questo ciclo.

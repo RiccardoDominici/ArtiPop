@@ -246,7 +246,7 @@ il sito e lo strumento di tuning in sola lettura.
 | `GET /catalogo` *(pubblico)* · `PUT`/`DELETE /catalogo/concept`, `/catalogo/element` | concept/element aggiunti da fuori, senza rideploy |
 | `GET /note` *(pubblico)* · `PUT /note/giorno`, `PUT`/`DELETE /note/assetto` | marcature dei giorni e assetti di tuning salvati |
 | `GET/POST /lab/arc?concept=&element=&days=&gate=` | genera un arco di prova (non tocca la produzione) |
-| `GET /lab/img?run=&n=` *(pubblico)* | serve un'immagine di prova del Lab |
+| `GET /lab/img?run=&n=` | serve un'immagine di prova del Lab |
 | `GET /api/channels[?all=1]` *(pubblico)* | stato dei canali attivi; con `all=1` anche i canali storici, marcati `storico:true` |
 | `GET /api/archive/<canale>[?limit=]` *(pubblico)* | date + carta d'identità del canale; `limit` fino a 400 (default 60) |
 | `GET /health` *(pubblico)* | healthcheck |
