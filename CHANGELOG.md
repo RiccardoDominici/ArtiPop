@@ -16,6 +16,26 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-aiuto-istruzioni-che-corrispondono-alla-home
+- `backend/src/help.js`: tre correzioni di testo in `/aiuto`, nessuna al di fuori dei tre punti
+  citati sotto. Il rimedio di «Lo sfondo è uguale a ieri» rimandava a una «ultima miniatura» sulla
+  home: la striscia di miniature è stata rimossa (resta solo data del fotogramma + posizione
+  «N di M» + frecce sotto il mockup), quindi chi seguiva l'istruzione alla lettera non trovava
+  nulla da guardare. La FAQ «Che fine fanno gli sfondi vecchi?» prometteva di «rivedere e
+  riscaricare ogni giorno passato» dentro «Il viaggio finora», ma quell'anteprima mostra solo
+  l'arco in corso (max 7 giorni): corretto per dire che l'archivio è permanente e sempre
+  raggiungibile via indirizzo diretto (`?date=`), ma che «Il viaggio finora» non è quell'archivio
+  integrale. La FAQ sull'orario di generazione ora dice esplicitamente «3:00 UTC» invece di «3:00»
+  senza fuso, coerente con `backend/wrangler.jsonc` (`"crons": ["0 3 * * *"]`), a scanso di
+  ambiguità con l'ora italiana citata subito dopo. Un'istruzione che rimanda a un elemento che la
+  pagina non ha più non è un dettaglio estetico: è inutilizzabile (CLAUDE.md, principio 1).
+- `backend/tests/integration/aiuto-contenuto.test.js`: nuovo, verifica che «miniatur» sia sparito
+  dal testo, che la promessa di riscaricare ogni giorno passato da «Il viaggio finora» sia sparita,
+  che l'indirizzo diretto d'archivio e il rimando a «Il viaggio finora» restino presenti, che la
+  FAQ sull'orario nomini UTC, e che `/aiuto` resti 200/text/html con lo stesso numero di voci
+  (7 problemi + 8 FAQ) — a garanzia che la correzione non abbia fatto sparire contenuto insieme
+  al bug.
+
 ## 2026-07-31 — s-home-non-riscarica-i-wallpaper-a-ogni-sfogliata
 - `backend/src/index.js`: `/w/<flusso>` ora legge anche `?v=<YYYY-MM-DD>` (validato come `?date=`) e
   lo usa per decidere il `cache-control` dell'immagine di oggi: `public, max-age=3600` quando `v` è

@@ -82,10 +82,10 @@ const PROBLEMI = [
       punto di ArtiPop. Se però è identico identico, può essere che la generazione notturna
       sia fallita — in quel caso ArtiPop tiene l'immagine del giorno prima invece di
       rompersi.`,
-    rimedio: `Guarda "Il viaggio finora" sulla home: se l'ultima miniatura ha la data di oggi,
-      l'immagine c'è ed è il tuo iPhone che non l'ha scaricata (rilancia la Shortcut a mano).
-      Se manca la data di oggi, riprova più tardi: la generazione riparte da sola la notte
-      successiva.`,
+    rimedio: `Guarda sotto il mockup sulla home: se la data del fotogramma dice "oggi" (e la
+      posizione è "N di M" più aggiornata, sfogliabile con le frecce), l'immagine c'è ed è il
+      tuo iPhone che non l'ha scaricata (rilancia la Shortcut a mano). Se la data di oggi non
+      compare, riprova più tardi: la generazione riparte da sola la notte successiva.`,
   },
   {
     sintomo: "L'automazione parte ma la rete non c'è",
@@ -126,14 +126,14 @@ const FAQ = [
   },
   {
     q: "Che fine fanno gli sfondi vecchi?",
-    a: `Restano in archivio per sempre. Sulla home, in "Il viaggio finora", puoi rivedere e
-      riscaricare ogni giorno passato; ogni immagine ha anche un suo indirizzo diretto, del
-      tipo <code>/w/natura?date=2026-07-16</code>.`,
+    a: `Restano in archivio per sempre, ma "Il viaggio finora" sulla home mostra solo l'arco in
+      corso, non tutto lo storico. Ogni immagine passata ha comunque un suo indirizzo diretto,
+      sempre raggiungibile, del tipo <code>/w/natura?date=2026-07-16</code>.`,
   },
   {
     q: "A che ora viene generato lo sfondo del giorno?",
-    a: `Ogni notte alle 3:00 (ora italiana le 5:00 d'estate). Quando la tua automazione scatta
-      al tramonto, l'immagine del giorno è pronta da un pezzo.`,
+    a: `Ogni notte alle 3:00 UTC (ora italiana le 5:00 d'estate). Quando la tua automazione
+      scatta al tramonto, l'immagine del giorno è pronta da un pezzo.`,
   },
   {
     q: "Serve tenere l'iPhone sbloccato?",
