@@ -39,6 +39,10 @@ export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-artipop-loop@local}"
 
 # --- Configurazione ---
 MAX_RUNS="${MAX_RUNS:-50}"
+# Soglia del margine quota (stima ccusage): sopra questa percentuale del
+# massimo storico di blocco, il loop attende il refresh del blocco 5h invece
+# di aprire cicli o lanciare stadi. 0 = disabilitato (resta solo il ping).
+QUOTA_MARGIN_PCT="${QUOTA_MARGIN_PCT:-90}"
 STATE_FILE="$REPO_DIR/logs/state.json"
 export STATE_FILE
 PLAN_FILE="$REPO_DIR/PLAN.md"
@@ -219,6 +223,30 @@ _wait_stage_or_kill() {
     fi
 }
 
+# quota_usage_pct — STIMA percentuale di consumo del blocco 5h attivo:
+# token grezzi del blocco corrente / massimo storico dei blocchi conclusi.
+# È la metrica confrontata con se stessa (il peso anomalo delle cache-read
+# si compensa in gran parte), quindi una stima onesta ma non il numero vero,
+# che Anthropic non espone. Stampa un intero (può superare 100) o vuoto se
+# non calcolabile — chi chiama tratta il vuoto come "stima non disponibile".
+quota_usage_pct() {
+    local json
+    json=$(timeout 60 npx --yes ccusage blocks --json 2>/dev/null) || return 0
+    [[ -n "$json" ]] || return 0
+    printf '%s' "$json" | python3 -c "
+import json,sys
+try:
+    d=json.load(sys.stdin)
+    bl=[b for b in d.get('blocks',[]) if not b.get('isGap')]
+    cur=next((b.get('totalTokens',0) for b in bl if b.get('isActive')), None)
+    hist=[b.get('totalTokens',0) for b in bl if not b.get('isActive')]
+    if cur is not None and hist and max(hist)>0:
+        print(min(999, round(100*cur/max(hist))))
+except Exception:
+    pass
+" 2>/dev/null
+}
+
 # quota_block_end_epoch — epoch (secondi) della fine del blocco 5h attivo
 # secondo ccusage, che legge i log JSONL locali di Claude Code (montati nel
 # container). Stampa vuoto se non determinabile: chi chiama ripiega sulle
@@ -265,21 +293,30 @@ quota_wait_seconds() {
 # aprire branch: meglio fermarsi sulla soglia che lanciare un planner contro
 # il muro. Ritorna 1 solo se arriva STOP dal CONTROL durante l'attesa.
 quota_probe() {
-    local out rc waits=0
+    local out rc waits=0 reason pct
     local pat='rate.?limit|usage limit|overloaded|spend limit|limit reached'
     while true; do
-        out=$(timeout 120 claude -p "Rispondi con la sola parola: ok" --model sonnet 2>&1); rc=$?
-        if (( rc == 0 )) && ! grep -qiE "$pat" <<<"$out"; then
-            return 0
+        reason=""
+        # Prima il margine STIMATO (ccusage): se il blocco è oltre la soglia,
+        # non serve nemmeno spendere il ping — si aspetta il refresh.
+        pct=$(quota_usage_pct)
+        if [[ -n "$pct" ]] && (( QUOTA_MARGIN_PCT > 0 )) && (( pct >= QUOTA_MARGIN_PCT )); then
+            reason="stima consumo blocco ${pct}% ≥ margine ${QUOTA_MARGIN_PCT}%"
+        else
+            out=$(timeout 120 claude -p "Rispondi con la sola parola: ok" --model sonnet 2>&1); rc=$?
+            if (( rc == 0 )) && ! grep -qiE "$pat" <<<"$out"; then
+                return 0
+            fi
+            reason="token non disponibili o errore sonda (exit=$rc)"
         fi
         waits=$((waits + 1))
         local wait_s=1800
         (( waits >= 3 )) && wait_s=3600
         wait_s=$(quota_wait_seconds "$wait_s")
         if (( waits == 3 )); then
-            ntfy "ArtiPop loop: quota esaurita" "Token non disponibili (sonda pre-ciclo). Attendo il refresh del blocco 5h (~$((wait_s / 60)) min)."
+            ntfy "ArtiPop loop: quota" "Attendo il refresh del blocco 5h (~$((wait_s / 60)) min). Motivo: $reason"
         fi
-        log "Sonda quota pre-ciclo: token non disponibili o errore (tentativo $waits, exit=$rc), attesa ${wait_s}s (allineata al refresh se nota)"
+        log "Sonda quota pre-ciclo: $reason (tentativo $waits), attesa ${wait_s}s (allineata al refresh se nota)"
         state_set stage waiting_quota
         state_set next_retry_at "$(iso_after_seconds "$wait_s")"
         # Attesa a spezzoni: STOP dal CONTROL resta ascoltato anche durante
@@ -325,6 +362,20 @@ run_stage() {
         if [[ "$gate" == "STOP" ]]; then
             printf 'STOP'
             return 0
+        fi
+
+        # Margine di sicurezza anche PRIMA di ogni stadio: meglio attendere il
+        # refresh che lanciare un executor destinato a morire a metà lavoro.
+        local pre_pct
+        pre_pct=$(quota_usage_pct)
+        if [[ -n "$pre_pct" ]] && (( QUOTA_MARGIN_PCT > 0 )) && (( pre_pct >= QUOTA_MARGIN_PCT )); then
+            local margin_wait
+            margin_wait=$(quota_wait_seconds 1800)
+            log "Stadio $letter: margine quota raggiunto (stima ${pre_pct}% ≥ ${QUOTA_MARGIN_PCT}%), attesa ${margin_wait}s prima del lancio"
+            state_set stage waiting_quota
+            state_set next_retry_at "$(iso_after_seconds "$margin_wait")"
+            sleep "$margin_wait"
+            continue
         fi
 
         state_set stage "$state_name"

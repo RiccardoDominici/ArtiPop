@@ -84,6 +84,13 @@ Se i token finiscono, il loop NON registra fallimenti: una sonda economica rilev
 prima di aprire ogni ciclo e le attese si allineano alla fine del blocco 5h (letta dai log
 locali via `ccusage`), poi riparte da solo. Durante l'attesa lo STOP dal CONTROL resta ascoltato.
 
+In più c'è un margine PREVENTIVO stimato: prima di ogni ciclo e di ogni stadio il loop
+confronta i token grezzi del blocco 5h corrente col massimo storico dei tuoi blocchi
+(`ccusage blocks`); sopra `QUOTA_MARGIN_PCT` (default 90, cioè ~10% di riserva) attende il
+refresh invece di partire. È una STIMA su metrica omogenea, non il numero vero (che Anthropic
+non espone): conservativa se il mix di cache differisce. Per cambiarla: `-e QUOTA_MARGIN_PCT=85`
+nel docker run; `0` la disabilita (resta il solo ping reattivo).
+
 ## Arresto
 Pulito (aspetta la fine dello stadio corrente e chiude in ordine): dall'host, con il repo montato,
 scrivi `STOP` nel file `CONTROL` in root — o premi `s` dentro `monitor.py`.
