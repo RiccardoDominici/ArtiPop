@@ -43,7 +43,8 @@ narrativo in italiano che spiega il PERCHÉ della modifica, non solo il cosa —
 del repo.
 
 ## Output
-Ultima riga dello stdout, esattamente una delle due:
+Ultima riga dello stdout, TESTO NUDO a inizio riga — MAI dentro un blocco di
+codice (```), mai indentata, niente markdown attorno. Esattamente una delle due:
 ```
 ESITO: OK
 ```

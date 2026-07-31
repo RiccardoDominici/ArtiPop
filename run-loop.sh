@@ -791,14 +791,21 @@ do_cycle() {
 
     local esito_exec=""
     if [[ "$b_result" == "OK" ]]; then
-        # stdout dello stadio B è in logs/run<N>-b.jsonl: l'ultima riga non
-        # vuota deve essere "ESITO: OK" o "ESITO: FALLITO(EXEC): <motivo>".
+        # stdout dello stadio B è in logs/run<N>-b.jsonl: la sentinella ESITO
+        # deve stare tra le ULTIME righe. I modelli a volte la avvolgono in un
+        # blocco di codice markdown (ciclo 2 del dry-run: lavoro perfetto perso
+        # perché l'ultima riga letterale era la chiusura del fence): si
+        # scartano le righe-fence e si cerca l'ultima "ESITO:" nelle ultime 15
+        # righe non vuote, invece di pretendere l'ultima riga esatta.
         local last_line
-        last_line=$(grep -vE '^[[:space:]]*$' "$REPO_DIR/logs/run${run}-b.jsonl" 2>/dev/null | tail -1)
+        last_line=$(grep -vE '^[[:space:]]*$' "$REPO_DIR/logs/run${run}-b.jsonl" 2>/dev/null \
+            | tail -15 | grep -vE '^[[:space:]]*(\`\`\`|~~~)' \
+            | grep -E '^[[:space:]]*ESITO:' | tail -1 \
+            | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         case "$last_line" in
             "ESITO: OK") esito_exec="OK" ;;
             ESITO:\ FALLITO\(EXEC\):*) esito_exec="FALLITO(EXEC):${last_line#ESITO: FALLITO(EXEC):}" ;;
-            *) esito_exec="FALLITO(EXEC):output stadio B non conforme (ultima riga: '${last_line}')" ;;
+            *) esito_exec="FALLITO(EXEC):output stadio B non conforme (nessuna sentinella ESITO nelle ultime righe)" ;;
         esac
     else
         esito_exec="FALLITO(EXEC):${b_result#FALLITO:}"

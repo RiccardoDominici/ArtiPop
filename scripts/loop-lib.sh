@@ -519,9 +519,17 @@ plan_get_budget_ai() { plan_field "$1" "BUDGET_AI"; }
 # ---------------------------------------------------------------------------
 
 verdict_last_line() {
-    local file="$1"
+    local file="$1" line
     [[ -f "$file" ]] || { printf ''; return; }
-    grep -vE '^[[:space:]]*$' "$file" 2>/dev/null | tail -1
+    # L'ultima riga "VERDETTO:" del file, ovunque sia: stessa tolleranza del
+    # parser ESITO — i modelli a volte accodano fence markdown o righe vuote
+    # dopo la sentinella, e la lettera non deve costare un ciclo.
+    line=$(grep -E '^[[:space:]]*VERDETTO:' "$file" 2>/dev/null | tail -1 \
+        | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    if [[ -z "$line" ]]; then
+        line=$(grep -vE '^[[:space:]]*$' "$file" 2>/dev/null | tail -1)
+    fi
+    printf '%s' "$line"
 }
 
 # verdict_is_pass <file> — exit 0 se l'ultima riga è esattamente "VERDETTO: PASS".

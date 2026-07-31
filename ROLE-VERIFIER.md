@@ -43,7 +43,8 @@ BASELINE: aggiorna <nomi file>
 La riga `BASELINE:` va inclusa solo se l'aspetto è cambiato legittimamente secondo il piano (il loop
 copierà gli artefatti indicati su `tests/visual/baseline/` dopo il merge).
 
-Ultima riga del file, esattamente una delle due:
+Ultima riga del file, TESTO NUDO a inizio riga — MAI dentro un blocco di codice
+(```), mai indentata. Esattamente una delle due:
 ```
 VERDETTO: PASS
 ```
