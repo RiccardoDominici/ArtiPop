@@ -85,6 +85,10 @@ Dipende da M9. Sessioni lab SOLO su preview, entro il budget di 10 generazioni
 AI per ciclo: riformulare i range (ed eventualmente le tappe descrittive) finché
 un arco lab completo passa il cancello senza esaurire i tentativi. Poi riammetterla
 nei pool (rimuovendo la sospensione di M9, con aggiornamento dei test).
+*Nota (2026-07-31): su richiesta diretta di Riccardo la taratura viene eseguita in
+una SESSIONE MANUALE fuori dai cicli del loop, con tetto proprio di 45 generazioni
+totali sul preview (~4-5 cicli-equivalenti). Il tetto di 10/ciclo resta invariato
+e vincolante per i cicli autonomi del loop.*
 **Fatta quando**: un arco lab di 7 giorni su preview passa con ≤2 tentativi/giorno
 in media; famiglia riammessa; test aggiornati e verdi.
 
