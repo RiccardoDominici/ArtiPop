@@ -6,14 +6,16 @@ Validata da Riccardo il 2026-07-30.
 
 ## Milestone
 
-### M1 — Pipeline di deploy completa · APERTA
+### M1 — Pipeline di deploy completa · FATTA
 Ambiente `preview` in wrangler (worker `artipop-preview`, KV namespace dedicato,
 nessun cron, ADMIN_KEY proprio) + `smoke-test.sh` (HTTP 200 su `/health`, `/`,
 `/aiuto`, `/api/channels`; stringhe attese; soglia tempi <3s) + rollback provato
 realmente (wrangler rollback su preview E production).
 **Fatta quando**: deploy preview→smoke→production→smoke tutto verde in un solo
 comando, e un rollback reale è stato eseguito e verificato.
-*Nota: completata insieme a Riccardo durante il setup, prima dell'avvio del loop.*
+*Nota: completata insieme a Riccardo durante il setup (2026-07-31), prima dell'avvio del loop:
+deploy preview+seed+smoke verdi; deploy production di prova `f77c23c4` con smoke 5/5;
+rollback reale alla versione `1fe2f82b` eseguito dal container e verificato con smoke 5/5.*
 
 ### M2 — Test d'integrazione su router e orchestrazione · APERTA
 Oltre la base minima pure-logic del setup: test con binding simulati

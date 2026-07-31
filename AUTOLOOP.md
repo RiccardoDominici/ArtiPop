@@ -52,6 +52,7 @@ caffeinate -s docker run -it --rm \
   -v artipop-nm-backend:/work/backend/node_modules \
   -v "$HOME/.claude:/root/.claude" \
   -v "$HOME/.claude.json:/root/.claude.json" \
+  -v "$HOME/Library/Preferences/.wrangler:/root/.config/.wrangler" \
   --env-file "$HOME/.artipop-loop.env" \
   --dns 1.1.1.1 --dns 8.8.8.8 \
   -e MAX_RUNS=20 \
@@ -66,8 +67,13 @@ Note:
   artipop-nm-backend` a container fermo).
 - `--dns 1.1.1.1 --dns 8.8.8.8`: il DNS del router di casa si è dimostrato inaffidabile con
   *.workers.dev; il container parla direttamente coi resolver pubblici e non eredita il problema.
-- `--env-file "$HOME/.artipop-loop.env"` (chmod 600, fuori dal repo) porta `CLOUDFLARE_API_TOKEN`,
-  `CLOUDFLARE_ACCOUNT_ID` e `PREVIEW_ADMIN_KEY`. Non committare mai questo file, non esiste nel repo.
+- `-v ".../.wrangler:/root/.config/.wrangler"` porta nel container l'OAuth wrangler del Mac
+  (scelta esplicita di Riccardo al setup, al posto del token scoped: meno passi ma permessi ampi —
+  la protezione del perimetro è affidata ai divieti di CLAUDE.md). `/root/.config/.wrangler` è il
+  path che wrangler risolve via XDG su Linux. Per passare al token scoped in futuro: aggiungi
+  `CLOUDFLARE_API_TOKEN=...` a `~/.artipop-loop.env` e togli questo mount (l'env ha la precedenza).
+- `--env-file "$HOME/.artipop-loop.env"` (chmod 600, fuori dal repo) porta `PREVIEW_ADMIN_KEY`
+  (ed eventualmente `CLOUDFLARE_API_TOKEN`). Non committare mai questo file, non esiste nel repo.
 - `MAX_RUNS` limita il numero di cicli: per un dry-run supervisionato usa `-e MAX_RUNS=1`.
 - Il repo montato con `-v` è l'unica copia che conta: i branch `auto/*` creati dal loop sono commit
   locali su questo stesso repo, non su una copia isolata.
