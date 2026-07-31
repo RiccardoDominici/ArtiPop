@@ -79,6 +79,11 @@ Note:
 - Il repo montato con `-v` è l'unica copia che conta: i branch `auto/*` creati dal loop sono commit
   locali su questo stesso repo, non su una copia isolata.
 
+## Quota (finestra 5h)
+Se i token finiscono, il loop NON registra fallimenti: una sonda economica rileva il limite
+prima di aprire ogni ciclo e le attese si allineano alla fine del blocco 5h (letta dai log
+locali via `ccusage`), poi riparte da solo. Durante l'attesa lo STOP dal CONTROL resta ascoltato.
+
 ## Arresto
 Pulito (aspetta la fine dello stadio corrente e chiude in ordine): dall'host, con il repo montato,
 scrivi `STOP` nel file `CONTROL` in root — o premi `s` dentro `monitor.py`.

@@ -219,6 +219,46 @@ _wait_stage_or_kill() {
     fi
 }
 
+# quota_block_end_epoch — epoch (secondi) della fine del blocco 5h attivo
+# secondo ccusage, che legge i log JSONL locali di Claude Code (montati nel
+# container). Stampa vuoto se non determinabile: chi chiama ripiega sulle
+# attese fisse. I token grezzi di ccusage NON si usano per stimare "quanto
+# resta" (le cache-read dominano il conteggio ma pesano poco nel limite):
+# l'unico campo affidabile è QUANDO il blocco finisce.
+quota_block_end_epoch() {
+    local json
+    json=$(timeout 60 npx --yes ccusage blocks --active --json 2>/dev/null) || return 0
+    [[ -n "$json" ]] || return 0
+    printf '%s' "$json" | python3 -c "
+import json,sys,datetime
+try:
+    d=json.load(sys.stdin)
+    for b in d.get('blocks',[]):
+        if b.get('isActive') and b.get('endTime'):
+            t=datetime.datetime.fromisoformat(b['endTime'].replace('Z','+00:00'))
+            print(int(t.timestamp())); break
+except Exception:
+    pass
+" 2>/dev/null
+}
+
+# quota_wait_seconds <default_s> — attesa intelligente in caso di quota
+# esaurita: fino alla fine del blocco 5h (+120s di margine) se ccusage la
+# conosce ed è in un intervallo sensato, altrimenti il default passato.
+quota_wait_seconds() {
+    local default_s="$1" end_epoch now wait_s
+    end_epoch=$(quota_block_end_epoch)
+    if [[ -n "$end_epoch" ]]; then
+        now=$(date -u +%s)
+        wait_s=$(( end_epoch - now + 120 ))
+        if (( wait_s >= 300 && wait_s <= 18000 )); then
+            printf '%d' "$wait_s"
+            return
+        fi
+    fi
+    printf '%d' "$default_s"
+}
+
 # quota_probe — sonda economica PRIMA di aprire un ciclo: un claude -p minimo
 # su sonnet. Se la risposta matcha i pattern di limite (finestra 5h o limite
 # mensile), attende il refresh e riprova, senza consumare un numero di run né
@@ -235,16 +275,23 @@ quota_probe() {
         waits=$((waits + 1))
         local wait_s=1800
         (( waits >= 3 )) && wait_s=3600
+        wait_s=$(quota_wait_seconds "$wait_s")
         if (( waits == 3 )); then
-            ntfy "ArtiPop loop: quota esaurita" "Token non disponibili (sonda pre-ciclo). Attendo il refresh e riprovo ogni 60 min."
+            ntfy "ArtiPop loop: quota esaurita" "Token non disponibili (sonda pre-ciclo). Attendo il refresh del blocco 5h (~$((wait_s / 60)) min)."
         fi
-        log "Sonda quota pre-ciclo: token non disponibili o errore (tentativo $waits, exit=$rc), attesa ${wait_s}s"
+        log "Sonda quota pre-ciclo: token non disponibili o errore (tentativo $waits, exit=$rc), attesa ${wait_s}s (allineata al refresh se nota)"
         state_set stage waiting_quota
         state_set next_retry_at "$(iso_after_seconds "$wait_s")"
-        sleep "$wait_s"
-        if [[ "$(control_read)" == "STOP" ]]; then
-            return 1
-        fi
+        # Attesa a spezzoni: STOP dal CONTROL resta ascoltato anche durante
+        # le lunghe attese allineate al refresh (fino a ~5h).
+        local slept=0
+        while (( slept < wait_s )); do
+            sleep 60
+            slept=$((slept + 60))
+            if [[ "$(control_read)" == "STOP" ]]; then
+                return 1
+            fi
+        done
     done
 }
 
@@ -307,9 +354,14 @@ run_stage() {
             local wait_s=1800
             if (( rl_consecutive >= 3 )); then
                 wait_s=3600
-                ntfy "ArtiPop loop: rate limit" "3 rate-limit consecutivi allo stadio $letter. Attesa ${wait_s}s."
             fi
-            log "Stadio $letter: rate-limit rilevato (consecutivi=$rl_consecutive), attesa ${wait_s}s"
+            # Se ccusage conosce la fine del blocco 5h, l'attesa si allinea
+            # al refresh invece di andare a tentativi fissi.
+            wait_s=$(quota_wait_seconds "$wait_s")
+            if (( rl_consecutive == 3 )); then
+                ntfy "ArtiPop loop: rate limit" "3 rate-limit consecutivi allo stadio $letter. Attendo il refresh (~$((wait_s / 60)) min)."
+            fi
+            log "Stadio $letter: rate-limit rilevato (consecutivi=$rl_consecutive), attesa ${wait_s}s (allineata al refresh se nota)"
             state_set stage waiting_quota
             state_set next_retry_at "$(iso_after_seconds "$wait_s")"
             sleep "$wait_s"
