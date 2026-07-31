@@ -36,6 +36,38 @@ export class ErroreDominio extends Error {
 }
 
 /**
+ * Campo `cancello` da salvare nello stato del canale (ROADMAP M5): rende
+ * visibile da /health, senza `wrangler tail`, se il collaudo dell'ultima
+ * esecuzione ha potuto misurare qualcosa.
+ *
+ * Il segnale è `img.impronta`: se fingerprintFromBytes/fingerprintFromStream
+ * (metrics.js) non riescono a calcolare un'impronta — IMAGES assente, la
+ * trasformazione fallita, il PNG non decodificabile — `impronta` arriva
+ * `null` da OGNI punto d'uscita di generateDay/generateWithGate (verificato
+ * leggendo daygen.js e generate.js riga per riga: ogni ramo di ritorno porta
+ * già impronta/verdetto/tentativi in questa forma, nessuna modifica è
+ * servita lì). È l'unico segnale che copre uniformemente tutti quei casi
+ * senza doverli enumerare uno per uno qui.
+ *
+ * `img.verdetto` è `null` sia quando il collaudo è fallito (impronta null)
+ * sia quando oggi non era strutturalmente applicabile ma senza alcun guasto
+ * (primo giorno dell'arco, nessun riferimento disponibile): in quel secondo
+ * caso l'impronta però C'È, quindi si riporta "ok" — il misuratore
+ * funziona, semplicemente non c'era nulla da collaudare. Solo l'impronta
+ * mancante è un guasto reale (→ "disattivo").
+ */
+export function buildCancelloState(img, quando = new Date().toISOString()) {
+  const tentativi = typeof img?.tentativi === "number" ? img.tentativi : 0;
+  if (!img || img.impronta == null) {
+    return { attivo: false, tentativi, verdetto: "disattivo", quando };
+  }
+  if (!img.verdetto) {
+    return { attivo: true, tentativi, verdetto: "ok", quando };
+  }
+  return { attivo: true, tentativi, verdetto: img.verdetto.ok ? "ok" : "fuori-range", quando };
+}
+
+/**
  * Canali storici a tema fisso (vedi CONTRATTO): prima della carta d'identità,
  * ogni giorno di questi canali era sempre la stessa coppia concept×element —
  * è l'unico caso in cui ricostruirla a posteriori è ONESTO. Tappa, misure,
@@ -156,6 +188,8 @@ export async function runChannel(env, channelId, { force = false } = {}) {
       : (state.improntaAncora ?? null),
     occupazione: img.ancora ? 0 : (img.misure?.occupazione ?? state.occupazione ?? 0),
     misure: img.misure ?? null,
+    // Segnale del cancello dell'ultima esecuzione, letto da /health (ROADMAP M5).
+    cancello: buildCancelloState(img),
   });
 
   return {
@@ -194,6 +228,7 @@ export async function backfillChannel(env, channelId, days, { conGate = true } =
   let prevBytes = null;
   let anchorBytes = null;
   let prevFingerprint = null;
+  let lastImg = null; // per il campo `cancello` finale (ROADMAP M5): serve fuori dal loop
   const results = [];
 
   for (let i = days - 1; i >= 0; i--) {
@@ -244,12 +279,16 @@ export async function backfillChannel(env, channelId, days, { conGate = true } =
       state.occupazione = img.misure.occupazione;
     }
     if (state.dayInArc === 0) anchorBytes = img.bytes;
+    lastImg = img;
   }
 
   const { improntaPrec, ...statoDaSalvare } = state;
   await putState(env, id, {
     ...statoDaSalvare,
     impronta: prevFingerprint ? encodeFingerprint(prevFingerprint) : null,
+    // Stesso segnale di runChannel, riferito all'ultimo giorno generato dal
+    // backfill (il più recente, i=0): vedi buildCancelloState.
+    cancello: lastImg ? buildCancelloState(lastImg) : null,
   });
   return results;
 }

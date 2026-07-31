@@ -27,7 +27,7 @@
 import { ACTIVE_CHANNELS, CHANNELS, resolveChannel, LEGACY_ALIASES } from "./channels.js";
 import { todayKey } from "./story.js";
 import {
-  getImage, getMeta, listChannelsWithArchive,
+  getImage, getMeta, getState, listChannelsWithArchive,
 } from "./storage.js";
 import {
   fingerprintFromArchive, compare, verdict, formatMeasures, diagnose,
@@ -46,6 +46,7 @@ import {
 import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage } from "./help.js";
+import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
 // index.js resta il router, handlers.js sa come si genera un giorno. Vedi la
@@ -401,7 +402,24 @@ export default {
       // invece di un 404. Meglio uno sfondo di ieri che uno sfondo rotto.
       if (!img && isLegacy) img = await getImage(env, requested, date);
       if (!img && date && isLegacy) img = await getImage(env, channel.id, date);
-      if (!img) return json({ error: "immagine non ancora generata, riprova tra poco" }, 404);
+
+      // Nessuna immagine trovata (canale attivo mai generato, o ?date=
+      // inesistente): MAI JSON qui (ROADMAP M4). La Shortcut "Imposta sfondo"
+      // scarica byte da questo indirizzo e li applica alla lock screen — un
+      // corpo JSON non è un'immagine valida e l'utente vede un errore muto.
+      // Si serve sempre il placeholder statico (vedi placeholder.js): 200 se
+      // il canale è semplicemente vuoto (nessuna data richiesta), 404 se era
+      // stata chiesta una data che non esiste — lo status racconta la verità,
+      // il corpo resta comunque un'immagine valida.
+      if (!img) {
+        return new Response(PLACEHOLDER_PNG_BYTES, {
+          status: date ? 404 : 200,
+          headers: {
+            "content-type": PLACEHOLDER_CONTENT_TYPE,
+            "cache-control": "no-store",
+          },
+        });
+      }
 
       return new Response(img.stream, {
         headers: {
@@ -606,10 +624,17 @@ export default {
     // ---- Healthcheck ----
     if (path === "/health") {
       const catalog = await loadCatalog(env);
+      // Stato per flusso (chiave state:<canale>, vedi storage.js): ci vive il
+      // campo `cancello` dell'ultima esecuzione (ROADMAP M5), scritto da
+      // runChannel/backfillChannel in handlers.js. Letto qui e non altrove:
+      // così il cancello disattivato (impronte null, IMAGES assente/rotto) è
+      // visibile senza `wrangler tail`.
+      const states = await Promise.all(ACTIVE_CHANNELS.map((c) => getState(env, c.id)));
       return json({
         ok: true,
-        flussi: ACTIVE_CHANNELS.map((c) => ({
+        flussi: ACTIVE_CHANNELS.map((c, i) => ({
           id: c.id, famiglie: c.famiglie, concepts: poolForWith(c, catalog).length,
+          cancello: states[i]?.cancello ?? null,
         })),
         misuratore: Boolean(env.IMAGES),
       });
