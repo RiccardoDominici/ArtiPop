@@ -12,11 +12,11 @@ quindi funziona anche se il path del repo contiene spazi, es.
 
 COSA FA
     Mostra in tempo reale (refresh ogni 2s) lo stato del loop autonomo:
-    stato generale (esecuzione/attesa quota/pausa/fermo), pipeline degli
-    stadi PLAN→EXEC→VERIFY con il modello in uso, riquadro deploy, avanzamento
-    roadmap, contatori degli esiti, le ultime righe del registro
-    (IMPROVEMENTS.md), la coda del log dello stadio corrente e se il
-    container docker del loop è attivo (poll ogni ~10s).
+    stato generale (esecuzione/attesa quota/pausa/fermo) e modalita'
+    BUILD/POLISH nell'header, pipeline degli stadi PLAN→EXEC→VERIFY con il
+    modello in uso, riquadro deploy, contatori degli esiti, le ultime righe
+    del registro (IMPROVEMENTS.md), la coda del log dello stadio corrente e
+    se il container docker del loop è attivo (poll ogni ~10s).
 
     Legge SOLO questi file (mai scrive, tranne il file CONTROL):
       - logs/state.json          stato strutturato scritto dal loop
@@ -553,7 +553,7 @@ def esito_style(esito):
 # Costruzione dei pannelli rich
 # ==========================================================================
 
-def build_header(state, container_status):
+def build_header(state, container_status, mode):
     label, color = status_info(state)
     if state is None:
         run_txt, uptime_txt, countdown_txt = "—/—", "—", "—"
@@ -566,6 +566,10 @@ def build_header(state, container_status):
     text.append(" ArtiPop v3 ", style="bold")
     text.append("  monitor autonomo   ")
     text.append(f" {label} ", style=f"bold white on {color}")
+    if mode:
+        # Unica info ancora viva del vecchio pannello Roadmap (rimosso a
+        # roadmap completata): la modalita' BUILD/POLISH, da ROADMAP.md.
+        text.append(f"  · {mode} ·  ", style="bold cyan")
     text.append(f"   run {run_txt}   uptime {uptime_txt}   next_retry {countdown_txt}")
     text.append("   container: ")
     if container_status is True:
@@ -614,21 +618,6 @@ def build_deploy(state):
     body.append("smoke: "); body.append(f"{smoke}\n", style=smoke_style)
     body.append("ultimo deploy: "); body.append(f"{ts}")
     return Panel(body, title="Deploy")
-
-
-def build_roadmap(roadmap_info):
-    done, total, mode = roadmap_info["done"], roadmap_info["total"], roadmap_info["mode"]
-    ratio = (done / total) if total else 0.0
-    bar_width = 20
-    filled = int(round(bar_width * ratio))
-    bar = "█" * filled + "░" * (bar_width - filled)
-
-    mode_style = "bold cyan" if mode else None
-    body = Text()
-    body.append("modalita': ")
-    body.append(f"{mode or '—'}\n", style=mode_style)
-    body.append(f"{bar}  {done}/{total or 0}")
-    return Panel(body, title="Roadmap")
 
 
 def build_counters(state):
@@ -715,14 +704,12 @@ def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm
     )
     layout["midrow"].split_row(
         Layout(name="deploy"),
-        Layout(name="roadmap"),
         Layout(name="counters"),
     )
 
-    layout["header"].update(build_header(state, container_status))
+    layout["header"].update(build_header(state, container_status, roadmap_info.get("mode")))
     layout["stages"].update(build_stages(state))
     layout["midrow"]["deploy"].update(build_deploy(state))
-    layout["midrow"]["roadmap"].update(build_roadmap(roadmap_info))
     layout["midrow"]["counters"].update(build_counters(state))
     layout["registro"].update(build_registro(rows))
     layout["logtail"].update(build_logtail(log_lines, log_path))
