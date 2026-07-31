@@ -247,9 +247,11 @@ il sito e lo strumento di tuning in sola lettura.
 | `GET /note` *(pubblico)* · `PUT /note/giorno`, `PUT`/`DELETE /note/assetto` | marcature dei giorni e assetti di tuning salvati |
 | `GET/POST /lab/arc?concept=&element=&days=&gate=` | genera un arco di prova (non tocca la produzione) |
 | `GET /lab/img?run=&n=` | serve un'immagine di prova del Lab |
-| `GET /api/channels[?all=1]` *(pubblico)* | stato dei canali attivi; con `all=1` anche i canali storici, marcati `storico:true` |
+| `GET /api/channels[?all=1]` *(pubblico)* | stato dei canali attivi, incluso `famiglie` per canale; con `all=1` anche i canali storici, marcati `storico:true` |
 | `GET /api/archive/<canale>[?limit=]` *(pubblico)* | date + carta d'identità del canale; `limit` fino a 400 (default 60) |
-| `GET /health` *(pubblico)* | healthcheck |
+| `GET /health` *(pubblico)* | per flusso: `id`, `famiglie`, `concepts`, `cancello` dell'ultima esecuzione; più `misuratore` (booleano, binding Images disponibile) |
+| `GET /w/<flusso>[.jpg\|.png][?date=\|?v=]` *(pubblico)* | immagine del giorno per la lock screen; il corpo è **sempre** byte immagine, **mai** JSON — se il canale non ha ancora generato nulla o `?date=` non esiste, risponde con il placeholder statico |
+| `GET /s/<flusso>[-base].shortcut` *(pubblico)* | Shortcut firmata da installare (variante principale o base, vedi [2.7](#27-le-shortcut-firmate)) |
 
 ## 2.5 Come sono fatti i canali
 
@@ -386,6 +388,8 @@ l'immagine del giorno prima, **zero addebiti**.
 | `/backfill` si ferma a metà | è sincrono di proposito | resta connesso, rilancia se cade |
 | Il DNS non risolve workers.dev | — | `curl --resolve "artipop.riccardo-dominici.workers.dev:443:172.67.176.123" …` |
 | Le Shortcut degli utenti non funzionano in automazione | `python3 shortcut/verify_shortcuts.py` | rigenera e ricarica in KV |
+| Lo sfondo è un gradiente scuro senza disegno | `/health` (canale mai generato o `?date=` inesistente) | `…/run/<ch>?force=1&key=…` |
+| Una pagina dice «errore temporaneo» | rete di sicurezza globale del worker (`index.js`) | `npx wrangler tail` |
 
 ## 2.10 Lezioni imparate (non regredire)
 

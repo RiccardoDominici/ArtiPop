@@ -75,7 +75,7 @@ fondo hai uno sfondo a cui tieni, aggiungine uno nuovo qualsiasi e sarà quello.
   (anche per l'archivio storico dei vecchi canali, es. `…/w/island?date=…`).
 - Se una generazione fallisce resta l'immagine di ieri: la Shortcut non si
   rompe mai.
-- Tutto dentro i limiti gratuiti: ~500 neuroni/giorno su 10.000, nessun costo
+- Tutto dentro i limiti gratuiti: ~600-900 neuroni/giorno su 10.000 (3 canali, di più nei giorni di cambio base), nessun costo
   possibile nemmeno per sbaglio.
 
 ## 🛠 Per sviluppatori e maintainer

@@ -8,7 +8,7 @@ export const CONFIG = {
   // Risoluzioni tentate in ordine, in ratio ~6:13 (iPhone moderni sono 1290x2796).
   // Verificato empiricamente: flux-2-klein-4b accetta al massimo 2048 di altezza
   // (errore 3030 oltre), quindi 960x2048 è il massimo alla proporzione giusta.
-  // Costo: ~200 neuroni a immagine → 6 canali ≈ 1.200 neuroni su 10.000 gratuiti/giorno.
+  // Costo: ~290 neuroni a immagine (klein) → 3 canali ≈ 600-900 neuroni su 10.000 gratuiti/giorno.
   // Se il modello rifiuta una risoluzione, si passa automaticamente alla successiva.
   IMAGE_SIZES: [
     { width: 960, height: 2048 },
