@@ -261,16 +261,24 @@ def extract_text_from_jsonl_event(obj):
     return None
 
 
+# state.json usa i nomi stage "plan"/"exec"/"verify" (schema del contratto),
+# ma run-loop.sh scrive i log con la lettera dello stadio (Stadio A/B/C di
+# CONTRACTS.md: run<N>-a.jsonl / -b.jsonl / -c.jsonl) — verificato leggendo
+# logs/ del loop reale in esecuzione. La mappa serve a far combaciare i due.
+STAGE_LOG_SUFFIX = {"plan": "a", "exec": "b", "verify": "c"}
+
+
 def current_stage_log_path(state):
-    """Ritorna il Path del log dello stadio attivo (logs/run<N>-<stadio>.jsonl)
-    se lo stadio corrente e' plan/exec/verify, altrimenti None."""
+    """Ritorna il Path del log dello stadio attivo (logs/run<N>-{a,b,c}.jsonl)
+    se lo stadio corrente e' plan/exec/verify, altrimenti None (deploy/idle/
+    pausa/... non hanno un log claude corrente da seguire)."""
     if not state:
         return None
     run_n = state.get("run")
-    stage = state.get("stage")
-    if run_n is None or stage not in ("plan", "exec", "verify"):
+    suffix = STAGE_LOG_SUFFIX.get(state.get("stage"))
+    if run_n is None or suffix is None:
         return None
-    return LOGS_DIR / f"run{run_n}-{stage}.jsonl"
+    return LOGS_DIR / f"run{run_n}-{suffix}.jsonl"
 
 
 def fallback_latest_log():
