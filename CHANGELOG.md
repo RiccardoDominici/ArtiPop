@@ -36,3 +36,23 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
   sentinella), mai per il merito dell'impianto di test — questo ciclo ha recuperato via cherry-pick
   (commit `c53d572`, `a095daa`) il lavoro verde e orfano lasciato dal ciclo 3, verificato con
   `git fsck` e applicato senza conflitti (`git merge-tree`), invece di riscrivere la suite da zero.
+
+## 2026-07-31 — sprint manuale M3–M10 (su richiesta di Riccardo, fuori dai cicli del loop)
+
+Chiusura integrale della roadmap per sbloccare la fase POLISH:
+- **M3** — scritture admin sotto `scritturaProtetta`: KV che fallisce → 500 JSON umano,
+  mai l'error page di Cloudflare; `/lab/img` protetta da chiave (tuning tool adeguato:
+  la passa in query, un tag img non può portare header).
+- **M4** — `/w/<flusso>` senza immagine risponde col placeholder 960×2048 (gradiente
+  della lockscreen del sito): una Shortcut non riceve mai JSON.
+- **M5** — stato del cancello (`attivo/tentativi/verdetto`) salvato nello stato canale
+  ed esposto in `/health`: il collaudo non si spegne più in silenzio.
+- **M6** — `/aiuto` allineato ai token del sito (#f2f3f8, SF Pro Display, dim #9aa3b8).
+- **M7** — `famiglie` in `/api/channels` era già implementato: blindato con regressione.
+- **M8** — nosniff, Referrer-Policy e X-Frame-Options DENY su `/` e `/aiuto`; niente CSP
+  per scelta (essenzialità).
+- **M9→M10** — `attraversamento` prima sospesa dai pool, poi tarata sul lab preview
+  (tappe erase-and-repaint, range invariati; arco gated 1.83 tent/gg) e riammessa.
+  Coda dichiarata: canoa fuori range e 8 element non testati → materiale POLISH.
+Suite: 94 → 181 test. Incidente rientrato: i commit dello sprint erano finiti sul branch
+di un ciclo del loop avviato per errore in parallelo, recuperati integralmente dal reflog.

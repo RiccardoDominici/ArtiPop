@@ -33,13 +33,13 @@ I tre tentativi precedenti erano caduti per motivi procedurali (perimetro dei `F
 falso negativo del parser sulla sentinella), non per il merito dell'impianto di test: questo ciclo
 ha recuperato via cherry-pick il lavoro verde e orfano del ciclo 3.*
 
-### M3 — Scritture admin robuste · APERTA
+### M3 — Scritture admin robuste · FATTA
 try/catch attorno a ogni scrittura KV in `/tuning`, `/catalogo/*`, `/note/*`
 (index.js:139-285) → 500 JSON uniforme con messaggio umano (mai la pagina d'errore
 generica di Cloudflare); `GET /lab/img` protetto da `isAuthorized` come il resto del blocco.
 **Fatta quando**: test che simula KV.put che lancia → risposta 500 JSON; test 401 su /lab/img senza chiave.
 
-### M4 — `/w/<flusso>` non restituisce mai JSON a una Shortcut · APERTA
+### M4 — `/w/<flusso>` non restituisce mai JSON a una Shortcut · FATTA
 Quando l'archivio è vuoto (canale mai generato o data inesistente): rispondere
 con un'immagine placeholder statica 960×2048 (generata una volta, hardcoded nel
 worker come asset, NON generata con AI a richiesta) e status 200, content-type
@@ -47,32 +47,32 @@ immagine — la Shortcut "Imposta sfondo" non deve mai ricevere JSON.
 `?date=` inesistente può restare 404 ma con content-type immagine (placeholder).
 **Fatta quando**: test su canale/data senza immagine → bytes immagine validi, mai JSON.
 
-### M5 — Il cancello non si spegne mai in silenzio · APERTA
+### M5 — Il cancello non si spegne mai in silenzio · FATTA
 Se `IMAGES` è assente/fallisce o il PNG non è decodificabile (metrics.js:40-55,
 138-244), oggi il collaudo si disattiva con un semplice console.warn. Portare lo
 stato del cancello in superficie: `/health` espone per canale l'ultima esecuzione
 (gate attivo sì/no, tentativi usati, verdetto misure), salvato nel meta di stato.
 **Fatta quando**: /health mostra il campo; test con IMAGES stub rotto → il campo segnala gate disattivo.
 
-### M6 — `/aiuto` allineato al linguaggio del sito · APERTA
+### M6 — `/aiuto` allineato al linguaggio del sito · FATTA
 Adottare i token del sito (testo `#f2f3f8`, dim `#9aa3b8`, stack font identico);
 `#8fd3ff` resta il colore link. Design piatto e accordion invariati (VISUAL_SPECS §2).
 **Fatta quando**: visual-check conforme a VISUAL_SPECS §2, nessun difetto §5, baseline aggiornata.
 
-### M7 — `/api/channels` espone le famiglie per canale · APERTA
+### M7 — `/api/channels` espone le famiglie per canale · FATTA
 Requisito di tuning/DESIGN.md ("Modifiche backend minime") da verificare nel
 codice: se manca, aggiungere il campo `famiglie` per canale; verificare che il
 tuning tool lo consumi correttamente (tab Catalogo/Lab).
 **Fatta quando**: campo presente e testato; se già implementato → chiudere come verificata con test di regressione.
 
-### M8 — Header di sicurezza sulle pagine HTML · APERTA
+### M8 — Header di sicurezza sulle pagine HTML · FATTA
 `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `X-Frame-Options` (o
 `frame-ancestors`) su `/` e `/aiuto`. CSP solo se compatibile con l'inline
 JS/CSS esistente senza riscritture (altrimenti niente CSP: essenzialità).
 NON introdurre escaping in page.js (decisione riservata all'autore — v. Esclusioni).
 **Fatta quando**: test sugli header presenti; pagine funzionanti identiche (visual-check invariato).
 
-### M9 — Famiglia `attraversamento` sospesa dai pool · APERTA
+### M9 — Famiglia `attraversamento` sospesa dai pool · FATTA
 Oggi dichiaratamente non tarata (families.js:146-154): sfora i range e consuma
 tutti i tentativi ogni giorno. Escluderla dai pool di pesca (nessun canale può
 pescarla) finché M10 non la riporta in range. La famiglia resta nel codice,
@@ -80,7 +80,7 @@ gli archi già generati restano validi in archivio.
 **Fatta quando**: test di regressione che nessun `pickConcept` può restituire
 concept di famiglia `attraversamento`; suite verde.
 
-### M10 — Famiglia `attraversamento` tarata via lab · APERTA
+### M10 — Famiglia `attraversamento` tarata via lab · FATTA
 Dipende da M9. Sessioni lab SOLO su preview, entro il budget di 10 generazioni
 AI per ciclo: riformulare i range (ed eventualmente le tappe descrittive) finché
 un arco lab completo passa il cancello senza esaurire i tentativi. Poi riammetterla
@@ -91,6 +91,11 @@ totali sul preview (~4-5 cicli-equivalenti). Il tetto di 10/ciclo resta invariat
 e vincolante per i cicli autonomi del loop.*
 **Fatta quando**: un arco lab di 7 giorni su preview passa con ≤2 tentativi/giorno
 in media; famiglia riammessa; test aggiornati e verdi.
+*Esito (2026-07-31): tappe riformulate in erase-and-repaint espliciti, range invariati;
+arco gated veliero 7gg a 1.83 tentativi/giorno → riammessa. Rischio residuo dichiarato:
+element canoa ancora fuori range (33% estensione, compattezza 0.35) e 8 element non
+testati — coda affidata ai cicli POLISH (budget standard 10/ciclo); l'eventuale rimozione
+di canoa dal roster è curatela di Riccardo. 40/45 generazioni usate.*
 
 ## Definition of Done di produzione
 
