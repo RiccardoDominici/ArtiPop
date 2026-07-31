@@ -799,7 +799,7 @@ do_cycle() {
         # righe non vuote, invece di pretendere l'ultima riga esatta.
         local last_line
         last_line=$(grep -vE '^[[:space:]]*$' "$REPO_DIR/logs/run${run}-b.jsonl" 2>/dev/null \
-            | tail -15 | grep -vE '^[[:space:]]*(\`\`\`|~~~)' \
+            | tail -15 | grep -vE '^[[:space:]]*(```|~~~)' \
             | grep -E '^[[:space:]]*ESITO:' | tail -1 \
             | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
         case "$last_line" in
@@ -812,6 +812,9 @@ do_cycle() {
     fi
 
     if [[ "$esito_exec" != "OK" ]]; then
+        # Il motivo va anche nel log, non solo nella notifica: due falsi
+        # negativi del dry-run sono rimasti invisibili proprio per questo.
+        log "Ciclo $run: stadio B fallito — ${esito_exec#FALLITO(EXEC):} (b_result=$b_result)"
         git_checkout_production_clean; cleanup_cycle_branch "$branch"
         record_result "FALLITO(EXEC)"
         finalize_registry "$run" "$mode" "$area" "$obiettivo_registro" "$file_list" "$planner_model" "FALLITO(EXEC)" "$branch" "-"
