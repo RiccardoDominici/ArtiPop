@@ -45,7 +45,7 @@ import {
 } from "./catalog.js";
 import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
-import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo } from "./help.js";
+import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
@@ -744,6 +744,18 @@ export default {
       });
     }
 
+    // Percorso HTML sconosciuto (link vecchio, indirizzo digitato male): una
+    // pagina umana per il browser, JSON invariato per i client API (contratto
+    // esistente, vedi router-errori.test.js).
+    if ((request.headers.get("accept") || "").includes("text/html")) {
+      return new Response(renderPaginaNonTrovata(), {
+        status: 404,
+        headers: {
+          "content-type": "text/html; charset=utf-8", "cache-control": "no-store",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
     return json({ error: "not found" }, 404);
 
     } catch (err) {

@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-indirizzo-sbagliato-pagina-non-json
+- `backend/src/help.js`: nuova `renderPaginaNonTrovata()`, stessa struttura/token di
+  `renderErroreTemporaneo()` (M6/VISUAL_SPECS §2). Un utente che sbaglia a digitare un indirizzo o
+  segue un vecchio link era l'ultimo punto d'uscita pubblico rimasto a mostrare il JSON grezzo
+  `{"error":"not found"}`: `/s/<flusso>.shortcut` e le rotte HTML in errore avevano già la loro
+  pagina, il fallback 404 generico no (CLAUDE.md, principio 1).
+- `backend/src/index.js`: il fallback 404 finale ora negozia sull'header `Accept` della richiesta —
+  `text/html` risponde con la nuova pagina (stessi `SECURITY_HEADERS` di `/` e `/aiuto`,
+  `cache-control: no-store`), qualunque altro caso (assente o `application/json`) lascia il corpo
+  JSON invariato: nessuna rottura di contratto per i client API o la suite esistente.
+- `backend/tests/integration/pagina-404.test.js`: nuovo, copre la negoziazione (HTML vs JSON vs
+  Accept assente), gli header di sicurezza sulla risposta HTML e l'assenza di dettagli tecnici
+  (percorso richiesto, `error`) nel corpo.
+
 ## 2026-07-31 — s-aiuto-istruzioni-che-corrispondono-alla-home
 - `backend/src/help.js`: tre correzioni di testo in `/aiuto`, nessuna al di fuori dei tre punti
   citati sotto. Il rimedio di «Lo sfondo è uguale a ieri» rimandava a una «ultima miniatura» sulla
