@@ -89,6 +89,8 @@ Brusco (solo se il loop non risponde): `docker stop artipop-loop`. Può lasciare
 a metà: v. Troubleshooting sotto.
 
 ## Lettura della TUI (`monitor.py`, fuori dal container)
+Via facile: doppio click su `monitor.command` dal Finder (o `./monitor.command`).
+Equivalente a mano:
 ```bash
 cd "/Users/riccardo/Developer/Python/ArtiPop/ArtiPop v3"
 python3 monitor.py

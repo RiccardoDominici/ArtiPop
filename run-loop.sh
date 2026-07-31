@@ -219,6 +219,35 @@ _wait_stage_or_kill() {
     fi
 }
 
+# quota_probe — sonda economica PRIMA di aprire un ciclo: un claude -p minimo
+# su sonnet. Se la risposta matcha i pattern di limite (finestra 5h o limite
+# mensile), attende il refresh e riprova, senza consumare un numero di run né
+# aprire branch: meglio fermarsi sulla soglia che lanciare un planner contro
+# il muro. Ritorna 1 solo se arriva STOP dal CONTROL durante l'attesa.
+quota_probe() {
+    local out rc waits=0
+    local pat='rate.?limit|usage limit|overloaded|spend limit|limit reached'
+    while true; do
+        out=$(timeout 120 claude -p "Rispondi con la sola parola: ok" --model sonnet 2>&1); rc=$?
+        if (( rc == 0 )) && ! grep -qiE "$pat" <<<"$out"; then
+            return 0
+        fi
+        waits=$((waits + 1))
+        local wait_s=1800
+        (( waits >= 3 )) && wait_s=3600
+        if (( waits == 3 )); then
+            ntfy "ArtiPop loop: quota esaurita" "Token non disponibili (sonda pre-ciclo). Attendo il refresh e riprovo ogni 60 min."
+        fi
+        log "Sonda quota pre-ciclo: token non disponibili o errore (tentativo $waits, exit=$rc), attesa ${wait_s}s"
+        state_set stage waiting_quota
+        state_set next_retry_at "$(iso_after_seconds "$wait_s")"
+        sleep "$wait_s"
+        if [[ "$(control_read)" == "STOP" ]]; then
+            return 1
+        fi
+    done
+}
+
 # _classify_stage_error <err_file> <out_file> — RATE_LIMIT se stderr O stdout
 # matchano i pattern di quota/limite, altrimenti ERROR generico. Lo stdout va
 # controllato perché claude scrive lì (non su stderr) il limite di spesa
@@ -969,6 +998,14 @@ main() {
         gate=$(loop_await_control_gate)
         if [[ "$gate" == "STOP" ]]; then
             STOP_REASON="STOP da CONTROL (tra un ciclo e l'altro)"
+            control_clear
+            break
+        fi
+
+        # Sonda quota PRIMA di consumare un numero di run: se i token della
+        # finestra sono finiti, si aspetta il refresh qui, a ciclo non aperto.
+        if ! quota_probe; then
+            STOP_REASON="STOP da CONTROL (durante attesa quota pre-ciclo)"
             control_clear
             break
         fi

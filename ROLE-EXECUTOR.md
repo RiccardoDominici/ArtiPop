@@ -11,6 +11,12 @@ delle modifiche e termina con:
 ESITO: FALLITO(EXEC): piano ineseguibile — <motivo>
 ```
 
+## Ripresa dopo interruzione
+Se all'avvio trovi sul branch di ciclo lavoro parziale (commit già presenti o modifiche non
+committate: succede se un tentativo precedente è stato interrotto dall'esaurimento dei token),
+NON ripartire da zero alla cieca: confronta lo stato attuale con `PASSI:` del piano, tieni ciò
+che è già fatto e conforme, completa solo i passi mancanti.
+
 ## Implementazione
 - Segui `PASSI:` del piano, toccando solo i `FILE:` dichiarati in `PLAN.md`.
 - Docstring/commenti dove utili (v. `CLAUDE.md` — documentare più del minimo, mai commenti superflui
