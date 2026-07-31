@@ -233,18 +233,57 @@ quota_usage_pct() {
     local json
     json=$(timeout 60 npx --yes ccusage blocks --json 2>/dev/null) || return 0
     [[ -n "$json" ]] || return 0
-    printf '%s' "$json" | python3 -c "
-import json,sys
+    printf '%s' "$json" | CEIL_FILE="$REPO_DIR/logs/.quota_ceiling" python3 -c "
+import json,sys,os
 try:
     d=json.load(sys.stdin)
     bl=[b for b in d.get('blocks',[]) if not b.get('isGap')]
     cur=next((b.get('totalTokens',0) for b in bl if b.get('isActive')), None)
     hist=[b.get('totalTokens',0) for b in bl if not b.get('isActive')]
-    if cur is not None and hist and max(hist)>0:
-        print(min(999, round(100*cur/max(hist))))
+    # Il tetto OSSERVATO (registrato quando un limite reale e' stato toccato)
+    # e' piu' accurato del massimo storico: se esiste ed e' sano, vince.
+    ceil=None
+    try:
+        ceil=int(open(os.environ['CEIL_FILE']).read().split()[0])
+    except Exception:
+        pass
+    ref = ceil if (ceil and ceil>1000000) else (max(hist) if hist else 0)
+    if cur is not None and ref>0:
+        print(min(999, round(100*cur/ref)))
 except Exception:
     pass
 " 2>/dev/null
+}
+
+# quota_record_ceiling — da chiamare SOLO quando un limite reale è stato
+# rilevato (ping o rate-limit di stadio): fotografa i token grezzi del blocco
+# 5h corrente e li salva come tetto osservato in logs/.quota_ceiling — la
+# stima si auto-calibra a ogni limite toccato. Filtro di sanità: niente
+# registrazione sotto il 20% del massimo storico (un limite MENSILE può
+# scattare a blocco quasi vuoto e avvelenerebbe la stima) né sotto 1M token.
+quota_record_ceiling() {
+    local json cur histmax
+    json=$(timeout 60 npx --yes ccusage blocks --json 2>/dev/null) || return 0
+    [[ -n "$json" ]] || return 0
+    read -r cur histmax < <(printf '%s' "$json" | python3 -c "
+import json,sys
+try:
+    d=json.load(sys.stdin)
+    bl=[b for b in d.get('blocks',[]) if not b.get('isGap')]
+    cur=next((b.get('totalTokens',0) for b in bl if b.get('isActive')), 0)
+    hist=[b.get('totalTokens',0) for b in bl if not b.get('isActive')] or [0]
+    print(cur, max(hist))
+except Exception:
+    print(0, 0)
+" 2>/dev/null)
+    [[ -n "${cur:-}" ]] || return 0
+    if (( cur > 1000000 )) && (( cur * 5 >= histmax )); then
+        printf '%s\n' "$cur" > "$REPO_DIR/logs/.quota_ceiling"
+        log "Tetto quota osservato aggiornato: $cur token grezzi (limite reale toccato ora); la stima si calibra su questo"
+    else
+        log "Tetto quota NON aggiornato: blocco a $cur token, sotto il filtro di sanità (max storico $histmax) — probabile limite non legato alla finestra 5h"
+    fi
+    return 0
 }
 
 # quota_block_end_epoch — epoch (secondi) della fine del blocco 5h attivo
@@ -307,7 +346,14 @@ quota_probe() {
             if (( rc == 0 )) && ! grep -qiE "$pat" <<<"$out"; then
                 return 0
             fi
-            reason="token non disponibili o errore sonda (exit=$rc)"
+            if grep -qiE "$pat" <<<"$out"; then
+                # Limite REALE toccato ora: il tetto osservato si aggiorna,
+                # così la stima preventiva diventa più accurata a ogni urto.
+                quota_record_ceiling
+                reason="limite token rilevato dalla sonda"
+            else
+                reason="errore sonda non di quota (exit=$rc)"
+            fi
         fi
         waits=$((waits + 1))
         local wait_s=1800
@@ -400,6 +446,8 @@ run_stage() {
         local kind
         kind=$(_classify_stage_error "$err_file" "$out_file")
         if [[ "$kind" == "RATE_LIMIT" ]]; then
+            # Limite reale toccato a metà stadio: aggiorna il tetto osservato.
+            quota_record_ceiling
             rl_consecutive=$((rl_consecutive + 1))
             generic_attempts=0
             local wait_s=1800

@@ -91,6 +91,12 @@ refresh invece di partire. È una STIMA su metrica omogenea, non il numero vero 
 non espone): conservativa se il mix di cache differisce. Per cambiarla: `-e QUOTA_MARGIN_PCT=85`
 nel docker run; `0` la disabilita (resta il solo ping reattivo).
 
+La stima si AUTO-CALIBRA: ogni volta che un limite reale viene toccato (sonda o rate-limit di
+stadio), il loop fotografa i token grezzi del blocco corrente in `logs/.quota_ceiling` e da lì
+in poi il margine si calcola su quel tetto osservato, non sul massimo storico. Filtro di sanità:
+un limite scattato a blocco quasi vuoto (es. tetto MENSILE) non aggiorna il file. Per azzerare
+la calibrazione: cancella `logs/.quota_ceiling`.
+
 ## Arresto
 Pulito (aspetta la fine dello stadio corrente e chiude in ordine): dall'host, con il repo montato,
 scrivi `STOP` nel file `CONTROL` in root — o premi `s` dentro `monitor.py`.
