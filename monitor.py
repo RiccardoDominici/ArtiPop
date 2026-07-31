@@ -14,15 +14,23 @@ COSA FA
     Mostra in tempo reale (refresh ogni 2s) lo stato del loop autonomo:
     stato generale (esecuzione/attesa quota/pausa/fermo) e modalita'
     BUILD/POLISH nell'header, pipeline degli stadi PLAN→EXEC→VERIFY con il
-    modello in uso, riquadro deploy, contatori degli esiti, le ultime righe
-    del registro (IMPROVEMENTS.md), la coda del log dello stadio corrente e
-    se il container docker del loop è attivo (poll ogni ~10s).
+    modello in uso, un pannello "Obiettivo" con il traguardo del ciclo
+    corrente (o dell'ultimo piano prodotto, ricostruito da PLAN.md e da
+    logs/stage-context.txt), riquadro deploy, un pannello "Token · quota 5h
+    (stima)" con la stima dell'uso della quota 5h di Claude Code (stessa
+    metrica di run-loop.sh, via il comando esterno ccusage), contatori degli
+    esiti, le ultime righe del registro (IMPROVEMENTS.md), la coda del log
+    dello stadio corrente e se il container docker del loop e' attivo (poll
+    ogni ~10s).
 
     Legge SOLO questi file (mai scrive, tranne il file CONTROL):
       - logs/state.json          stato strutturato scritto dal loop
       - IMPROVEMENTS.md          registro append-only degli esiti
       - ROADMAP.md                milestone e relativo stato
       - logs/run<N>-<stadio>.jsonl  log grezzo (jsonl) dello stadio attivo
+      - PLAN.md                  piano scritto dal planner a inizio ciclo
+      - logs/stage-context.txt   contesto sintetico dello stadio attivo
+      - logs/.quota_ceiling      tetto osservato per la stima della quota 5h
 
     Tutti i file sopra sono opzionali: se mancano o sono corrotti il monitor
     mostra un placeholder e non si interrompe mai.
@@ -45,10 +53,13 @@ TASTI (non bloccanti; attivi solo se il terminale è una TTY)
        sospendendo temporaneamente la Live
     q  esce dalla TUI (il loop autonomo NON viene toccato), con conferma
 
-    La TUI scrive ESCLUSIVAMENTE nel file CONTROL (piu' l'unico comando
-    esterno esplicitamente concesso: `docker run` per avviare il loop col
-    tasto 'a', e `docker ps` per rilevarne lo stato). Non esegue mai comandi
-    git/wrangler/rete e non modifica nessun altro file del repo.
+    La TUI scrive ESCLUSIVAMENTE nel file CONTROL (piu' i comandi esterni
+    esplicitamente concessi: `docker run` per avviare il loop col tasto 'a',
+    `docker ps` per rilevarne lo stato, e `npx --yes ccusage blocks --json`
+    per stimare l'uso della quota 5h di Claude Code — sola lettura di
+    statistiche dai log locali di Claude Code, nessuna scrittura; concessione
+    richiesta esplicitamente da Riccardo il 2026-07-31). Non esegue mai
+    comandi git/wrangler/rete e non modifica nessun altro file del repo.
 
 DIPENDENZE
     Richiede la libreria di terze parti 'rich'. Se non è installata per
@@ -63,6 +74,7 @@ import select
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -119,10 +131,16 @@ IMPROVEMENTS_FILE = REPO_DIR / "IMPROVEMENTS.md"
 ROADMAP_FILE = REPO_DIR / "ROADMAP.md"
 CONTROL_FILE = REPO_DIR / "CONTROL"
 RUNCOUNT_FILE = REPO_DIR / ".runcount"
+PLAN_FILE = REPO_DIR / "PLAN.md"
+STAGE_CONTEXT_FILE = LOGS_DIR / "stage-context.txt"
+QUOTA_CEILING_FILE = LOGS_DIR / ".quota_ceiling"
 
 REFRESH_INTERVAL = 2.0  # secondi, come da contratto
 KEY_POLL_INTERVAL = 0.15  # granularita' di risposta ai tasti
 DOCKER_POLL_INTERVAL = 10.0  # lo stato del container si aggiorna piu' di rado del resto
+QUOTA_POLL_INTERVAL = 60.0  # secondi tra le interrogazioni di ccusage (comando esterno)
+QUOTA_CMD_TIMEOUT = 60  # timeout in secondi del comando npx ccusage
+QUOTA_STALE_AFTER = 300.0  # oltre questa eta' (secondi) la stima si considera non disponibile
 
 STAGE_ORDER = [("plan", "PLAN"), ("exec", "EXEC"), ("verify", "VERIFY")]
 
@@ -186,6 +204,69 @@ def parse_roadmap(path):
     result["done"] = sum(1 for s in statuses if s == "FATTA")
     result["mode"] = "BUILD" if "APERTA" in statuses else ("POLISH" if statuses else None)
     return result
+
+
+# Campi di intestazione attesi in PLAN.md, uno per riga, nell'ordine in cui
+# il planner del loop li scrive (regex separate: "prima occorrenza" per
+# ciascun campo, non serve un parsing posizionale rigido).
+PLAN_FIELD_PATTERNS = {
+    "obiettivo": re.compile(r"^OBIETTIVO:\s*(.+)$", re.MULTILINE),
+    "tipo": re.compile(r"^TIPO:\s*(.+)$", re.MULTILINE),
+    "area": re.compile(r"^AREA:\s*(.+)$", re.MULTILINE),
+    "milestone": re.compile(r"^MILESTONE:\s*(.+)$", re.MULTILINE),
+}
+
+
+def parse_plan(path):
+    """Estrae i campi di intestazione di PLAN.md (OBIETTIVO/TIPO/AREA/
+    MILESTONE), scritti dal planner del loop nelle prime righe del file.
+    Legge SOLO i primi 8192 byte: dopo l'intestazione il file prosegue con
+    MOTIVAZIONE/PASSI che possono essere lunghi e non servono qui. Tollera
+    file assente o corrotto: ritorna tutti None in quel caso, mai eccezioni."""
+    fields = {"obiettivo": None, "tipo": None, "area": None, "milestone": None}
+    if not path.exists():
+        return fields
+    try:
+        with open(path, "rb") as f:
+            raw = f.read(8192)
+    except OSError:
+        return fields
+    text = raw.decode("utf-8", errors="replace")
+    for key, pattern in PLAN_FIELD_PATTERNS.items():
+        m = pattern.search(text)
+        if m:
+            fields[key] = m.group(1).strip()
+    return fields
+
+
+# Campi attesi in logs/stage-context.txt, scritto da run-loop.sh a inizio
+# stadio: file piccolo e di vita breve (un solo stadio), quindi qui si legge
+# per intero invece di limitare i byte come per PLAN.md.
+STAGE_CONTEXT_FIELD_PATTERNS = {
+    "mode": re.compile(r"^MODALITA:\s*(.+)$", re.MULTILINE),
+    "run": re.compile(r"^RUN:\s*(.+)$", re.MULTILINE),
+    "objective": re.compile(r"^OBIETTIVO_CONTESTO:\s*(.+)$", re.MULTILINE),
+    "model": re.compile(r"^MODELLO_STADIO:\s*(.+)$", re.MULTILINE),
+}
+
+
+def parse_stage_context(path):
+    """Estrae i campi di logs/stage-context.txt (MODALITA/RUN/
+    OBIETTIVO_CONTESTO/MODELLO_STADIO). In modalita' BUILD OBIETTIVO_CONTESTO
+    e' il nome della milestone corrente; in POLISH e' il letterale "POLISH".
+    Tollera file assente o corrotto: tutti None in quel caso."""
+    fields = {"mode": None, "run": None, "objective": None, "model": None}
+    if not path.exists():
+        return fields
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return fields
+    for key, pattern in STAGE_CONTEXT_FIELD_PATTERNS.items():
+        m = pattern.search(text)
+        if m:
+            fields[key] = m.group(1).strip()
+    return fields
 
 
 def parse_improvements(path, limit=10):
@@ -476,6 +557,233 @@ def start_loop(max_runs):
 
 
 # ==========================================================================
+# Quota Claude Code: stima via il comando esterno 'ccusage' (sola lettura,
+# interrogato in un thread separato per non bloccare il refresh a 2s).
+# Stessa metrica usata da run-loop.sh (funzione quota_usage_pct): token
+# grezzi del blocco 5h attivo confrontati con un riferimento (il tetto
+# osservato in logs/.quota_ceiling se presente, altrimenti il massimo
+# storico dei blocchi conclusi). Anthropic non espone il limite reale della
+# quota 5h: questa e' una stima onesta, va sempre etichettata come tale.
+# ==========================================================================
+
+def fmt_tokens(n):
+    """Formatta un numero di token in stile compatto (es. 36.7M, 256k),
+    per restare leggibile nello spazio stretto del pannello Token. None (o
+    un valore non numerico) diventa '—', mai un'eccezione."""
+    if n is None:
+        return "—"
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return "—"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1000:
+        return f"{round(n / 1000)}k"
+    return str(n)
+
+
+def compute_quota_snapshot(ccusage_json_text, ceiling_text):
+    """Funzione PURA (nessuna I/O, testabile passando stringhe qualsiasi):
+    calcola lo snapshot della quota 5h a partire dal testo grezzo di 'npx
+    ccusage blocks --json' e dal contenuto di logs/.quota_ceiling.
+
+    Ritorna un dict con chiavi cur/ref/ref_kind/pct/remaining/end_time/error.
+    Se cur e' None (nessun blocco attivo: quota libera) viene trattato come
+    0 nel calcolo di pct/remaining, cosi' la riga "usati" mostra 0% e la
+    riga "rimanenti" mostra l'intero riferimento, in modo coerente con
+    l'etichetta "quota libera" mostrata altrove per lo stesso caso. Questa
+    e' una deviazione VOLUTA rispetto a run-loop.sh (funzione
+    quota_usage_pct): li' "nessun blocco attivo" (cur None) fa si' che la
+    funzione non stampi nulla, qui invece si sceglie di mostrare
+    esplicitamente "quota libera" / 0% invece di un pannello vuoto."""
+    result = {
+        "cur": None, "ref": None, "ref_kind": None, "pct": None,
+        "remaining": None, "end_time": None, "error": None,
+    }
+    try:
+        data = json.loads(ccusage_json_text)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        result["error"] = "output ccusage non valido"
+        return result
+    if not isinstance(data, dict):
+        result["error"] = "output ccusage non valido"
+        return result
+    blocks = data.get("blocks")
+    if not isinstance(blocks, list):
+        result["error"] = "output ccusage senza campo 'blocks'"
+        return result
+
+    cur = None
+    end_time = None
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        if b.get("isActive") and not b.get("isGap"):
+            # Semantica allineata a run-loop.sh (quota_usage_pct): il blocco
+            # attivo c'e', quindi cur si valorizza sempre (default 0 se
+            # totalTokens manca o non e' numerico). cur resta None SOLO
+            # quando il for finisce senza trovare un blocco attivo (nessun
+            # break raggiunto) — vedi nota di deviazione nella docstring.
+            tt = b.get("totalTokens", 0)
+            cur = int(tt) if isinstance(tt, (int, float)) else 0
+            end_time = b.get("endTime")
+            break  # un solo blocco puo' essere attivo per definizione
+
+    # Riferimento: il tetto osservato manualmente (.quota_ceiling) ha la
+    # precedenza se presente e plausibile (> 1M: sotto quella soglia e'
+    # quasi certamente un file vuoto/troncato, meglio ignorarlo). Altrimenti
+    # si usa il massimo storico tra i blocchi conclusi (non attivi, non gap).
+    ceiling = None
+    if ceiling_text:
+        try:
+            ceiling = int(ceiling_text.strip().split()[0])
+        except (ValueError, IndexError):
+            ceiling = None
+
+    ref = None
+    ref_kind = None
+    if ceiling is not None and ceiling > 1_000_000:
+        ref = ceiling
+        ref_kind = "osservato"
+    else:
+        historical = [
+            int(b["totalTokens"])
+            for b in blocks
+            if isinstance(b, dict)
+            and not b.get("isActive")
+            and not b.get("isGap")
+            and isinstance(b.get("totalTokens"), (int, float))
+        ]
+        if historical:
+            historical_max = max(historical)
+            # Guard ref>0 (come la condizione "ref>0" di run-loop.sh, vedi
+            # quota_usage_pct): con blocchi storici tutti a 0 token
+            # historical_max sarebbe 0, un riferimento non valido. Si lascia
+            # ref/ref_kind a None invece di 0, cosi' build_token lo tratta
+            # come "non ancora calibrato" invece di rischiare una divisione
+            # o un confronto (pct < 70) con un valore fantasma.
+            if historical_max > 0:
+                ref = historical_max
+                ref_kind = "storico"
+
+    result["cur"] = cur
+    result["end_time"] = end_time
+    result["ref"] = ref
+    result["ref_kind"] = ref_kind
+    if ref:
+        pct = round(100 * (cur or 0) / ref)
+        result["pct"] = min(pct, 999)
+        result["remaining"] = max(0, ref - (cur or 0))
+    return result
+
+
+class QuotaFetcher(threading.Thread):
+    """Thread di background che interroga periodicamente 'npx ccusage
+    blocks --json' per stimare l'uso della quota 5h (vedi commento di
+    sezione sopra per la metrica). Sola lettura: legge i log JSONL locali
+    di Claude Code, non scrive nulla. Demone: non impedisce l'uscita del
+    processo se per qualche motivo stop() non venisse chiamato."""
+
+    def __init__(self):
+        super().__init__(daemon=True)
+        self._stop_event = threading.Event()
+        # Snapshot "non ancora interrogato": build_token lo tratta come
+        # errore esplicito finche' il primo giro non ha completato (get()
+        # lo restituisce comunque da subito, vedi sotto, invece di (None,
+        # None): cosi' il motivo specifico e' visibile fin dal primo frame).
+        self.snapshot = self._error_snapshot("prima interrogazione ccusage in corso")
+        self.fetched_at = None
+
+    def run(self):
+        # Prima interrogazione immediata all'avvio, poi un giro ogni
+        # QUOTA_POLL_INTERVAL secondi finche' stop() non segnala l'uscita.
+        while not self._stop_event.is_set():
+            self._poll_once()
+            self._stop_event.wait(QUOTA_POLL_INTERVAL)
+
+    def _poll_once(self):
+        # try/except deliberatamente largo attorno all'intero giro: un
+        # comando esterno (npx assente, timeout, output inatteso) non deve
+        # mai far morire silenziosamente questo thread, altrimenti il
+        # pannello Token resterebbe fermo all'ultimo valore per sempre.
+        try:
+            try:
+                result = subprocess.run(
+                    ["npx", "--yes", "ccusage", "blocks", "--json"],
+                    capture_output=True, text=True, timeout=QUOTA_CMD_TIMEOUT,
+                    # stdin=DEVNULL: il main thread tiene stdin in cbreak per
+                    # i tasti (vedi KeyReader); un figlio che leggesse da
+                    # stdin ruberebbe byte al select() della TUI.
+                    stdin=subprocess.DEVNULL,
+                )
+            except FileNotFoundError:
+                self._set_error("npx assente")
+                return
+            except subprocess.TimeoutExpired:
+                self._set_error("timeout ccusage")
+                return
+            except OSError as e:
+                self._set_error(f"errore avvio ccusage: {e}")
+                return
+
+            if result.returncode != 0 or not (result.stdout or "").strip():
+                self._set_error("ccusage non ha prodotto output")
+                return
+
+            # Riletto ad ogni giro (non solo all'avvio): il tetto osservato
+            # puo' essere ricalibrato dal loop mentre la TUI e' aperta.
+            try:
+                ceiling_text = QUOTA_CEILING_FILE.read_text(encoding="utf-8")
+            except OSError:
+                ceiling_text = None
+
+            self.snapshot = compute_quota_snapshot(result.stdout, ceiling_text)
+            self.fetched_at = time.monotonic()
+        except Exception as e:  # noqa: BLE001 - il thread non deve mai morire
+            self._set_error(f"errore imprevisto: {e}")
+
+    def _set_error(self, msg):
+        self.snapshot = self._error_snapshot(msg)
+        self.fetched_at = time.monotonic()
+
+    @staticmethod
+    def _error_snapshot(msg):
+        return {
+            "cur": None, "ref": None, "ref_kind": None, "pct": None,
+            "remaining": None, "end_time": None, "error": msg,
+        }
+
+    def stop(self):
+        """Segnala l'uscita al thread e sblocca SOLO l'attesa tra un giro e
+        il successivo (self._stop_event.wait(QUOTA_POLL_INTERVAL) in run()):
+        senza questo la chiusura della TUI potrebbe restare appesa fino a
+        QUOTA_POLL_INTERVAL secondi. Non e' una terminazione pulita in senso
+        stretto: un comando ccusage gia' partito (subprocess.run bloccante)
+        non viene interrotto da questa chiamata. Il thread e' comunque
+        demone, quindi non impedisce l'uscita del processo; un ccusage in
+        volo si esaurisce da solo, al piu' entro QUOTA_CMD_TIMEOUT secondi,
+        eventualmente come orfano se il processo principale e' gia' uscito."""
+        self._stop_event.set()
+
+    def get(self):
+        """Letto dal main thread ad ogni render: ritorna (snapshot,
+        eta_secondi). L'assegnazione self.snapshot = {...} nel thread e' una
+        riassegnazione di riferimento a un nuovo dict, quindi atomica sotto
+        il GIL: leggerla qui senza lock e' sicuro, al piu' si legge lo
+        snapshot del giro precedente invece dell'ultimo.
+
+        Se nessun giro e' ancora completato (fetched_at None), self.snapshot
+        e' comunque quello segnaposto impostato dal costruttore ("prima
+        interrogazione ccusage in corso"): va restituito con eta' 0.0 invece
+        di (None, None), altrimenti non sarebbe mai visibile e build_token
+        mostrerebbe solo un generico "stima non disponibile" senza motivo."""
+        if self.fetched_at is None:
+            return self.snapshot, 0.0
+        return self.snapshot, time.monotonic() - self.fetched_at
+
+
+# ==========================================================================
 # Helper di formattazione
 # ==========================================================================
 
@@ -604,6 +912,68 @@ def build_stages(state):
     return Panel(combined, title="Pipeline", subtitle=subtitle)
 
 
+def build_objective(state, plan_info, ctx_info):
+    """Pannello a riga singola con l'obiettivo del ciclo corrente (o
+    dell'ultimo piano prodotto, se fuori ciclo). PLAN.md viene cancellato
+    dal loop a inizio stadio A (planner), quindi durante lo stadio 'plan' di
+    solito non esiste ancora un PLAN.md fresco: il titolo lo segnala. Fuori
+    ciclo (waiting_quota/paused/idle/stopped) resta invece quello
+    dell'ultimo piano prodotto, che e' ancora su disco.
+
+    Precedenza del contenuto:
+      1. state["objective"] (stringa non vuota): campo previsto dallo schema
+         di state.json ma oggi mai popolato dal loop (future-proofing: se in
+         futuro verra' scritto, e' lo stato "vivo" del ciclo e ha
+         precedenza sul PLAN.md su disco).
+      2. plan_info["obiettivo"], da PLAN.md.
+      3. ctx_info["objective"], da logs/stage-context.txt (contesto
+         sintetico, meno dettagliato ma disponibile anche quando PLAN.md
+         e' gia' stato consumato/cancellato).
+      4. placeholder "—" se nessuna fonte ha dati.
+    """
+    stage = state.get("stage") if state else None
+    in_cycle = stage in ("plan", "exec", "verify", "deploy")
+    title = "Obiettivo (ciclo corrente)" if in_cycle else "Obiettivo (ultimo piano)"
+
+    run_n = (state or {}).get("run")
+    if run_n is None:
+        run_n = ctx_info.get("run")
+    run_txt = run_n if run_n is not None else "—"
+
+    state_objective = (state or {}).get("objective")
+    slug = None
+    if isinstance(state_objective, str) and state_objective.strip():
+        slug = state_objective.strip()
+    elif plan_info.get("obiettivo"):
+        slug = plan_info["obiettivo"]
+
+    # no_wrap+overflow="ellipsis" (non il default wrap): con size=3 il Layout
+    # ritaglia solo la prima riga del corpo, quindi un Text che va a capo
+    # perderebbe il contenuto invece di limitarsi a troncarlo con "...".
+    if slug:
+        tipo_txt = plan_info.get("tipo") or "—"
+        area_txt = plan_info.get("area") or "—"
+        if len(slug) > 80:
+            slug = slug[:79] + "…"
+        body = Text(no_wrap=True, overflow="ellipsis")
+        body.append(f"run {run_txt} · {tipo_txt} · {area_txt} — ")
+        body.append(slug, style="bold cyan")
+        milestone = plan_info.get("milestone")
+        if milestone and milestone not in ("—", "-"):
+            body.append(f"   (milestone: {milestone})")
+    elif ctx_info.get("objective"):
+        mode_txt = ctx_info.get("mode") or "—"
+        body = Text(
+            f"run {run_txt} · {mode_txt} — contesto: {ctx_info['objective']}",
+            no_wrap=True,
+            overflow="ellipsis",
+        )
+    else:
+        body = Text("—", style="italic", no_wrap=True, overflow="ellipsis")
+
+    return Panel(body, title=title)
+
+
 def build_deploy(state):
     d = (state or {}).get("last_deploy") or {}
     version = d.get("version") or "—"
@@ -612,12 +982,62 @@ def build_deploy(state):
     ts = d.get("ts") or "—"
     smoke_style = {"ok": "bold green", "fail": "bold red"}.get(smoke)
 
-    body = Text()
+    # no_wrap+overflow="ellipsis": senza, un url lungo (es. i 36+ char di un
+    # sottodominio workers.dev) andrebbe a capo dentro il pannello e
+    # ritaglierebbe le righe successive del corpo (in particolare "ultimo
+    # deploy") invece di limitarsi a troncarsi con "...".
+    body = Text(no_wrap=True, overflow="ellipsis")
     body.append("versione: "); body.append(f"{version}\n")
     body.append("url: "); body.append(f"{url}\n")
     body.append("smoke: "); body.append(f"{smoke}\n", style=smoke_style)
     body.append("ultimo deploy: "); body.append(f"{ts}")
     return Panel(body, title="Deploy")
+
+
+def build_token(quota_snapshot, age):
+    """Pannello 'Token · quota 5h (stima)'. quota_snapshot/age vengono da
+    QuotaFetcher.get() (letti dal main thread, mai calcolati qui: questa
+    funzione resta pura rendering). E' dichiaratamente una STIMA (Anthropic
+    non espone il limite reale della quota 5h), da cui il titolo esplicito."""
+    title = "Token · quota 5h (stima)"
+
+    if quota_snapshot is None or (age is not None and age > QUOTA_STALE_AFTER):
+        return Panel(Text("stima non disponibile", style="italic"), title=title)
+
+    error = quota_snapshot.get("error")
+    if error:
+        return Panel(Text(f"stima non disponibile ({error})", style="italic"), title=title)
+
+    cur = quota_snapshot.get("cur")
+    ref = quota_snapshot.get("ref")
+    ref_kind = quota_snapshot.get("ref_kind")
+    pct = quota_snapshot.get("pct")
+    remaining = quota_snapshot.get("remaining")
+    end_time = quota_snapshot.get("end_time")
+
+    body = Text()
+    if cur is None:
+        body.append("blocco attivo: nessuno — quota libera\n", style="green")
+    else:
+        body.append(f"blocco attivo: {fmt_tokens(cur)} tok\n")
+
+    if not ref or pct is None:
+        # Guard in profondita' (oltre a quello in compute_quota_snapshot):
+        # "not ref" copre sia None sia un eventuale 0 residuo, "pct is None"
+        # copre il caso in cui ref sia valorizzato ma pct no per qualche
+        # motivo imprevisto. Senza questo guard un pct None finirebbe nel
+        # confronto "pct < 70" sotto e solleverebbe TypeError, degradando
+        # l'intera TUI al fallback_layout finche' la condizione persiste.
+        # Succede anche finche' ccusage non ha ancora blocchi conclusi ne'
+        # esiste .quota_ceiling: non c'e' ancora nulla contro cui misurare.
+        body.append("riferimento non ancora calibrato", style="italic")
+    else:
+        pct_color = "green" if pct < 70 else ("yellow" if pct < 90 else "red")
+        body.append(f"usati: {pct}% di ~{fmt_tokens(ref)} ({ref_kind})\n", style=f"bold {pct_color}")
+        body.append(f"rimanenti: ~{fmt_tokens(remaining)}\n", style=f"bold {pct_color}")
+        body.append(f"reset blocco: {format_countdown(end_time)}")
+
+    return Panel(body, title=title)
 
 
 def build_counters(state):
@@ -689,7 +1109,9 @@ def build_footer(pending_confirm, status_message, input_prompt):
     return Panel(text)
 
 
-def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message, container_status, input_prompt):
+def build_layout(state, roadmap_info, plan_info, ctx_info, rows, log_lines, log_path,
+                  pending_confirm, status_message, container_status, input_prompt,
+                  quota_snapshot, quota_age):
     """Assembla l'intero albero di Layout per il frame corrente. Racchiuso
     dal chiamante in try/except: un errore di rendering (es. terminale
     troppo piccolo) non deve mai far crashare il monitor."""
@@ -697,19 +1119,28 @@ def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm
     layout.split_column(
         Layout(name="header", size=3),
         Layout(name="stages", size=3),
-        Layout(name="midrow", size=8),
+        Layout(name="objective", size=3),
+        # size=9 (non 8): con 3 colonne (deploy/token/counters, dopo
+        # l'aggiunta del pannello Token) il corpo utile e' size-2=7 righe.
+        # Serve per mostrare tutte le 7 righe di build_counters (fino a
+        # BLOCCATO) e le 4 righe di build_deploy (incluso "ultimo deploy")
+        # senza ritagli: con size=8 il corpo era di sole 6 righe.
+        Layout(name="midrow", size=9),
         Layout(name="registro", ratio=3),
         Layout(name="logtail", ratio=3),
         Layout(name="footer", size=3),
     )
     layout["midrow"].split_row(
         Layout(name="deploy"),
+        Layout(name="token"),
         Layout(name="counters"),
     )
 
     layout["header"].update(build_header(state, container_status, roadmap_info.get("mode")))
     layout["stages"].update(build_stages(state))
+    layout["objective"].update(build_objective(state, plan_info, ctx_info))
     layout["midrow"]["deploy"].update(build_deploy(state))
+    layout["midrow"]["token"].update(build_token(quota_snapshot, quota_age))
     layout["midrow"]["counters"].update(build_counters(state))
     layout["registro"].update(build_registro(rows))
     layout["logtail"].update(build_logtail(log_lines, log_path))
@@ -870,15 +1301,19 @@ def main():
     last_docker_poll = 0.0
     state = None
     roadmap_info = {"mode": None, "done": 0, "total": 0}
+    plan_info = {"obiettivo": None, "tipo": None, "area": None, "milestone": None}
+    ctx_info = {"mode": None, "run": None, "objective": None, "model": None}
     rows = []
     log_lines = []
     log_path = None
     container_status = None  # True=attivo, False=spento, None=sconosciuto ('?')
 
     def refresh_data():
-        nonlocal state, roadmap_info, rows, log_lines, log_path
+        nonlocal state, roadmap_info, plan_info, ctx_info, rows, log_lines, log_path
         state = load_state()
         roadmap_info = parse_roadmap(ROADMAP_FILE)
+        plan_info = parse_plan(PLAN_FILE)
+        ctx_info = parse_stage_context(STAGE_CONTEXT_FILE)
         rows = parse_improvements(IMPROVEMENTS_FILE, limit=10)
         log_path = current_stage_log_path(state) or fallback_latest_log()
         log_lines = tail_log_lines(log_path)
@@ -892,9 +1327,14 @@ def main():
                     "default": default_max_runs(),
                     "runcount": input_runcount,
                 }
+            # I dati di quota si aggiornano da soli nel thread QuotaFetcher:
+            # qui si legge solo l'ultimo snapshot disponibile, mai si blocca
+            # il render in attesa del comando esterno.
+            quota_snapshot, quota_age = quota_fetcher.get()
             return build_layout(
-                state, roadmap_info, rows, log_lines, log_path,
+                state, roadmap_info, plan_info, ctx_info, rows, log_lines, log_path,
                 pending_confirm, status_message, container_status, input_prompt,
+                quota_snapshot, quota_age,
             )
         except Exception as e:  # noqa: BLE001 - il rendering non deve mai crashare la TUI
             return fallback_layout(str(e))
@@ -902,6 +1342,9 @@ def main():
     refresh_data()
     container_status = check_container_running()
     last_docker_poll = time.monotonic()
+
+    quota_fetcher = QuotaFetcher()
+    quota_fetcher.start()
 
     try:
         with Live(console=console, screen=True, refresh_per_second=4, transient=False) as live:
@@ -1009,6 +1452,12 @@ def main():
         pass
     finally:
         key_reader.restore()
+        # Segnala l'uscita al thread di quota (sblocca l'attesa tra un giro
+        # e il successivo, vedi QuotaFetcher.stop()): il thread e' demone
+        # quindi non blocca comunque l'uscita del processo, ma senza questa
+        # chiamata resterebbe inutilmente in attesa fino a QUOTA_POLL_INTERVAL
+        # secondi se il processo restasse vivo per qualche altro motivo.
+        quota_fetcher.stop()
 
 
 if __name__ == "__main__":
