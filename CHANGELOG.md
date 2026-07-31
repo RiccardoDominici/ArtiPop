@@ -16,6 +16,22 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-rete-di-sicurezza-globale-sul-worker
+- `backend/src/index.js`: l'intero corpo di routing di `fetch()` è ora avvolto in un unico
+  try/catch. Prima solo le scritture admin erano protette (`scritturaProtetta`, M3): una lettura
+  che lanciava (KV irraggiungibile, valore corrotto) su `/w/`, `/`, `/aiuto`, `/api/channels` e
+  dintorni propagava fino a Cloudflare, che serviva la sua pagina d'errore generica 1101 — a
+  `/w/<flusso>` la Shortcut riceveva HTML al posto dei byte immagine. Il catch sceglie la risposta
+  in base alla rotta (`rispostaDiEmergenza`): placeholder PNG per `/w/`, HTML per le pagine
+  pubbliche, JSON per l'API — mai `err.message` o stack nel corpo, solo nel log del Worker.
+- `backend/src/help.js`: nuova `renderErroreTemporaneo()`, pagina 500 per le rotte HTML, stessi
+  token colore e stack font di `renderShortcutMancante`/`renderHelpPage` (VISUAL_SPECS §2).
+- `backend/tests/helpers/fakeEnv.js`: `kvChePerdeLeLetture`, gemello di `kvChePerdeLeScritture` ma
+  per `get`/`getWithMetadata`, per esercitare la nuova rete di sicurezza nei test.
+- `backend/tests/integration/rete-di-sicurezza.test.js`: nuovo file, verifica che con letture KV
+  guaste nessuna rotta esploda un corpo grezzo — `/w/` resta sempre immagine, le pagine pubbliche
+  restano HTML, l'API resta JSON senza fughe di dettagli tecnici.
+
 ## 2026-07-31 — s-w-flusso-sconosciuto-mai-json
 - `backend/src/index.js`: `/w/<flusso>` non risponde più JSON quando l'id non è risolvibile (né
   canale attivo né alias legacy) — terzo e ultimo ramo della rotta che poteva ancora rompere la

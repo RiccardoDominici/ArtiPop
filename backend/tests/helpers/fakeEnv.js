@@ -79,6 +79,18 @@ export function kvChePerdeLeScritture(kv = makeKV()) {
 // I soli metodi implementati sono quelli realmente chiamati (verificato con
 // grep su src/generate.js, src/metrics.js e src/handlers.js): AI.run,
 // IMAGES.input, SELF.fetch.
+// Gemello di `kvChePerdeLeScritture`: qui a lanciare sono le LETTURE (get,
+// getWithMetadata), mentre put/delete/list restano quelli del KV di base —
+// serve a esercitare la rete di sicurezza globale su rotte che oggi non
+// avvolgono le proprie letture (index.js, il try/catch attorno a `fetch`).
+export function kvChePerdeLeLetture(kv = makeKV()) {
+  return {
+    ...kv,
+    async get() { throw new Error("KV.get non disponibile (simulato)"); },
+    async getWithMetadata() { throw new Error("KV.getWithMetadata non disponibile (simulato)"); },
+  };
+}
+
 function stubAI() {
   return { run() { throw new Error("AI.run non doveva essere invocato in questo test"); } };
 }

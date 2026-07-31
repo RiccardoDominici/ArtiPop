@@ -45,7 +45,7 @@ import {
 } from "./catalog.js";
 import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
-import { renderHelpPage, renderShortcutMancante } from "./help.js";
+import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo } from "./help.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
@@ -139,6 +139,44 @@ export default {
         return jsonCors({ ok: false, error: "salvataggio non riuscito, riprova" }, 500);
       }
     };
+
+    // Sceglie il corpo di emergenza in base alla rotta, quando un'eccezione
+    // imprevista sfugge da tutto il routing sottostante (rete di sicurezza
+    // globale, vedi il try/catch che segue): mai un corpo JSON o l'errore
+    // generico di Cloudflare verso /w/ (la Shortcut si aspetta byte immagine),
+    // mai HTML verso l'API. Nessun `err.message`/stack qui dentro: solo una
+    // frase umana costante, come già fa `scritturaProtetta` per le scritture.
+    const rispostaDiEmergenza = (percorso) => {
+      if (percorso.match(/^\/w\/([a-z]+)(?:\.(?:jpg|jpeg|png))?$/)) {
+        return new Response(PLACEHOLDER_PNG_BYTES, {
+          status: 500,
+          headers: { "content-type": PLACEHOLDER_CONTENT_TYPE, "cache-control": "no-store" },
+        });
+      }
+      const rottaHtml =
+        percorso === "/" || percorso === "/index.html" ||
+        percorso === "/aiuto" || percorso === "/aiuto.html" || percorso === "/help" ||
+        percorso.match(/^\/s\/([a-z]+(?:-base)?)\.shortcut$/);
+      if (rottaHtml) {
+        return new Response(renderErroreTemporaneo(), {
+          status: 500,
+          headers: {
+            "content-type": "text/html; charset=utf-8", "cache-control": "no-store",
+            ...SECURITY_HEADERS,
+          },
+        });
+      }
+      return jsonCors({ ok: false, error: "errore temporaneo, riprova" }, 500);
+    };
+
+    // Rete di sicurezza globale (CLAUDE.md, principio 3): tutto il routing
+    // sottostante vive qui dentro, così una qualsiasi eccezione imprevista
+    // (KV irraggiungibile, valore corrotto, bug su un ramo non ancora coperto)
+    // non fa più esplodere il worker fino alla pagina d'errore generica di
+    // Cloudflare — risponde sempre `rispostaDiEmergenza`, nella forma che la
+    // rotta chiamata si aspetta. `url`, `path`, `CORS`, `SECURITY_HEADERS`,
+    // `jsonCors`, `scritturaProtetta` restano definiti fuori: il catch li usa.
+    try {
 
     // ---- Tuning dei range (concept = schema di evoluzione) ----
     // GET  /tuning        → default del codice + valori effettivi + elenco element
@@ -695,5 +733,10 @@ export default {
     }
 
     return json({ error: "not found" }, 404);
+
+    } catch (err) {
+      console.error(`[fetch] ${path} fallito: ${err.message}`);
+      return rispostaDiEmergenza(path);
+    }
   },
 };
