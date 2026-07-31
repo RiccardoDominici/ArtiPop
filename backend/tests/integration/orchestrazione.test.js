@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 import { runChannel } from "../../src/handlers.js";
 import { todayKey } from "../../src/story.js";
 import { makeEnv, callWorker } from "../helpers/fakeEnv.js";
+import { PLACEHOLDER_PNG_BYTES } from "../../src/placeholder.js";
 
 describe("runChannel: idempotenza", () => {
   it("un giorno già generato torna { skipped: true } e non genera di nuovo", async () => {
@@ -51,11 +52,16 @@ describe("/w/<flusso>?date=: byte-stabilità dell'archivio", () => {
 });
 
 describe("/w/flusso-inesistente", () => {
-  it("un flusso che non esiste (né diretto né alias) risponde 404 JSON", async () => {
+  it("un flusso che non esiste (né diretto né alias) risponde 404 con byte placeholder, mai JSON", async () => {
     const env = makeEnv();
     const res = await callWorker(env, "/w/inventato");
     expect(res.status).toBe(404);
-    const body = await res.json();
-    expect(body.error).toBe("flusso sconosciuto");
+    expect(res.headers.get("content-type")).toBe("image/png");
+
+    const testo = await res.clone().text();
+    expect(() => JSON.parse(testo)).toThrow();
+
+    const byte = new Uint8Array(await res.arrayBuffer());
+    expect(byte).toEqual(PLACEHOLDER_PNG_BYTES);
   });
 });

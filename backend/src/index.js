@@ -381,10 +381,18 @@ export default {
 
       const { channel, isLegacy } = resolveChannel(requested);
       if (!channel) {
-        return json({
-          error: "flusso sconosciuto",
-          flussi: ACTIVE_CHANNELS.map((c) => c.id).concat("random"),
-        }, 404);
+        // Flusso non risolvibile (id ritirato, refuso nell'URL): MAI JSON qui
+        // (ROADMAP M4) — è lo stesso indirizzo da cui la Shortcut scarica i
+        // byte da applicare alla lock screen, quindi anche questo terzo ramo
+        // di fallimento (oltre a "canale mai generato" e "?date= inesistente"
+        // più sotto) serve il placeholder statico invece di un corpo JSON.
+        return new Response(PLACEHOLDER_PNG_BYTES, {
+          status: 404,
+          headers: {
+            "content-type": PLACEHOLDER_CONTENT_TYPE,
+            "cache-control": "no-store",
+          },
+        });
       }
 
       const dateParam = url.searchParams.get("date");
@@ -407,10 +415,13 @@ export default {
       // inesistente): MAI JSON qui (ROADMAP M4). La Shortcut "Imposta sfondo"
       // scarica byte da questo indirizzo e li applica alla lock screen — un
       // corpo JSON non è un'immagine valida e l'utente vede un errore muto.
-      // Si serve sempre il placeholder statico (vedi placeholder.js): 200 se
-      // il canale è semplicemente vuoto (nessuna data richiesta), 404 se era
-      // stata chiesta una data che non esiste — lo status racconta la verità,
-      // il corpo resta comunque un'immagine valida.
+      // Su /w/ il corpo è SEMPRE un'immagine, qualunque sia il motivo del
+      // fallimento: flusso inesistente (sopra), canale mai generato, o
+      // ?date= inesistente (qui sotto). Si serve sempre il placeholder
+      // statico (vedi placeholder.js): 200 se il canale è semplicemente
+      // vuoto (nessuna data richiesta), 404 se era stata chiesta una data
+      // che non esiste — lo status racconta la verità, il corpo resta
+      // comunque un'immagine valida.
       if (!img) {
         return new Response(PLACEHOLDER_PNG_BYTES, {
           status: date ? 404 : 200,

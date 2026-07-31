@@ -16,6 +16,18 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-w-flusso-sconosciuto-mai-json
+- `backend/src/index.js`: `/w/<flusso>` non risponde più JSON quando l'id non è risolvibile (né
+  canale attivo né alias legacy) — terzo e ultimo ramo della rotta che poteva ancora rompere la
+  Shortcut "Imposta sfondo" con un errore muto (i due rami precedenti erano già chiusi da M4).
+  Stesso placeholder statico già usato per canale vuoto/data inesistente, status 404 perché il
+  flusso non esiste davvero, ma il corpo resta sempre un'immagine valida.
+- `backend/tests/integration/orchestrazione.test.js`: il test `/w/flusso-inesistente` non verifica
+  più solo `body.error` ma content-type immagine, corpo non parsabile come JSON e byte identici al
+  placeholder — asserzione più stringente, non allentata.
+- `backend/tests/integration/w-placeholder.test.js`: nuovo caso `/w/inventato?date=` a garanzia che
+  la regola valga anche con `?date=` in coda, non solo sul percorso nudo.
+
 ## 2026-07-31 — s-shortcut-mai-json-al-browser
 - `backend/src/help.js`: nuova `renderShortcutMancante(flusso)`, stessa spec visiva di
   `renderHelpPage()` (M6), con i link di download presi da `ACTIVE_CHANNELS` (mai una lista scritta

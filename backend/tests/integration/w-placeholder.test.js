@@ -39,6 +39,20 @@ describe("/w/<flusso>?date=: data inesistente", () => {
   });
 });
 
+describe("/w/<flusso>?date=: flusso sconosciuto anche con ?date=", () => {
+  it("risponde 404 con byte placeholder, mai JSON, anche quando la richiesta porta una data", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/w/inventato?date=2026-01-01");
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toBe("image/png");
+
+    const byte = new Uint8Array(await res.arrayBuffer());
+    expect(Array.from(byte.slice(0, 4))).toEqual(FIRMA_PNG);
+    expect(byte).toEqual(PLACEHOLDER_PNG_BYTES);
+  });
+});
+
 describe("/w/<flusso>: canale con immagine seminata", () => {
   it("la risposta resta invariata: gli stessi byte seminati, non il placeholder", async () => {
     const env = makeEnv();
