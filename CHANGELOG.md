@@ -16,6 +16,24 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-guida-e-readme-allineati-al-comportamento-reale
+- `README.md`: corretto "~500 neuroni/giorno" in "~600-900 neuroni/giorno" (3 canali, di più nei
+  giorni di cambio base) — dato già misurato e registrato in `backend/README.md`, mai propagato al
+  README pubblico. Un numero sbagliato sul budget gratuito è la cosa più costosa da avere per
+  iscritto (CLAUDE.md, principio 1).
+- `backend/src/config.js`: aggiornato solo il commento di `IMAGE_SIZES` ("6 canali ≈ 1.200
+  neuroni" → "3 canali ≈ 600-900 neuroni"): i canali attivi sono 3 (`channels.js`), non 6. Nessun
+  valore di `CONFIG` toccato.
+- `GUIDA.md` §2.4: la riga `/health` ora elenca i campi realmente restituiti (`famiglie`,
+  `concepts`, `cancello`, `misuratore`); `/api/channels` cita il campo `famiglie` (M7). Aggiunte le
+  due rotte pubbliche mancanti dalla tabella, `/w/<flusso>` (sempre byte immagine, mai JSON, vedi
+  M4) e `/s/<flusso>[-base].shortcut`.
+- `GUIDA.md` §2.9: due righe nuove nel runbook — placeholder su `/w/` (canale mai generato o
+  `?date=` inesistente) e pagina «errore temporaneo» (rete di sicurezza globale) — entrambe con un
+  rimedio eseguibile. Chiude l'ultimo punto scoperto della DoD di produzione: i comportamenti
+  pubblici introdotti dai cicli POLISH (placeholder, pagina 404/errore, cache `?v=`, campi nuovi in
+  `/health` e `/api/channels`) non erano mai arrivati nei documenti.
+
 ## 2026-07-31 — s-indirizzo-sbagliato-pagina-non-json
 - `backend/src/help.js`: nuova `renderPaginaNonTrovata()`, stessa struttura/token di
   `renderErroreTemporaneo()` (M6/VISUAL_SPECS §2). Un utente che sbaglia a digitare un indirizzo o
