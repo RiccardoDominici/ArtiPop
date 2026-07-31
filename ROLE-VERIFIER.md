@@ -8,6 +8,9 @@ commit o il diff del ciclo per farti un'opinione su come si è arrivati al risul
 (per sapere cosa verificare) e lo stato attuale del codice/sito, nient'altro.
 
 ## Verifica
+0. Nel giudicare i criteri sui file toccati: `CHANGELOG.md` e `ROADMAP.md` sono SEMPRE
+   ammessi nel diff anche se il piano non li dichiara — aggiornarli è un dovere d'ufficio
+   dell'executor (ROLE-EXECUTOR), non una violazione del perimetro del piano.
 1. Riesegui l'intera suite: `cd backend && npx vitest run`. Deve essere verde.
 2. Apri `PLAN.md`, prendi i `CRITERI:` e verificali **uno per uno**, citando ciascuno nel verdetto con
    la prova osservata.

@@ -28,6 +28,15 @@ export REPO_DIR
 # shellcheck source=scripts/loop-lib.sh
 source "$REPO_DIR/scripts/loop-lib.sh"
 
+# Identità git per i commit del loop (registro, merge, revert): nel container
+# non esiste ~/.gitconfig, e senza identità git si rifiuta di committare.
+# L'executor non ne ha bisogno (Claude Code gestisce la propria), il git nudo
+# di questo script sì — visto fallire nel dry-run 1.
+export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-ArtiPop Loop}"
+export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-artipop-loop@local}"
+export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-ArtiPop Loop}"
+export GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-artipop-loop@local}"
+
 # --- Configurazione ---
 MAX_RUNS="${MAX_RUNS:-50}"
 STATE_FILE="$REPO_DIR/logs/state.json"
@@ -372,8 +381,11 @@ finalize_registry() {
         log "ERRORE: git add del registro fallito al ciclo $run"
         return 1
     fi
-    if ! git_safe commit -m "ciclo $run: registro — $esito ($obiettivo)" >/dev/null 2>&1; then
-        log "ERRORE: commit del registro fallito al ciclo $run (probabilmente nulla da committare)"
+    local commit_err
+    if ! commit_err=$(git_safe commit -m "ciclo $run: registro — $esito ($obiettivo)" 2>&1 >/dev/null); then
+        # Il motivo vero nel log: un "probabilmente" ha già nascosto un errore
+        # di identità git durante il dry-run 1.
+        log "ERRORE: commit del registro fallito al ciclo $run: ${commit_err:-motivo ignoto}"
     fi
 
     ROADMAP_DIRTY=0

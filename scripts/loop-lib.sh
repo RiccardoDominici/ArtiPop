@@ -351,9 +351,8 @@ improvements_ensure_file() {
     cat > "$file" <<'EOF'
 # IMPROVEMENTS.md — registro dei cicli autonomi ArtiPop v3
 
-| data | tipo | area | obiettivo | file | planner | esito | branch | deploy |
-|---|---|---|---|---|---|---|---|---|
-<!-- | 2026-01-01 00:00 UTC | BUILD | rotte-api | m0-esempio riga di esempio commentata | index.js | opus | FATTO | auto/20260101-000000 | v0 | -->
+Le sezioni descrittive stanno in alto e la tabella è l'ULTIMA sezione del
+file: le righe nuove si appendono in coda e devono cadere dentro la tabella.
 
 ## Aree
 
@@ -363,6 +362,12 @@ sito-web, pagina-aiuto, tuning-tool, sicurezza, docs
 ## Aree esaurite
 
 (nessuna)
+
+## Registro
+
+| data | tipo | area | obiettivo | file | planner | esito | branch | deploy |
+|---|---|---|---|---|---|---|---|---|
+<!-- | 2026-01-01 00:00 UTC | BUILD | rotte-api | m0-esempio riga di esempio commentata | index.js | opus | FATTO | auto/20260101-000000 | v0 | -->
 EOF
 }
 
@@ -486,13 +491,20 @@ plan_is_no_proposal() {
     [[ "$first_line" == "NESSUNA PROPOSTA" ]]
 }
 
-# plan_field <file> <NOME-CAMPO> — valore sulla stessa riga di "NOME-CAMPO:"
-# (i campi multi-riga come MOTIVAZIONE/PASSI/TEST/CRITERI non servono al
-# loop: li leggono solo executor/verifier dal proprio prompt).
+# plan_field <file> <NOME-CAMPO> — valore sulla stessa riga di "NOME-CAMPO:".
+# Se l'etichetta è da sola sulla riga (il planner del dry-run 1 ha scritto
+# "FILE:" e l'elenco nella riga sotto), ripiega sulla prima riga non vuota
+# successiva. (I campi multi-riga come MOTIVAZIONE/PASSI/TEST/CRITERI non
+# servono al loop: li leggono solo executor/verifier dal proprio prompt.)
 plan_field() {
     local file="$1" name="$2"
     [[ -f "$file" ]] || { printf ''; return; }
-    grep -m1 -E "^${name}:" "$file" 2>/dev/null | sed -E "s/^${name}:[[:space:]]*//" | sed -e 's/[[:space:]]*$//'
+    local val
+    val=$(grep -m1 -E "^${name}:" "$file" 2>/dev/null | sed -E "s/^${name}:[[:space:]]*//" | sed -e 's/[[:space:]]*$//')
+    if [[ -z "$val" ]]; then
+        val=$(awk -v pat="^${name}:[[:space:]]*$" 'trovato && NF {print; exit} $0 ~ pat {trovato=1}' "$file" 2>/dev/null | sed -e 's/[[:space:]]*$//')
+    fi
+    printf '%s' "$val"
 }
 
 plan_get_slug() { plan_field "$1" "OBIETTIVO"; }

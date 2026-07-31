@@ -56,7 +56,9 @@ MILESTONE: Mx|—
 MOTIVAZIONE:
 <3 righe: perché questo obiettivo, perché ora, esito dei tre controlli di deduplica>
 FILE:
-<elenco dei file che verranno toccati, su UNA sola riga, separati da virgola>
+<elenco dei file che verranno toccati, su UNA sola riga, separati da virgola.
+Includi SEMPRE CHANGELOG.md (l'executor lo aggiorna per dovere d'ufficio) e
+ROADMAP.md se il piano completa una milestone>
 PASSI:
 <passi implementativi, in ordine>
 TEST:
