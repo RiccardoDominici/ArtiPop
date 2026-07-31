@@ -404,6 +404,10 @@ function cardHTML(ch) {
         <div class="ltime"></div>
         <div class="lbottom"><div class="lbtn">🔦</div><div class="lbtn">📷</div></div>
       </div>
+      <!-- ?v=\${ch.date} non è un cache-buster decorativo: è ciò che il worker
+           usa per distinguere questa richiesta (il sito, cacheabile un'ora)
+           da quella della Shortcut sullo stesso indirizzo senza query
+           (sempre no-store, deve ricevere il file fresco). -->
       <img class="wall" src="/w/\${ch.id}?v=\${ch.date}" alt="\${ch.name} — wallpaper di oggi" draggable="false" />
     </div>
     <div class="cinfo">
