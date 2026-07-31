@@ -30,10 +30,13 @@ COSA FA
 TASTI (non bloccanti; attivi solo se il terminale è una TTY)
     a  AVVIA il loop in un container docker detached (`docker run ...
        artipop-loop`), con conferma y/n; se il container e' gia' in
-       esecuzione mostra solo un avviso e non fa nulla. Prima dell'avvio
-       svuota il file CONTROL (un PAUSE/STOP residuo dai test bloccherebbe
-       subito il loop appena partito). Ricorda: la TUI NON gestisce
-       `caffeinate`, va lanciato a parte in un altro terminale.
+       esecuzione mostra solo un avviso e non fa nulla. Dopo la conferma
+       chiede MAX_RUNS a schermo (cifre + Invio, backspace per correggere,
+       Esc per annullare; vuoto = default) mostrando anche il run attuale
+       da .runcount, cosi' si vede subito il budget residuo. Prima
+       dell'avvio svuota il file CONTROL (un PAUSE/STOP residuo dai test
+       bloccherebbe subito il loop appena partito). Ricorda: la TUI NON
+       gestisce `caffeinate`, va lanciato a parte in un altro terminale.
     p  scrive PAUSE nel file CONTROL (il loop autonomo si mette in pausa)
     s  scrive STOP nel file CONTROL (il loop esce pulito a fine ciclo)
     k  scrive KILL nel file CONTROL, con conferma y/n (il loop fa revert
@@ -115,6 +118,7 @@ STATE_FILE = LOGS_DIR / "state.json"
 IMPROVEMENTS_FILE = REPO_DIR / "IMPROVEMENTS.md"
 ROADMAP_FILE = REPO_DIR / "ROADMAP.md"
 CONTROL_FILE = REPO_DIR / "CONTROL"
+RUNCOUNT_FILE = REPO_DIR / ".runcount"
 
 REFRESH_INTERVAL = 2.0  # secondi, come da contratto
 KEY_POLL_INTERVAL = 0.15  # granularita' di risposta ai tasti
@@ -378,10 +382,54 @@ def check_container_running(name=DOCKER_CONTAINER_NAME, timeout=3):
     return name in names
 
 
-def start_loop():
-    """Avvia il loop autonomo in un container docker detached. Svuota prima
-    CONTROL (un PAUSE/STOP residuo dai test bloccherebbe il loop appena
-    partito). Ritorna (ok: bool, messaggio: str) per il toast in TUI."""
+def read_runcount():
+    """Legge .runcount (contatore run gia' eseguiti dal loop). Ritorna 0 se
+    il file manca o non contiene un intero, senza mai sollevare eccezioni:
+    serve solo a mostrare a Riccardo il budget residuo nel prompt MAX_RUNS."""
+    try:
+        text = RUNCOUNT_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return 0
+    try:
+        return int(text)
+    except ValueError:
+        return 0
+
+
+def default_max_runs():
+    """Default per MAX_RUNS: da env MONITOR_MAX_RUNS se presente e valido
+    (1-999), altrimenti 50. Mai un'eccezione su un env var malformato."""
+    raw = os.environ.get("MONITOR_MAX_RUNS", "")
+    try:
+        value = int(raw)
+        if 1 <= value <= 999:
+            return value
+    except ValueError:
+        pass
+    return 50
+
+
+def parse_max_runs(raw, default):
+    """Valida l'input testuale del prompt MAX_RUNS. Vuoto -> (True, default);
+    intero 1-999 -> (True, valore); qualunque altra cosa (non numerico, fuori
+    range, incluso '0') -> (False, None). Mai un'eccezione su input strano."""
+    raw = (raw or "").strip()
+    if raw == "":
+        return True, default
+    if not raw.isdigit():
+        return False, None
+    value = int(raw)
+    if not (1 <= value <= 999):
+        return False, None
+    return True, value
+
+
+def start_loop(max_runs):
+    """Avvia il loop autonomo in un container docker detached, con il
+    MAX_RUNS scelto da Riccardo nel prompt del tasto 'a' (gia' validato dal
+    chiamante). Svuota prima CONTROL (un PAUSE/STOP residuo dai test
+    bloccherebbe il loop appena partito). Ritorna (ok: bool, messaggio: str)
+    per il toast in TUI."""
     running = check_container_running()
     if running:
         return False, "loop gia' in esecuzione"
@@ -392,7 +440,6 @@ def start_loop():
         return False, "ERRORE: impossibile svuotare CONTROL, avvio annullato"
 
     home = os.path.expanduser("~")
-    max_runs = os.environ.get("MONITOR_MAX_RUNS", "50")
     cmd = [
         "docker", "run", "-d", "--rm", "--name", DOCKER_CONTAINER_NAME,
         "-v", f"{REPO_DIR}:/work",
@@ -618,9 +665,19 @@ def build_logtail(lines, log_path):
     return Panel(body, title=title)
 
 
-def build_footer(pending_confirm, status_message):
+def build_footer(pending_confirm, status_message, input_prompt):
     text = Text()
-    if pending_confirm:
+    if input_prompt is not None:
+        # Prompt numerico MAX_RUNS: mostra il default, il run attuale (da
+        # .runcount, per capire il budget residuo) e il buffer digitato finora.
+        text.append(
+            f" MAX_RUNS [default {input_prompt['default']}] "
+            f"(run attuale: {input_prompt['runcount']}): ",
+            style="bold",
+        )
+        text.append(f"{input_prompt['buffer']}_", style="bold cyan")
+        text.append("   [Invio] conferma   [Esc] annulla ")
+    elif pending_confirm:
         text.append(
             f" Confermi {pending_confirm.upper()}? premi 'y' per confermare, "
             f"qualsiasi altro tasto per annullare ",
@@ -635,7 +692,7 @@ def build_footer(pending_confirm, status_message):
     return Panel(text)
 
 
-def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message, container_status):
+def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message, container_status, input_prompt):
     """Assembla l'intero albero di Layout per il frame corrente. Racchiuso
     dal chiamante in try/except: un errore di rendering (es. terminale
     troppo piccolo) non deve mai far crashare il monitor."""
@@ -661,7 +718,7 @@ def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm
     layout["midrow"]["counters"].update(build_counters(state))
     layout["registro"].update(build_registro(rows))
     layout["logtail"].update(build_logtail(log_lines, log_path))
-    layout["footer"].update(build_footer(pending_confirm, status_message))
+    layout["footer"].update(build_footer(pending_confirm, status_message, input_prompt))
     return layout
 
 
@@ -807,6 +864,13 @@ def main():
     status_message = None
     status_message_until = 0.0
 
+    # Sotto-flusso del tasto 'a': dopo la conferma y/n si entra in modalita'
+    # di inserimento numerico per MAX_RUNS, che intercetta i tasti al posto
+    # del dispatch normale finche' non si preme Invio o Esc.
+    input_mode = None  # None | "max_runs"
+    input_buffer = ""
+    input_runcount = 0
+
     last_refresh = 0.0
     last_docker_poll = 0.0
     state = None
@@ -826,9 +890,16 @@ def main():
 
     def render():
         try:
+            input_prompt = None
+            if input_mode == "max_runs":
+                input_prompt = {
+                    "buffer": input_buffer,
+                    "default": default_max_runs(),
+                    "runcount": input_runcount,
+                }
             return build_layout(
                 state, roadmap_info, rows, log_lines, log_path,
-                pending_confirm, status_message, container_status,
+                pending_confirm, status_message, container_status, input_prompt,
             )
         except Exception as e:  # noqa: BLE001 - il rendering non deve mai crashare la TUI
             return fallback_layout(str(e))
@@ -863,7 +934,34 @@ def main():
 
                 redraw = False
 
-                if pending_confirm is not None:
+                if input_mode == "max_runs":
+                    # Modalita' esclusiva: finche' si sta digitando MAX_RUNS,
+                    # nessun altro tasto (p/s/k/l/q/a) viene interpretato.
+                    if key == "\x1b":  # Esc: annulla senza avviare nulla
+                        input_mode = None
+                        input_buffer = ""
+                        status_message = "avvio annullato"
+                        status_message_until = time.monotonic() + 3.0
+                    elif key in ("\r", "\n"):  # Invio: valida e conferma
+                        ok, value = parse_max_runs(input_buffer, default_max_runs())
+                        if ok:
+                            _, msg = start_loop(value)
+                            status_message = msg
+                            container_status = check_container_running()
+                            last_docker_poll = time.monotonic()
+                        else:
+                            status_message = "MAX_RUNS non valido (1-999), avvio annullato"
+                        status_message_until = time.monotonic() + 6.0
+                        input_mode = None
+                        input_buffer = ""
+                    elif key in ("\x7f", "\x08"):  # backspace/DEL: corregge
+                        input_buffer = input_buffer[:-1]
+                    elif key.isdigit() and len(input_buffer) < 3:
+                        input_buffer += key
+                    # qualunque altro tasto durante l'inserimento viene
+                    # ignorato: mai crash, mai azioni accidentali a meta' digitazione
+                    redraw = True
+                elif pending_confirm is not None:
                     if key.lower() == "y":
                         if pending_confirm == "kill":
                             ok = write_control("KILL")
@@ -872,11 +970,11 @@ def main():
                         elif pending_confirm == "quit":
                             break
                         elif pending_confirm == "avvia":
-                            ok, msg = start_loop()
-                            container_status = check_container_running()
-                            last_docker_poll = time.monotonic()
-                            status_message = msg
-                            status_message_until = time.monotonic() + 6.0
+                            # Conferma ricevuta: prima di lanciare docker si
+                            # chiede MAX_RUNS a schermo (vedi input_mode sopra).
+                            input_mode = "max_runs"
+                            input_buffer = ""
+                            input_runcount = read_runcount()
                     pending_confirm = None
                     redraw = True
                 else:
