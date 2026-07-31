@@ -68,6 +68,34 @@ export function buildCancelloState(img, quando = new Date().toISOString()) {
 }
 
 /**
+ * Campo `freschezza` da esporre in /health: dice se l'ULTIMA generazione di
+ * un flusso è di oggi, non solo se il collaudo (cancello) ha misurato
+ * qualcosa — un flusso può avere cancello "ok" da giorni e non girare più.
+ *
+ * `oggi` arriva dal chiamante (`todayKey()`, fuso Europe/Rome di CONFIG) e
+ * non da `new Date()` qui dentro: la funzione resta pura e testabile, come
+ * `buildCancelloState` qui sopra.
+ *
+ * Nessun numero inventato: `lastDate` mancante o non riconoscibile come
+ * `YYYY-MM-DD` (stato mai scritto, o KV vecchio/corrotto) dà
+ * `giorniDiRitardo: null`, mai 0 o un numero a caso — stesso principio di
+ * `giornoRicostruito` qui sotto per i giorni non ricostruibili onestamente.
+ */
+export function buildFreschezzaState(state, oggi) {
+  const ultimaData = state?.lastDate ?? null;
+  if (typeof ultimaData !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(ultimaData)) {
+    return { ultimaData: null, aggiornato: false, giorniDiRitardo: null };
+  }
+  // Mezzogiorno UTC su entrambe le date, come regenDay: evita che un cambio
+  // di fuso sposti la differenza di un giorno.
+  const giorni = Math.floor(
+    (Date.parse(oggi + "T12:00:00Z") - Date.parse(ultimaData + "T12:00:00Z")) / 86400000
+  );
+  const giorniDiRitardo = Math.max(0, giorni);
+  return { ultimaData, aggiornato: giorniDiRitardo === 0, giorniDiRitardo };
+}
+
+/**
  * Canali storici a tema fisso (vedi CONTRATTO): prima della carta d'identità,
  * ogni giorno di questi canali era sempre la stessa coppia concept×element —
  * è l'unico caso in cui ricostruirla a posteriori è ONESTO. Tappa, misure,

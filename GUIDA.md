@@ -249,7 +249,7 @@ il sito e lo strumento di tuning in sola lettura.
 | `GET /lab/img?run=&n=` | serve un'immagine di prova del Lab |
 | `GET /api/channels[?all=1]` *(pubblico)* | stato dei canali attivi, incluso `famiglie` per canale; con `all=1` anche i canali storici, marcati `storico:true` |
 | `GET /api/archive/<canale>[?limit=]` *(pubblico)* | date + carta d'identità del canale; `limit` fino a 400 (default 60) |
-| `GET /health` *(pubblico)* | per flusso: `id`, `famiglie`, `concepts`, `cancello` dell'ultima esecuzione; più `misuratore` (booleano, binding Images disponibile) |
+| `GET /health` *(pubblico)* | per flusso: `id`, `famiglie`, `concepts`, `cancello` dell'ultima esecuzione, `freschezza` (`ultimaData`, `aggiornato`, `giorniDiRitardo` rispetto a oggi); più `flussiFermi` (numero di flussi con `freschezza.aggiornato:false`) e `misuratore` (booleano, binding Images disponibile) |
 | `GET /w/<flusso>[.jpg\|.png][?date=\|?v=]` *(pubblico)* | immagine del giorno per la lock screen; il corpo è **sempre** byte immagine, **mai** JSON — se il canale non ha ancora generato nulla o `?date=` non esiste, risponde con il placeholder statico |
 | `GET /s/<flusso>[-base].shortcut` *(pubblico)* | Shortcut firmata da installare (variante principale o base, vedi [2.7](#27-le-shortcut-firmate)) |
 
