@@ -15,7 +15,8 @@ COSA FA
     stato generale (esecuzione/attesa quota/pausa/fermo), pipeline degli
     stadi PLAN→EXEC→VERIFY con il modello in uso, riquadro deploy, avanzamento
     roadmap, contatori degli esiti, le ultime righe del registro
-    (IMPROVEMENTS.md) e la coda del log dello stadio corrente.
+    (IMPROVEMENTS.md), la coda del log dello stadio corrente e se il
+    container docker del loop è attivo (poll ogni ~10s).
 
     Legge SOLO questi file (mai scrive, tranne il file CONTROL):
       - logs/state.json          stato strutturato scritto dal loop
@@ -27,6 +28,12 @@ COSA FA
     mostra un placeholder e non si interrompe mai.
 
 TASTI (non bloccanti; attivi solo se il terminale è una TTY)
+    a  AVVIA il loop in un container docker detached (`docker run ...
+       artipop-loop`), con conferma y/n; se il container e' gia' in
+       esecuzione mostra solo un avviso e non fa nulla. Prima dell'avvio
+       svuota il file CONTROL (un PAUSE/STOP residuo dai test bloccherebbe
+       subito il loop appena partito). Ricorda: la TUI NON gestisce
+       `caffeinate`, va lanciato a parte in un altro terminale.
     p  scrive PAUSE nel file CONTROL (il loop autonomo si mette in pausa)
     s  scrive STOP nel file CONTROL (il loop esce pulito a fine ciclo)
     k  scrive KILL nel file CONTROL, con conferma y/n (il loop fa revert
@@ -35,7 +42,9 @@ TASTI (non bloccanti; attivi solo se il terminale è una TTY)
        sospendendo temporaneamente la Live
     q  esce dalla TUI (il loop autonomo NON viene toccato), con conferma
 
-    La TUI scrive ESCLUSIVAMENTE nel file CONTROL. Non esegue mai comandi
+    La TUI scrive ESCLUSIVAMENTE nel file CONTROL (piu' l'unico comando
+    esterno esplicitamente concesso: `docker run` per avviare il loop col
+    tasto 'a', e `docker ps` per rilevarne lo stato). Non esegue mai comandi
     git/wrangler/rete e non modifica nessun altro file del repo.
 
 DIPENDENZE
@@ -109,18 +118,30 @@ CONTROL_FILE = REPO_DIR / "CONTROL"
 
 REFRESH_INTERVAL = 2.0  # secondi, come da contratto
 KEY_POLL_INTERVAL = 0.15  # granularita' di risposta ai tasti
+DOCKER_POLL_INTERVAL = 10.0  # lo stato del container si aggiorna piu' di rado del resto
 
 STAGE_ORDER = [("plan", "PLAN"), ("exec", "EXEC"), ("verify", "VERIFY")]
 
+# Palette: SOLO colori saturi con significato semantico (verde=ok/FATTO,
+# rosso=errori/FALLITO, giallo=attesa/warning, magenta=fable/BLOCCATO,
+# cyan=info/deploy). Mai grigi tenui/dim ne' bianco/nero hardcoded sul testo
+# normale: gli esiti "neutri" (DUPLICATO/SCARTATO -> colore None) usano il
+# colore di default del terminale, cosi' restano leggibili sia su sfondo
+# chiaro sia scuro. Le uniche eccezioni sono i badge a due toni con sfondo
+# ESPLICITO e saturo (es. FABLE bianco-su-magenta): li' il contrasto e'
+# garantito dallo sfondo stesso, non dal tema del terminale.
 COUNTER_KEYS = [
     ("FATTO", "FATTO", "green"),
-    ("DUPLICATO", "DUPLICATO", "grey62"),
-    ("SCARTATO", "SCARTATO", "grey62"),
+    ("DUPLICATO", "DUPLICATO", None),
+    ("SCARTATO", "SCARTATO", None),
     ("FALLITO_EXEC", "FALLITO(EXEC)", "red"),
     ("FALLITO_VERIFY", "FALLITO(VERIFY)", "red"),
     ("FALLITO_DEPLOY", "FALLITO(DEPLOY)", "red"),
     ("BLOCCATO", "BLOCCATO", "magenta"),
 ]
+
+DOCKER_CONTAINER_NAME = "artipop-loop"
+DOCKER_IMAGE = "artipop-loop"
 
 MILESTONE_RE = re.compile(r"^###\s+M\d+.*·\s*(APERTA|FATTA|BLOCCATA)")
 
@@ -318,10 +339,12 @@ def tail_log_lines(path, max_lines=12, max_chars=200):
 
 def write_control(word):
     """Scrive `word` nel file CONTROL in modo atomico (tmp + os.replace),
-    cosi' il loop non legge mai un contenuto parziale."""
+    cosi' il loop non legge mai un contenuto parziale. `word` puo' essere
+    stringa vuota per svuotare il file (usato prima di avviare il loop)."""
     tmp_path = CONTROL_FILE.parent / f"{CONTROL_FILE.name}.tmp{os.getpid()}"
     try:
-        tmp_path.write_text(word + "\n", encoding="utf-8")
+        content = f"{word}\n" if word else ""
+        tmp_path.write_text(content, encoding="utf-8")
         os.replace(tmp_path, CONTROL_FILE)
         return True
     except OSError:
@@ -330,6 +353,71 @@ def write_control(word):
         except OSError:
             pass
         return False
+
+
+# ==========================================================================
+# Avvio del loop: unica azione esterna concessa oltre a CONTROL. Solo
+# `docker ps` (sola lettura, per il rilevamento di stato) e `docker run`
+# (avvio detached) — mai git/wrangler/rete, mai altri comandi docker.
+# ==========================================================================
+
+def check_container_running(name=DOCKER_CONTAINER_NAME, timeout=3):
+    """Verifica se il container `name` e' attualmente in esecuzione via
+    `docker ps`. Ritorna True/False, oppure None se docker non risponde
+    (comando assente, timeout, errore) — il chiamante mostra '?' in quel caso."""
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}"],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    names = [n.strip() for n in result.stdout.splitlines()]
+    return name in names
+
+
+def start_loop():
+    """Avvia il loop autonomo in un container docker detached. Svuota prima
+    CONTROL (un PAUSE/STOP residuo dai test bloccherebbe il loop appena
+    partito). Ritorna (ok: bool, messaggio: str) per il toast in TUI."""
+    running = check_container_running()
+    if running:
+        return False, "loop gia' in esecuzione"
+    if running is None:
+        return False, "impossibile verificare lo stato di docker (comando non disponibile?)"
+
+    if not write_control(""):
+        return False, "ERRORE: impossibile svuotare CONTROL, avvio annullato"
+
+    home = os.path.expanduser("~")
+    max_runs = os.environ.get("MONITOR_MAX_RUNS", "50")
+    cmd = [
+        "docker", "run", "-d", "--rm", "--name", DOCKER_CONTAINER_NAME,
+        "-v", f"{REPO_DIR}:/work",
+        "-v", "artipop-nm-root:/work/node_modules",
+        "-v", "artipop-nm-backend:/work/backend/node_modules",
+        "-v", f"{home}/.claude:/root/.claude",
+        "-v", f"{home}/.claude.json:/root/.claude.json",
+        "-v", f"{home}/Library/Preferences/.wrangler:/root/.config/.wrangler",
+        "--env-file", f"{home}/.artipop-loop.env",
+        "--dns", "1.1.1.1", "--dns", "8.8.8.8",
+        "-e", "IS_SANDBOX=1",
+        "-e", f"MAX_RUNS={max_runs}",
+        DOCKER_IMAGE,
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as e:
+        return False, f"ERRORE avvio docker: {e}"
+    if result.returncode != 0:
+        err_lines = (result.stderr or result.stdout or "errore sconosciuto").strip().splitlines()
+        err_msg = err_lines[-1] if err_lines else "errore sconosciuto"
+        return False, f"ERRORE avvio: {err_msg[:120]}"
+
+    container_id = result.stdout.strip()[:12] or "?"
+    return True, f"loop avviato ({container_id}) — ricorda 'caffeinate -s' in un altro terminale"
 
 
 # ==========================================================================
@@ -390,24 +478,27 @@ def status_info(state):
         return "PAUSA", "blue"
     if stage in ("idle", "stopped"):
         return "FERMO", "red"
-    return f"STATO SCONOSCIUTO ({stage})", "white"
+    return f"STATO SCONOSCIUTO ({stage})", "yellow"
 
 
 def esito_style(esito):
+    """Colore semantico per un esito, o None per il colore di default del
+    terminale (mai grigio: gli esiti 'neutri' come DUPLICATO/SCARTATO non
+    hanno un colore proprio nella palette)."""
     if esito == "FATTO":
         return "green"
     if esito.startswith("FALLITO"):
         return "red"
     if esito == "BLOCCATO":
         return "magenta"
-    return "grey62"
+    return None
 
 
 # ==========================================================================
 # Costruzione dei pannelli rich
 # ==========================================================================
 
-def build_header(state):
+def build_header(state, container_status):
     label, color = status_info(state)
     if state is None:
         run_txt, uptime_txt, countdown_txt = "—/—", "—", "—"
@@ -417,10 +508,17 @@ def build_header(state):
         countdown_txt = format_countdown(state.get("next_retry_at"))
 
     text = Text()
-    text.append(" ArtiPop v3 ", style="bold white on grey27")
-    text.append("  monitor autonomo   ", style="dim")
+    text.append(" ArtiPop v3 ", style="bold")
+    text.append("  monitor autonomo   ")
     text.append(f" {label} ", style=f"bold white on {color}")
     text.append(f"   run {run_txt}   uptime {uptime_txt}   next_retry {countdown_txt}")
+    text.append("   container: ")
+    if container_status is True:
+        text.append("● attivo", style="bold green")
+    elif container_status is False:
+        text.append("○ spento", style="bold")
+    else:
+        text.append("? container", style="bold yellow")
     return Panel(text, border_style=color)
 
 
@@ -432,19 +530,19 @@ def build_stages(state):
     combined = Text()
     for i, (key, label) in enumerate(STAGE_ORDER):
         if i > 0:
-            combined.append("   →   ", style="dim")
+            combined.append("   →   ")
         if key == "plan":
             model = stage_model if (stage == "plan" and stage_model) else "opus"
         else:
             model = "sonnet"  # Executor e Verifier sono sempre sonnet, mai escalation
         active = stage == key
-        style = "bold black on cyan" if active else "dim"
+        style = "bold black on cyan" if active else None
         combined.append(f" {label}·{model} ", style=style)
         if key == "plan" and model == "fable":
             combined.append(" FABLE ", style="bold white on magenta")
 
     subtitle = f"escalation fable finora: {fable_escalations}" if state else None
-    return Panel(combined, title="Pipeline", border_style="grey50", subtitle=subtitle)
+    return Panel(combined, title="Pipeline", subtitle=subtitle)
 
 
 def build_deploy(state):
@@ -453,14 +551,14 @@ def build_deploy(state):
     url = d.get("url") or "—"
     smoke = d.get("smoke") or "—"
     ts = d.get("ts") or "—"
-    smoke_style = {"ok": "bold green", "fail": "bold red"}.get(smoke, "grey62")
+    smoke_style = {"ok": "bold green", "fail": "bold red"}.get(smoke)
 
     body = Text()
-    body.append("versione: ", style="dim"); body.append(f"{version}\n")
-    body.append("url: ", style="dim"); body.append(f"{url}\n")
-    body.append("smoke: ", style="dim"); body.append(f"{smoke}\n", style=smoke_style)
-    body.append("ultimo deploy: ", style="dim"); body.append(f"{ts}")
-    return Panel(body, title="Deploy", border_style="grey50")
+    body.append("versione: "); body.append(f"{version}\n")
+    body.append("url: "); body.append(f"{url}\n")
+    body.append("smoke: "); body.append(f"{smoke}\n", style=smoke_style)
+    body.append("ultimo deploy: "); body.append(f"{ts}")
+    return Panel(body, title="Deploy")
 
 
 def build_roadmap(roadmap_info):
@@ -470,12 +568,12 @@ def build_roadmap(roadmap_info):
     filled = int(round(bar_width * ratio))
     bar = "█" * filled + "░" * (bar_width - filled)
 
-    mode_style = "bold cyan" if mode == "BUILD" else ("bold yellow" if mode == "POLISH" else "grey62")
+    mode_style = "bold cyan" if mode else None
     body = Text()
-    body.append("modalita': ", style="dim")
+    body.append("modalita': ")
     body.append(f"{mode or '—'}\n", style=mode_style)
     body.append(f"{bar}  {done}/{total or 0}")
-    return Panel(body, title="Roadmap", border_style="grey50")
+    return Panel(body, title="Roadmap")
 
 
 def build_counters(state):
@@ -485,22 +583,25 @@ def build_counters(state):
     table.add_column(justify="right")
     for key, label, color in COUNTER_KEYS:
         value = counters.get(key, 0)
-        table.add_row(Text(label, style=color), Text(str(value), style=f"bold {color}"))
-    return Panel(table, title="Contatori esiti", border_style="grey50")
+        label_style = color
+        value_style = f"bold {color}" if color else "bold"
+        table.add_row(Text(label, style=label_style), Text(str(value), style=value_style))
+    return Panel(table, title="Contatori esiti")
 
 
 def build_registro(rows):
-    table = Table(expand=True, border_style="grey50", title="Ultime righe registro (IMPROVEMENTS.md)")
+    table = Table(expand=True, title="Ultime righe registro (IMPROVEMENTS.md)")
     for col in ("data", "tipo", "area", "obiettivo", "planner", "esito", "deploy"):
         table.add_column(col, overflow="fold")
     if not rows:
         table.add_row("—", "—", "—", "nessuna riga in IMPROVEMENTS.md", "—", "—", "—")
     else:
         for r in rows:
-            style = esito_style(r["esito"])
+            color = esito_style(r["esito"])
+            esito_display_style = f"bold {color}" if color else "bold"
             table.add_row(
                 r["data"], r["tipo"], r["area"], r["obiettivo"], r["planner"],
-                Text(r["esito"], style=f"bold {style}"), r["deploy"],
+                Text(r["esito"], style=esito_display_style), r["deploy"],
             )
     return table
 
@@ -511,10 +612,10 @@ def build_logtail(lines, log_path):
     else:
         title = "Tail log stadio"
     if not lines:
-        body = Text("nessun log disponibile per lo stadio corrente", style="dim italic")
+        body = Text("nessun log disponibile per lo stadio corrente", style="italic")
     else:
         body = Text("\n".join(lines))
-    return Panel(body, title=title, border_style="grey50")
+    return Panel(body, title=title)
 
 
 def build_footer(pending_confirm, status_message):
@@ -529,13 +630,12 @@ def build_footer(pending_confirm, status_message):
         text.append(f" {status_message} ", style="bold black on green")
     else:
         text.append(
-            " [p] pausa   [s] stop   [k] kill   [l] log completo   [q] esci ",
-            style="dim",
+            " [a] avvia   [p] pausa   [s] stop   [k] kill   [l] log completo   [q] esci "
         )
-    return Panel(text, border_style="grey50")
+    return Panel(text)
 
 
-def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message):
+def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message, container_status):
     """Assembla l'intero albero di Layout per il frame corrente. Racchiuso
     dal chiamante in try/except: un errore di rendering (es. terminale
     troppo piccolo) non deve mai far crashare il monitor."""
@@ -554,7 +654,7 @@ def build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm
         Layout(name="counters"),
     )
 
-    layout["header"].update(build_header(state))
+    layout["header"].update(build_header(state, container_status))
     layout["stages"].update(build_stages(state))
     layout["midrow"]["deploy"].update(build_deploy(state))
     layout["midrow"]["roadmap"].update(build_roadmap(roadmap_info))
@@ -703,16 +803,18 @@ def main():
     console = Console()
     key_reader = KeyReader()
 
-    pending_confirm = None  # None | "kill" | "quit"
+    pending_confirm = None  # None | "kill" | "quit" | "avvia"
     status_message = None
     status_message_until = 0.0
 
     last_refresh = 0.0
+    last_docker_poll = 0.0
     state = None
     roadmap_info = {"mode": None, "done": 0, "total": 0}
     rows = []
     log_lines = []
     log_path = None
+    container_status = None  # True=attivo, False=spento, None=sconosciuto ('?')
 
     def refresh_data():
         nonlocal state, roadmap_info, rows, log_lines, log_path
@@ -722,15 +824,22 @@ def main():
         log_path = current_stage_log_path(state) or fallback_latest_log()
         log_lines = tail_log_lines(log_path)
 
+    def render():
+        try:
+            return build_layout(
+                state, roadmap_info, rows, log_lines, log_path,
+                pending_confirm, status_message, container_status,
+            )
+        except Exception as e:  # noqa: BLE001 - il rendering non deve mai crashare la TUI
+            return fallback_layout(str(e))
+
     refresh_data()
+    container_status = check_container_running()
+    last_docker_poll = time.monotonic()
 
     try:
         with Live(console=console, screen=True, refresh_per_second=4, transient=False) as live:
-            try:
-                layout = build_layout(state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message)
-            except Exception as e:  # noqa: BLE001 - il rendering non deve mai crashare la TUI
-                layout = fallback_layout(str(e))
-            live.update(layout)
+            live.update(render())
 
             while True:
                 now = time.monotonic()
@@ -741,13 +850,12 @@ def main():
                 if now - last_refresh >= REFRESH_INTERVAL:
                     refresh_data()
                     last_refresh = now
-                    try:
-                        layout = build_layout(
-                            state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message
-                        )
-                        live.update(layout)
-                    except Exception as e:  # noqa: BLE001
-                        live.update(fallback_layout(str(e)))
+                    live.update(render())
+
+                if now - last_docker_poll >= DOCKER_POLL_INTERVAL:
+                    container_status = check_container_running()
+                    last_docker_poll = now
+                    live.update(render())
 
                 key = key_reader.poll()
                 if key is None:
@@ -760,13 +868,26 @@ def main():
                         if pending_confirm == "kill":
                             ok = write_control("KILL")
                             status_message = "KILL inviato al loop" if ok else "ERRORE: impossibile scrivere CONTROL"
+                            status_message_until = time.monotonic() + 3.0
                         elif pending_confirm == "quit":
                             break
-                        status_message_until = time.monotonic() + 3.0
+                        elif pending_confirm == "avvia":
+                            ok, msg = start_loop()
+                            container_status = check_container_running()
+                            last_docker_poll = time.monotonic()
+                            status_message = msg
+                            status_message_until = time.monotonic() + 6.0
                     pending_confirm = None
                     redraw = True
                 else:
-                    if key == "p":
+                    if key == "a":
+                        if container_status is True:
+                            status_message = "loop gia' in esecuzione"
+                            status_message_until = time.monotonic() + 3.0
+                        else:
+                            pending_confirm = "avvia"
+                        redraw = True
+                    elif key == "p":
                         ok = write_control("PAUSE")
                         status_message = "PAUSE inviato al loop" if ok else "ERRORE: impossibile scrivere CONTROL"
                         status_message_until = time.monotonic() + 3.0
@@ -790,13 +911,7 @@ def main():
                         redraw = True
 
                 if redraw:
-                    try:
-                        layout = build_layout(
-                            state, roadmap_info, rows, log_lines, log_path, pending_confirm, status_message
-                        )
-                        live.update(layout)
-                    except Exception as e:  # noqa: BLE001
-                        live.update(fallback_layout(str(e)))
+                    live.update(render())
     except KeyboardInterrupt:
         pass
     finally:
