@@ -55,6 +55,7 @@ caffeinate -s docker run -it --rm \
   -v "$HOME/Library/Preferences/.wrangler:/root/.config/.wrangler" \
   --env-file "$HOME/.artipop-loop.env" \
   --dns 1.1.1.1 --dns 8.8.8.8 \
+  -e IS_SANDBOX=1 \
   -e MAX_RUNS=20 \
   artipop-loop
 ```
