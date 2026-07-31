@@ -153,6 +153,70 @@ function esc(s) {
   })[c]);
 }
 
+/**
+ * Pagina 404 per `/s/<flusso>.shortcut` quando il file non è (ancora) in KV —
+ * stesso `<head>`, stack font e token colore di `renderHelpPage()` (M6/
+ * VISUAL_SPECS §2), così non nasce una seconda spec visiva da mantenere.
+ * I link di download sono presi da `ACTIVE_CHANNELS`, mai scritti a mano: se
+ * un flusso viene ritirato o aggiunto, questa pagina si aggiorna da sola.
+ */
+export function renderShortcutMancante(flusso) {
+  const link = ACTIVE_CHANNELS.map(
+    (c) => `<li><a href="/s/${esc(c.id)}.shortcut">${esc(c.name)}</a></li>`
+  ).join("");
+
+  return `<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ArtiPop — Shortcut non disponibile</title>
+<meta name="theme-color" content="#0a0b10" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 20px 80px;
+    background: #0a0b10; color: #f2f3f8;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  a { color: #8fd3ff; }
+  header { padding: 48px 0 24px; }
+  .back { display: inline-block; margin-bottom: 20px; font-size: .92rem; text-decoration: none; opacity: .8; }
+  .back:hover { opacity: 1; }
+  h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
+  .sub { margin: 0; color: #9aa3b8; }
+  h2 { margin: 44px 0 14px; font-size: 1.15rem; letter-spacing: .01em; }
+  ul.flussi { list-style: none; margin: 0; padding: 0; }
+  ul.flussi li {
+    border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
+    background: rgba(255,255,255,.03); margin-bottom: 10px;
+  }
+  ul.flussi a { display: block; padding: 16px 18px; font-weight: 600; text-decoration: none; }
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <a class="back" href="/">← torna ad ArtiPop</a>
+    <h1>Shortcut non disponibile</h1>
+    <p class="sub">La Shortcut per «${esc(flusso)}» non è disponibile in questo momento. Prova
+      uno dei flussi attivi qui sotto, oppure consulta la pagina di aiuto.</p>
+  </header>
+
+  <h2>Flussi disponibili</h2>
+  <ul class="flussi">${link}</ul>
+
+  <footer>
+    <a href="/aiuto">Vai alla pagina di aiuto</a> · <a href="/">Home</a>
+  </footer>
+</main>
+</body>
+</html>`;
+}
+
 /** Pagina /aiuto completa (HTML autoconsistente, nessuna risorsa esterna). */
 export function renderHelpPage() {
   const problemi = PROBLEMI.map(
