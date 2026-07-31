@@ -163,7 +163,10 @@ loop_await_control_gate() {
 # ---------------------------------------------------------------------------
 
 # _launch_stage_process <role_file> <model> <max_turns> <timeout_s> <out> <err>
-# Avvia claude in background (dentro `timeout`) e stampa il PID.
+# Avvia claude in background (dentro `timeout`) e mette il PID in STAGE_PID.
+# ATTENZIONE: niente command substitution qui — il job in background deve
+# nascere come figlio della shell che poi farà `wait`, altrimenti `wait`
+# risponde 127 ("not a child of this shell") qualunque cosa faccia claude.
 _launch_stage_process() {
     local role_file="$1" model="$2" max_turns="$3" timeout_s="$4" out_file="$5" err_file="$6"
     local prompt
@@ -173,12 +176,15 @@ _launch_stage_process() {
         timeout "$timeout_s" claude -p "$prompt" --model "$model" --max-turns "$max_turns" \
             --dangerously-skip-permissions
     ) >>"$out_file" 2>>"$err_file" &
-    echo $!
+    STAGE_PID=$!
 }
 
 # _wait_stage_or_kill <pid> — poll ogni 5s: se compare KILL in CONTROL,
-# termina il processo (TERM, poi KILL dopo una breve grazia) e stampa
-# "KILLED"; altrimenti attende la fine naturale e stampa il suo exit code.
+# termina il processo (TERM, poi KILL dopo una breve grazia) e mette
+# "KILLED" in STAGE_WAIT_RESULT; altrimenti attende la fine naturale e vi
+# mette il suo exit code. Stesso vincolo di _launch_stage_process: niente
+# command substitution attorno a questa funzione — `wait` funziona solo
+# nella shell madre del processo lanciato.
 _wait_stage_or_kill() {
     local pid="$1" killed=0
     while kill -0 "$pid" 2>/dev/null; do
@@ -198,9 +204,9 @@ _wait_stage_or_kill() {
     wait "$pid" 2>/dev/null
     local rc=$?
     if (( killed == 1 )); then
-        printf 'KILLED'
+        STAGE_WAIT_RESULT='KILLED'
     else
-        printf '%d' "$rc"
+        STAGE_WAIT_RESULT="$rc"
     fi
 }
 
@@ -235,8 +241,10 @@ run_stage() {
         state_set stage_model "$model"
 
         local pid result
-        pid=$(_launch_stage_process "$role_file" "$model" "$max_turns" "$timeout_s" "$out_file" "$err_file")
-        result=$(_wait_stage_or_kill "$pid")
+        _launch_stage_process "$role_file" "$model" "$max_turns" "$timeout_s" "$out_file" "$err_file"
+        pid="$STAGE_PID"
+        _wait_stage_or_kill "$pid"
+        result="$STAGE_WAIT_RESULT"
 
         if [[ "$result" == "KILLED" ]]; then
             printf 'KILLED'
