@@ -109,7 +109,9 @@ a metà: v. Troubleshooting sotto.
 ## Lettura della TUI (`monitor.py`, fuori dal container)
 Via facilissima: doppio click su **"ArtiPop Monitor.app"** sulla Scrivania (apre il Terminale
 con la TUI). Per rigenerarla se sparisce:
-`osacompile -o ~/Desktop/"ArtiPop Monitor.app" <(echo 'tell app "Terminal" to do script "exec '"'"'/Users/riccardo/Developer/Python/ArtiPop/ArtiPop v3/monitor.command'"'"'"')`
+`echo 'do shell script "open -a Terminal '"'"'/Users/riccardo/Developer/Python/ArtiPop/ArtiPop v3/monitor.command'"'"'"' | osacompile -o ~/Desktop/"ArtiPop Monitor.app" -`
+(usa `open -a Terminal`, NON `tell application "Terminal"`: gli Apple Events verso il
+Terminale richiedono permessi di automazione e danno "AppleEvent timed out -1712".)
 Via facile alternativa: doppio click su `monitor.command` dal Finder (o `./monitor.command`).
 Equivalente a mano:
 ```bash
