@@ -188,8 +188,10 @@ export function renderHelpPage() {
   *, *::before, *::after { box-sizing: border-box; }
   body {
     margin: 0; padding: 0 20px 80px;
-    background: #0a0b10; color: #e9e9f0;
-    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    /* M6/VISUAL_SPECS §2: testo primario allineato al token --text del sito (#f2f3f8) */
+    background: #0a0b10; color: #f2f3f8;
+    /* Stack font allineato a quello del sito (page.js): stessi fallback, stesso ordine */
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   main { max-width: 720px; margin: 0 auto; }
@@ -198,7 +200,8 @@ export function renderHelpPage() {
   .back { display: inline-block; margin-bottom: 20px; font-size: .92rem; text-decoration: none; opacity: .8; }
   .back:hover { opacity: 1; }
   h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
-  .sub { margin: 0; opacity: .68; }
+  /* M6: sottotitolo come testo secondario sul token --dim del sito, non più opacity sul primario */
+  .sub { margin: 0; color: #9aa3b8; }
   h2 { margin: 44px 0 14px; font-size: 1.15rem; letter-spacing: .01em; }
   .item {
     border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
@@ -223,7 +226,8 @@ export function renderHelpPage() {
     background: rgba(255,255,255,.09); padding: 1px 6px; border-radius: 5px;
     font-size: .88em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; opacity: .6; }
+  /* M6: footer come testo secondario sul token --dim del sito, non più opacity sul primario */
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
 </style>
 </head>
 <body>
