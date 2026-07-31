@@ -16,6 +16,22 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-home-non-riscarica-i-wallpaper-a-ogni-sfogliata
+- `backend/src/index.js`: `/w/<flusso>` ora legge anche `?v=<YYYY-MM-DD>` (validato come `?date=`) e
+  lo usa per decidere il `cache-control` dell'immagine di oggi: `public, max-age=3600` quando `v` è
+  presente e valido, invariato `no-store, must-revalidate` altrimenti. Prima l'intero ramo era
+  `no-store` incondizionato — corretto per la Shortcut (deve sempre ricevere il file fresco), ma la
+  home usa lo stesso indirizzo dentro il mockup e ricostruisce il deck a ogni sfogliata: senza cache
+  ogni swipe riscaricava ~0,9 MB per card. Il sito già mandava `?v=<data del meta>` (page.js), solo
+  mai onorato dal worker. I due rami placeholder (canale mai generato, flusso non risolvibile)
+  restano `no-store` anche con `?v=`: un canale vuoto non deve restare placeholder in cache dopo la
+  prima generazione (ROADMAP M4, mai JSON ma anche mai un placeholder stantio).
+- `backend/src/page.js`: commento sopra `<img class="wall">` che dichiara il contratto di `?v=` per
+  chi legge il codice in futuro — nessuna modifica al markup o all'URL prodotto, era già corretto.
+- `backend/tests/integration/w-cache.test.js`: nuovo, copre i tre casi di cache-control (`?v=` valido,
+  nessuna query = Shortcut, `?v=` malformato) più le due regressioni (`?date=` invariato, placeholder
+  su KV vuoto anche con `?v=`).
+
 ## 2026-07-31 — s-rete-di-sicurezza-globale-sul-worker
 - `backend/src/index.js`: l'intero corpo di routing di `fetch()` è ora avvolto in un unico
   try/catch. Prima solo le scritture admin erano protette (`scritturaProtetta`, M3): una lettura

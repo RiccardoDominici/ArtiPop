@@ -435,6 +435,8 @@ export default {
 
       const dateParam = url.searchParams.get("date");
       const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : null;
+      const vParam = url.searchParams.get("v");
+      const v = vParam && /^\d{4}-\d{2}-\d{2}$/.test(vParam) ? vParam : null;
 
       // Con ?date= si legge l'archivio dell'id RICHIESTO: la storia dei vecchi
       // canali resta consultabile per sempre sotto il suo nome. Senza data si
@@ -470,10 +472,20 @@ export default {
         });
       }
 
+      // cache-control a tre vie: l'archivio (?date=) è byte-stabile e si
+      // cachea per sempre; il sito manda ?v=<data del meta> per distinguersi
+      // dalla Shortcut, che chiama lo stesso indirizzo senza query e deve
+      // sempre ricevere il file fresco (mai una cache tra lei e il worker).
+      const cacheControl = date
+        ? "public, max-age=604800, immutable"
+        : v
+          ? "public, max-age=3600"
+          : "no-store, must-revalidate";
+
       return new Response(img.stream, {
         headers: {
           "content-type": img.meta.contentType || "image/png",
-          "cache-control": date ? "public, max-age=604800, immutable" : "no-store, must-revalidate",
+          "cache-control": cacheControl,
           "x-artipop-date": img.meta.date || "",
           "x-artipop-model": img.meta.model || "",
         },
