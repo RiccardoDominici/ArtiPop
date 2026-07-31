@@ -217,6 +217,53 @@ export function renderShortcutMancante(flusso) {
 </html>`;
 }
 
+/**
+ * Pagina 500 per un'eccezione imprevista sulle rotte HTML pubbliche (/, /aiuto,
+ * /s/<flusso>.shortcut) — stesso `<head>`, stack font e token colore di
+ * `renderShortcutMancante()`/`renderHelpPage()` (M6/VISUAL_SPECS §2). Nessun
+ * dettaglio tecnico: solo un messaggio umano e i due link di uscita, mai
+ * `err.message` o uno stack (divieto segreti, vedi CLAUDE.md).
+ */
+export function renderErroreTemporaneo() {
+  return `<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ArtiPop — qualcosa non ha funzionato</title>
+<meta name="theme-color" content="#0a0b10" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 20px 80px;
+    background: #0a0b10; color: #f2f3f8;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  a { color: #8fd3ff; }
+  header { padding: 48px 0 24px; }
+  h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
+  .sub { margin: 0; color: #9aa3b8; }
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Qualcosa non ha funzionato</h1>
+    <p class="sub">Riprova fra qualche minuto: nel frattempo torna alla home o consulta la
+      pagina di aiuto.</p>
+  </header>
+
+  <footer>
+    <a href="/">Home</a> · <a href="/aiuto">Pagina di aiuto</a>
+  </footer>
+</main>
+</body>
+</html>`;
+}
+
 /** Pagina /aiuto completa (HTML autoconsistente, nessuna risorsa esterna). */
 export function renderHelpPage() {
   const problemi = PROBLEMI.map(
