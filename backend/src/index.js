@@ -52,7 +52,7 @@ import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.j
 // index.js resta il router, handlers.js sa come si genera un giorno. Vedi la
 // testa di handlers.js per il perché della separazione.
 import {
-  runChannel, backfillChannel, fanOutAll, regenDay, archivioCanale,
+  runChannel, backfillChannel, fanOutAll, regenDay, archivioCanale, buildFreschezzaState,
 } from "./handlers.js";
 
 /** Confronto della chiave admin (query ?key= oppure header x-artipop-key). */
@@ -708,12 +708,20 @@ export default {
       // così il cancello disattivato (impronte null, IMAGES assente/rotto) è
       // visibile senza `wrangler tail`.
       const states = await Promise.all(ACTIVE_CHANNELS.map((c) => getState(env, c.id)));
+      // `freschezza` (accanto a `cancello`, stesso spirito): il cancello dice
+      // se l'ultima esecuzione ha misurato, freschezza dice se l'ultima
+      // esecuzione è di OGGI — un flusso può avere entrambe "ok" e cancello
+      // "ok" da giorni senza che nessuno se ne accorga (vedi PLAN.md).
+      const oggi = todayKey();
+      const flussi = ACTIVE_CHANNELS.map((c, i) => ({
+        id: c.id, famiglie: c.famiglie, concepts: poolForWith(c, catalog).length,
+        cancello: states[i]?.cancello ?? null,
+        freschezza: buildFreschezzaState(states[i], oggi),
+      }));
       return json({
         ok: true,
-        flussi: ACTIVE_CHANNELS.map((c, i) => ({
-          id: c.id, famiglie: c.famiglie, concepts: poolForWith(c, catalog).length,
-          cancello: states[i]?.cancello ?? null,
-        })),
+        flussi,
+        flussiFermi: flussi.filter((f) => !f.freschezza.aggiornato).length,
         misuratore: Boolean(env.IMAGES),
       });
     }

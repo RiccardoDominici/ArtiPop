@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-07-31 — s-health-dice-se-un-flusso-e-fermo
+- `backend/src/handlers.js`: nuova `buildFreschezzaState(state, oggi)`, funzione pura accanto a
+  `buildCancelloState` — confronta `state.lastDate` con `oggi` (mezzogiorno UTC su entrambe le
+  date, come già fa `regenDay`) e ritorna `{ ultimaData, aggiornato, giorniDiRitardo }`; mai un
+  numero inventato se `lastDate` manca o non è una data riconoscibile.
+- `backend/src/index.js`, rotta `/health`: ogni flusso espone ora anche `freschezza`, più
+  `flussiFermi` (numero di flussi con `aggiornato:false`) al livello superiore. Prima `cancello`
+  diceva solo se l'ultimo collaudo aveva misurato qualcosa — non se l'ultima generazione era di
+  oggi: un flusso poteva essere fermo da giorni senza che comparisse da nessuna parte se non
+  guardando la home o `wrangler tail` (CLAUDE.md, principio 3: robustezza).
+- `GUIDA.md`: aggiornata la riga `GET /health` con i due campi nuovi.
+- Nuovi test in `backend/tests/integration/health-ritardo.test.js` (stato preseminato in KV,
+  nessuna generazione AI — budget 0/10 di questo ciclo).
+
 ## 2026-07-31 — s-guida-e-readme-allineati-al-comportamento-reale
 - `README.md`: corretto "~500 neuroni/giorno" in "~600-900 neuroni/giorno" (3 canali, di più nei
   giorni di cambio base) — dato già misurato e registrato in `backend/README.md`, mai propagato al
