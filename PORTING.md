@@ -5,6 +5,16 @@ refactorato per la portabilità — questo file salva le informazioni chiave per
 futuro senza riscoprire nulla. Fotografa lo stato al momento del setup: prima di usarla,
 verificare che i punti citati esistano ancora.
 
+**COSA si porterà (decisione di Riccardo, 2026-07-31): il modulo riusabile è la fase
+POLISH** — il motore che cerca da solo miglioramenti guidato dai quattro principi
+(utilizzabilità → bellezza-come-spec → robustezza → essenzialità), con deduplica a tre
+controlli, verifica indipendente, deploy e stop-di-successo. La fase BUILD (ROADMAP a
+milestone concordate) è considerata specifica del singolo progetto: in un port si può
+NON portare, o ricreare da zero per il nuovo progetto. Implicazione pratica: nel motore,
+la meccanica milestone (roadmap_mode/roadmap_first_open_milestone/slug `mX-`/marcatura
+FATTA-BLOCCATA) è separabile — POLISH ne dipende solo per il bivio "c'è una milestone
+APERTA?", che in un port POLISH-only si forza a POLISH fisso.
+
 ## Architettura a due strati (già rispettata dal codice)
 
 **MOTORE — portabile così com'è, zero logica ArtiPop:**
@@ -45,12 +55,17 @@ verificare che i punti citati esistano ancora.
 
 ## Refactor proposto quando si farà davvero (stimato: un ciclo di lavoro)
 
-Un unico `loop.config` (bash sourcabile + letto da monitor.py) con:
-`PROJECT_NAME` (titoli ntfy) · `NTFY_TOPIC` (oggi hardcoded `riccardo-claude` in
-loop-lib.sh:ntfy()) · `TEST_CMD` · `DOCKER_IMAGE` · `VOLUME_PREFIX` · path repo per il
-docker-run della TUI · default `MAX_RUNS`/`QUOTA_MARGIN_PCT` · path dei tre adattatori.
-Poi: sed dei titoli ntfy nel motore → `$PROJECT_NAME`, blocco docker-run di monitor.py
-parametrizzato, AUTOLOOP rigenerato.
+Obiettivo del refactor: estrarre il **motore POLISH** riusabile. Un unico `loop.config`
+(bash sourcabile + letto da monitor.py) con: `PROJECT_NAME` (titoli ntfy) · `NTFY_TOPIC`
+(oggi hardcoded `riccardo-claude` in loop-lib.sh:ntfy()) · `TEST_CMD` · `DOCKER_IMAGE` ·
+`VOLUME_PREFIX` · path repo per il docker-run della TUI · default `MAX_RUNS`/
+`QUOTA_MARGIN_PCT` · `MODE=POLISH|AUTO` (POLISH fisso per i port senza roadmap) · path
+dei tre adattatori. Poi: sed dei titoli ntfy nel motore → `$PROJECT_NAME`, blocco
+docker-run di monitor.py parametrizzato, AUTOLOOP rigenerato. La parte BUILD (parsing
+ROADMAP, scelta milestone, marcatura FATTA/BLOCCATA) resta nel motore ma dietro il bivio
+`MODE`: i port POLISH-only non la vedono; ROLE-PLANNER va sdoppiato o parametrizzato
+(la sezione BUILD non ha senso senza ROADMAP). I quattro principi vanno in loop.config o
+in un PRINCIPLES.md per-progetto: sono il cuore di POLISH e cambiano da repo a repo.
 
 ## Lezioni pagate (valgono per qualunque port — non ripagarle)
 
