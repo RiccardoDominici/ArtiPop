@@ -219,11 +219,16 @@ _wait_stage_or_kill() {
     fi
 }
 
-# _classify_stage_error <err_file> — RATE_LIMIT se lo stderr matcha il
-# pattern del contratto, altrimenti ERROR generico.
+# _classify_stage_error <err_file> <out_file> — RATE_LIMIT se stderr O stdout
+# matchano i pattern di quota/limite, altrimenti ERROR generico. Lo stdout va
+# controllato perché claude scrive lì (non su stderr) il limite di spesa
+# mensile ("You've hit your monthly spend limit", visto al ciclo 5): senza
+# questo check la quota esaurita produceva FALLITO spuri invece dell'attesa.
 _classify_stage_error() {
-    local err_file="$1"
-    if [[ -f "$err_file" ]] && grep -qiE 'rate.?limit|usage limit|overloaded' "$err_file" 2>/dev/null; then
+    local err_file="$1" out_file="${2:-}"
+    local pat='rate.?limit|usage limit|overloaded|spend limit|limit reached'
+    if { [[ -f "$err_file" ]] && grep -qiE "$pat" "$err_file" 2>/dev/null; } \
+       || { [[ -n "$out_file" && -f "$out_file" ]] && tail -5 "$out_file" 2>/dev/null | grep -qiE "$pat"; }; then
         printf 'RATE_LIMIT'
     else
         printf 'ERROR'
@@ -266,7 +271,7 @@ run_stage() {
         fi
 
         local kind
-        kind=$(_classify_stage_error "$err_file")
+        kind=$(_classify_stage_error "$err_file" "$out_file")
         if [[ "$kind" == "RATE_LIMIT" ]]; then
             rl_consecutive=$((rl_consecutive + 1))
             generic_attempts=0
@@ -708,6 +713,10 @@ do_cycle() {
     tipo=$(plan_get_tipo "$PLAN_FILE")
     area=$(plan_get_area "$PLAN_FILE")
     file_list=$(plan_get_file "$PLAN_FILE")
+    # Sintesi umana del piano (prima riga della MOTIVAZIONE): accompagna ogni
+    # notifica ntfy dell'esito, così dal telefono si capisce COSA stava cambiando.
+    local sintesi
+    sintesi=$(plan_summary "$PLAN_FILE")
     budget_ai=$(plan_get_budget_ai "$PLAN_FILE")
 
     if [[ -z "$slug" ]]; then
@@ -818,7 +827,7 @@ do_cycle() {
         git_checkout_production_clean; cleanup_cycle_branch "$branch"
         record_result "FALLITO(EXEC)"
         finalize_registry "$run" "$mode" "$area" "$obiettivo_registro" "$file_list" "$planner_model" "FALLITO(EXEC)" "$branch" "-"
-        notify_for_result "FALLITO(EXEC)" "ArtiPop loop: FALLITO(EXEC)" "Ciclo $run '$obiettivo_registro': ${esito_exec#FALLITO(EXEC):}"
+        notify_for_result "FALLITO(EXEC)" "ArtiPop loop: FALLITO(EXEC)" "Ciclo $run '$obiettivo_registro' (${sintesi:-senza sintesi}): ${esito_exec#FALLITO(EXEC):}"
         return 0
     fi
 
@@ -853,7 +862,7 @@ do_cycle() {
         git_checkout_production_clean; cleanup_cycle_branch "$branch"
         record_result "FALLITO(VERIFY)"
         finalize_registry "$run" "$mode" "$area" "$obiettivo_registro" "$file_list" "$planner_model" "FALLITO(VERIFY)" "$branch" "-"
-        notify_for_result "FALLITO(VERIFY)" "ArtiPop loop: FALLITO(VERIFY)" "Ciclo $run '$obiettivo_registro': $reason"
+        notify_for_result "FALLITO(VERIFY)" "ArtiPop loop: FALLITO(VERIFY)" "Ciclo $run '$obiettivo_registro' (${sintesi:-senza sintesi}): $reason"
         return 0
     fi
 
@@ -916,7 +925,7 @@ do_cycle() {
         dep_ver=$(state_get "last_deploy.version")
         dep_url=$(state_get "last_deploy.url")
         finalize_registry "$run" "$mode" "$area" "$obiettivo_registro" "$file_list" "$planner_model" "FATTO" "$branch" "$dep_ver"
-        notify_for_result "FATTO" "ArtiPop loop: FATTO" "Ciclo $run '$obiettivo_registro' completato. Deploy v${dep_ver} — ${dep_url}"
+        notify_for_result "FATTO" "ArtiPop loop: FATTO" "Ciclo $run '$obiettivo_registro' completato: ${sintesi:-senza sintesi}. Deploy v${dep_ver} — ${dep_url}"
 
         if [[ -n "$milestone" ]]; then
             local milestone_status_after

@@ -13,6 +13,10 @@ Vale per Planner, Executor e Verifier del sistema autonomo. Nessuna eccezione.
 - Lettura integrale solo dei file che si intende MODIFICARE.
 - MAI leggere l'albero completo del repo o un file oltre 1500 righe senza un filtro (Grep/offset).
 - `IMPROVEMENTS.md` è l'unico file che si legge sempre per intero: è la memoria del sistema.
+- Margine di contesto: dimensiona il lavoro per usare al massimo il ~90% del contesto della
+  sessione. Se ti avvicini al limite: chiudi PULITO con l'esito corrente (executor: commit
+  completo o revert + `ESITO:`; verifier: `VERDETTO:` sui criteri già verificati), mai un
+  lavoro a metà, mai iniziare un passo nuovo oltre quella soglia.
 
 ## Strategia git
 - `main`: intoccabile da questi ruoli. Solo Riccardo vi fonde manualmente, da fuori del loop.

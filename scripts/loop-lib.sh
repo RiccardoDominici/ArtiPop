@@ -507,6 +507,15 @@ plan_field() {
     printf '%s' "$val"
 }
 
+# plan_summary <file> — prima riga non vuota della MOTIVAZIONE, troncata a 160
+# caratteri: le notifiche ntfy devono dire COSA sta cambiando, non solo lo slug.
+plan_summary() {
+    local file="$1"
+    [[ -f "$file" ]] || { printf ''; return; }
+    awk '/^MOTIVAZIONE:/ { sub(/^MOTIVAZIONE:[[:space:]]*/, ""); if (NF) { print; exit }; trovato=1; next }
+         trovato && NF { print; exit }' "$file" 2>/dev/null | cut -c1-160
+}
+
 plan_get_slug() { plan_field "$1" "OBIETTIVO"; }
 plan_get_tipo() { plan_field "$1" "TIPO"; }
 plan_get_area() { plan_field "$1" "AREA"; }
