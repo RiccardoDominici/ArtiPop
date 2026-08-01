@@ -101,14 +101,14 @@ describe("home — comando 'arco precedente'", () => {
     expect(fnBody).toContain("arcIndexCache[chId] = 0");
   });
 
-  it("updateArcPrev mostra il comando solo se esiste un arco più vecchio oltre l'indice corrente", () => {
-    const fnBody = html.match(/function updateArcPrev\([\s\S]*?\n\}/)[0];
+  it("updateArcNav mostra 'arco precedente' solo se esiste un arco più vecchio oltre l'indice corrente", () => {
+    const fnBody = html.match(/function updateArcNav\([\s\S]*?\n\}/)[0];
     expect(fnBody).toContain("arcPrevEl.hidden = idx >= arcs.length - 1");
   });
 
-  it("renderJourney aggiorna la visibilità del comando ad ogni render", () => {
+  it("renderJourney aggiorna la visibilità dei comandi ad ogni render", () => {
     const fnBody = html.match(/function renderJourney\([\s\S]*?\n\}/)[0];
-    expect(fnBody).toContain("updateArcPrev(chId)");
+    expect(fnBody).toContain("updateArcNav(chId)");
   });
 
   it("goToPreviousArc sostituisce la finestra con l'arco precedente, mai unendola alla corrente, e mostra il giorno più recente del nuovo arco", () => {

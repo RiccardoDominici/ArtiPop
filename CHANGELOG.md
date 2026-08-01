@@ -37,6 +37,24 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
   arco, giorno senza dati in mezzo o prima di un cambio concept) verificato eseguendo davvero
   `computeArcs` estratta dallo script, più i controlli sul markup e sul cablaggio del comando.
 
+## 2026-08-01 — feat-torna-all-arco-in-corso
+- `goToPreviousArc` (ciclo 54) apriva un vicolo cieco: incrementava `arcIndexCache[chId]` e
+  sostituiva `archiveCache[chId]` con l'arco più vecchio, ma nessuna funzione lo decrementava e
+  non esisteva alcun comando che riportasse avanti — chi era tornato indietro restava bloccato
+  su una settimana passata (persino cambiando canale, perché `loadArchive` ricostruisce la
+  finestra solo se `!archiveCache[chId]`) fino al ricaricamento della pagina.
+- Nuovo bottone `#arcnext` (`.btn.ghost`, già canonica in VISUAL_SPECS §1.4) accanto ad `#arcprev`:
+  visibile solo dopo essere scesi in un arco passato. Al click (`goToNextArc`, speculare a
+  `goToPreviousArc`) la finestra sfogliabile risale esattamente all'arco immediatamente più
+  recente — mai unita a quella corrente — e si posiziona sul giorno più recente del nuovo arco.
+- `updateArcPrev` diventa `updateArcNav`: un'unica funzione governa la visibilità di entrambi i
+  comandi (`arcPrevEl.hidden = idx >= arcs.length - 1`, `arcNextEl.hidden = idx <= 0`), richiamata
+  da `renderJourney`, `goToPreviousArc` e `goToNextArc`.
+- Nuovo `backend/tests/unit/home-arco-successivo.test.js`: markup, guardia `idx <= 0`, simmetria
+  con `arcprev` sotto `updateArcNav`, nessun riferimento residuo a `updateArcPrev`. Aggiornate le
+  due asserzioni di `home-arco-precedente.test.js` che citavano il vecchio nome della funzione
+  (stesso comportamento verificato, solo il nome è cambiato).
+
 ## 2026-08-01 — feat-apri-il-wallpaper-del-giorno-a-schermo-intero
 - Nuova ancora `#dayopen` (`btn ghost`, `target="_blank"`, `rel="noopener"`) accanto a `#dayshare`
   nella sezione «Il viaggio finora»: apre il file vero del giorno mostrato nel mockup, alla sua
