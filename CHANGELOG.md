@@ -375,3 +375,23 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovo `backend/tests/integration/errori-admin-senza-stack.test.js`: per ciascuna delle 4 rotte
   forza un fallimento con un messaggio-sentinella e verifica 500, corpo `{ ok:false, error:<frase> }`
   senza sentinella né campo `stack`, più la non-regressione su `/regen-day` (400 invariato).
+
+## 2026-08-01 — s-uno-stato-incoerente-non-blocca-un-flusso
+- Nuova `interoOppure(v, ripiego)` in `backend/src/story.js`: uno stato KV leggibile (JSON valido) ma
+  con un campo numerico di tipo sbagliato (es. `dayNumber:"abc"`, `stage:"x"`, `dayInArc:"2"`) non
+  deve mai far crashare il flusso o farlo derivare in silenzio. Prima, un valore non numerico in
+  `dayNumber` o `stage` faceva crashare `evolveStory` con «base is not iterable» (verificato prima di
+  scrivere il piano), e un `dayInArc` non intero causava un rollover d'arco spurio, buttando via un
+  arco ancora in corso. Lo stato rotto non veniva mai riscritto, quindi il canale restava fermo per
+  sempre — stessa classe di guasto del ciclo 17 (`storia-incoerente` copre lì il JSON NON parsabile
+  in `storage.js`; qui il JSON è valido ma i campi hanno il tipo sbagliato).
+  `evolveStory` legge ora `dayNumber`, `dayInArc`, `stage`, `arcIndex` ed `extraIndex` di
+  `prevState` solo attraverso `interoOppure`, con ESATTAMENTE gli stessi ripieghi già in vigore
+  (`dayNumber - 1`, `0`, `dayInArc - 1`, `0`, `-1`): nessun cambio di comportamento sugli stati con
+  campi interi validi. `startArc` non tocca nulla: l'unico campo numerico che riceve (`arcIndex`)
+  arriva già normalizzato dal chiamante.
+- Nuovo `backend/tests/unit/story-stato-incoerente.test.js`: copre ciascuno dei cinque campi con un
+  valore non intero, verificando che `evolveStory` non lanci, che lo stato risultante resti con
+  `dayInArc`/`stage`/`arcIndex` interi e `scene` una stringa non vuota, che un `dayInArc` corrotto non
+  apra un arco nuovo quando quello in corso non è davvero finito, e che un `extraIndex` corrotto su un
+  arco bloccato in tappa finale produca comunque un intero ≥ 0.

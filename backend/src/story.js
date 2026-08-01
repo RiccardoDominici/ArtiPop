@@ -169,6 +169,13 @@ export function clausesFor(concept, stage, dose = 0, extraIndex = null) {
 
 /* ===================== STATO DEL GIORNO ===================== */
 
+// Uno stato KV leggibile (JSON valido) ma con un campo di tipo sbagliato
+// (es. `dayNumber:"abc"`) non deve mai far crashare il flusso: si ripiega
+// sul valore di default come se il campo non ci fosse.
+function interoOppure(v, ripiego) {
+  return Number.isInteger(v) ? v : ripiego;
+}
+
 /**
  * Apre un arco nuovo: concept nuovo, keyframe pulito, seed nuovo.
  * `arcIndex` cresce all'infinito e serve solo a variare la pescata.
@@ -234,7 +241,7 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
   // passati davvero, quindi si assume "un giorno solo", cioè il comportamento
   // di sempre. Quando `dayNumber` c'è (il caso normale, ormai), si contano i
   // giorni VERI trascorsi, senza alcun minimo forzato: può essere zero.
-  const prevDayNumber = prevState.dayNumber ?? dayNumber - 1;
+  const prevDayNumber = interoOppure(prevState.dayNumber, dayNumber - 1);
   const elapsed = Math.max(0, dayNumber - prevDayNumber);
 
   // Stessa data già salvata, rigenerata a mano (vedi il commento della
@@ -250,13 +257,13 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
     };
   }
 
-  const dayInArc = (prevState.dayInArc ?? 0) + elapsed;
+  const dayInArc = interoOppure(prevState.dayInArc, 0) + elapsed;
 
   // Arco concluso (o superato perché il cron ha saltato dei giorni): si cambia
   // mondo. Non si "recuperano" i giorni persi di un arco finito: la settimana
   // successiva comincia comunque da un keyframe pulito.
   if (dayInArc >= CONFIG.ARC_LENGTH_DAYS) {
-    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1, catalog);
+    return startArc(channel, prevState, dateKey, interoOppure(prevState.arcIndex, 0) + 1, catalog);
   }
 
   const concept = resolveConcept(prevState.conceptId, catalog);
@@ -264,17 +271,17 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
     // Il concept è sparito dalla libreria (rinominato o rimosso): invece di
     // rompersi, il flusso apre un arco nuovo.
     console.warn(`[story] ${channel.id}: concept "${prevState.conceptId}" non più in libreria, riparto`);
-    return startArc(channel, prevState, dateKey, (prevState.arcIndex ?? 0) + 1, catalog);
+    return startArc(channel, prevState, dateKey, interoOppure(prevState.arcIndex, 0) + 1, catalog);
   }
 
   const ultimaTappa = concept.tappe.length - 1;
-  const tappaIeri = prevState.stage ?? dayInArc - 1;
+  const tappaIeri = interoOppure(prevState.stage, dayInArc - 1);
   const stage = nextStage(tappaIeri, dayInArc, ultimaTappa, esito);
 
   // Storia arrivata in fondo con giorni ancora da coprire: si passa ai dettagli
   // in più, uno al giorno, invece di ripubblicare la stessa scena.
   const bloccata = stage === ultimaTappa && tappaIeri >= ultimaTappa;
-  const extraIndex = bloccata ? (prevState.extraIndex ?? -1) + 1 : null;
+  const extraIndex = bloccata ? interoOppure(prevState.extraIndex, -1) + 1 : null;
 
   // Se ieri e' rimasto in debito, oggi si riparte gia' con una dose piu' alta:
   // ripetere la stessa descrizione com'era servirebbe a poco.
