@@ -16,6 +16,24 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-uno-stato-illeggibile-non-blocca-un-flusso-per-sempre
+- `backend/src/storage.js`, `getState`/`getMeta`: erano le uniche letture KV del progetto senza
+  rete, fuori dal try/catch di `fetch()` (ciclo `s-rete-di-sicurezza-globale-sul-worker`, che protegge
+  solo quel percorso) — una chiave `state:<canale>`/`meta:<canale>` diventata illeggibile lanciava
+  da dentro `scheduled`→`fanOutAll`→`runChannel` (handlers.js:163) e bloccava quel flusso OGNI
+  giorno, con il ritentativo del ciclo precedente che ripeteva lo stesso errore all'infinito. Ora
+  entrambe leggono il testo grezzo e lo interpretano a parte (`parseDocumentoOggetto`): JSON non
+  valido o di forma sbagliata (stringa, array) → `null` con un `console.warn`, mai un'eccezione — lo
+  stato si riscrive da solo al giro successivo (auto-guarigione). Deliberatamente NON un try/catch
+  attorno all'intero `env.KV.get(key, { type: "json" })` come `getGiorno`: un `KV.get` fallito PER
+  INTERO (connettività, non un singolo valore corrotto) deve continuare a propagare fino alla rete
+  di sicurezza globale del router, come verificato da `rete-di-sicurezza.test.js` su `/` e
+  `/api/channels`.
+- Nuovo `backend/tests/integration/kv-illeggibile.test.js`: valore non-JSON e JSON di forma
+  sbagliata su entrambe le chiavi → `null` senza throw, documento sano invariato (regressione),
+  `runChannel` su `state:<canale>` corrotto completa e riscrive uno stato leggibile, `/health` e `/`
+  rispondono 200 (non la pagina d'emergenza) con le chiavi corrotte per tutti i flussi.
+
 ## 2026-08-01 — s-la-pesca-non-resta-mai-a-secco-per-una-sospensione
 - `backend/src/catalog.js`, `poolForWith`: le sospensioni (`FAMIGLIE_SOSPESE`/`ELEMENT_SOSPESI`,
   config.js) sono una preferenza di TARATURA, non una guardia di sicurezza — se coprono l'INTERO pool
