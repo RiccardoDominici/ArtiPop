@@ -786,3 +786,21 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   usata da `.stale`).
 - Nuovo `backend/tests/unit/home-storia-dell-arco.test.js`; baseline visive
   `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo comando.
+
+## 2026-08-01 — feat-copia-l-indirizzo-del-canale
+- La GUIDA (§1.3 "Preferisci crearla a mano?") istruisce a "incollare l'URL del canale" per creare
+  la Shortcut a mano, ma quell'indirizzo non era ottenibile da nessuna superficie del prodotto: la
+  home offriva solo il download della Shortcut firmata (inutilizzabile su iOS che blocca le
+  scorciatoie non attendibili), e `/aiuto` citava i percorsi solo come testo non copiabile e senza
+  origine.
+- Nuovo bottone `#copyurl` ("copia l'indirizzo del canale", `.btn.ghost`) in `.actions`, accanto a
+  "Come si attiva": copia `ORIGIN + "/w/" + <id del canale in cima>`, senza `?date=`/`?v=` —
+  l'endpoint stabile che la Shortcut deve chiamare ogni sera, non un giorno specifico.
+- Estratta da `shareLink` la parte di clipboard riusabile in `copiaNegliAppunti(link)`: prova
+  `navigator.clipboard.writeText` e lancia se assente o rifiutata: sta al chiamante il messaggio di
+  ripiego nel toast. Un solo blocco `writeText` in tutto `page.js`, usato sia da `shareLink` sia dal
+  nuovo `copyChannelUrl`.
+- Rimossa la `url` calcolata in `cardHTML` (ciclo 47, mai resa né usata): era codice morto, ora
+  sostituita dal calcolo equivalente dentro `copyChannelUrl`.
+- Nuovo `backend/tests/unit/home-copia-indirizzo.test.js`; baseline visive
+  `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo bottone.
