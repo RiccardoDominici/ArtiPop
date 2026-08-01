@@ -38,15 +38,6 @@ describe("icona (rel=icon) sulle pagine pubbliche", () => {
     }
   });
 
-  it("/aiuto dichiara l'icona e NON tag og:", async () => {
-    const env = makeEnv();
-    const res = await callWorker(env, "/aiuto");
-    const html = await res.text();
-
-    expect(estraiHref(html, "icon")).toMatch(/^data:image\/svg\+xml,/);
-    expect(html).not.toContain("og:");
-  });
-
   it("la pagina 'Shortcut non disponibile' dichiara l'icona e NON tag og:", async () => {
     const env = makeEnv();
     const res = await callWorker(env, "/s/natura.shortcut");
@@ -93,6 +84,37 @@ describe("anteprima social (Open Graph / Twitter Card) su /", () => {
 
     expect(estraiMeta(html, "og:title")).toBe(title);
     expect(estraiMeta(html, "og:description")).toBe(description);
+  });
+});
+
+// feat-condividere-aiuto-e-archivi-mostra-l-anteprima: chi manda il link di
+// /aiuto o /archivi deve vedere lo stesso trattamento della home, ma con un
+// og:url che punta alla pagina condivisa, non alla home.
+describe("anteprima social (Open Graph / Twitter Card) su /aiuto e /archivi", () => {
+  it("GET /aiuto espone og:url sul proprio percorso e i tag richiesti", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/aiuto");
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/aiuto`);
+    expect(estraiMeta(html, "og:title")).toBeTruthy();
+    expect(estraiMeta(html, "og:description")).toBeTruthy();
+    expect(estraiMeta(html, "og:image")).toMatch(new RegExp(`^${ORIGIN}/`));
+    expect(estraiMeta(html, "twitter:card")).toBe("summary");
+  });
+
+  it("GET /archivi espone og:url sul proprio percorso e i tag richiesti", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/archivi");
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/archivi`);
+    expect(estraiMeta(html, "og:title")).toBeTruthy();
+    expect(estraiMeta(html, "og:description")).toBeTruthy();
+    expect(estraiMeta(html, "og:image")).toMatch(new RegExp(`^${ORIGIN}/`));
+    expect(estraiMeta(html, "twitter:card")).toBe("summary");
   });
 });
 

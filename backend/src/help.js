@@ -11,7 +11,7 @@
 
 import { ACTIVE_CHANNELS } from "./channels.js";
 import { CONFIG } from "./config.js";
-import { FAVICON_TAG } from "./head.js";
+import { FAVICON_TAG, metaAnteprima } from "./head.js";
 
 /** Voci di troubleshooting: sintomo → causa → rimedio. `priority` le mette in cima. */
 const PROBLEMI = [
@@ -395,7 +395,7 @@ function renderStatoCanali(stato) {
 }
 
 /** Pagina /aiuto completa (HTML autoconsistente, nessuna risorsa esterna). `stato`: v. `renderStatoCanali`. */
-export function renderHelpPage(stato = null) {
+export function renderHelpPage(stato = null, origin = null, dataOggi = null) {
   const problemi = assegnaId(PROBLEMI, "p", (p) => p.sintomo)
     .map(
       ({ voce: p, id }) => `
@@ -430,6 +430,7 @@ export function renderHelpPage(stato = null) {
 <meta name="description" content="Perché l'automazione dello sfondo non parte, e tutte le altre domande su ArtiPop." />
 <meta name="theme-color" content="#0a0b10" />
 ${FAVICON_TAG}
+${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — aiuto e problemi comuni", "Perché l'automazione dello sfondo non parte, e tutte le altre domande su ArtiPop.", null, "/aiuto") : ""}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
