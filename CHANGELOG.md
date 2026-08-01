@@ -16,6 +16,18 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-condividi-l-immagine-del-giorno
+- Nuovo comando ghost `#dayshareimg` ("condividi l'immagine") accanto a "salva l'immagine": passa
+  il file PNG/JPEG del giorno mostrato al foglio di condivisione di sistema (Web Share API con
+  `files`) invece del solo link — il caso d'uso reale è mandare il wallpaper in chat senza doverlo
+  prima salvare e riallegare a mano.
+- Visibile solo quando `navigator.share`/`navigator.canShare({files})` dichiarano supporto (valutato
+  una sola volta in `supportaCondivisioneFile`, in try/catch): invisibile nel Chromium headless di
+  `visual-check`, che non implementa `canShare` — nessuna baseline da rigenerare.
+- Robustezza: annullamento dell'utente (`AbortError`) silenzioso, qualunque altro errore (fetch
+  fallita, `share` che lancia) ripiega su `shareLink()` (copia link, il comportamento di oggi); il
+  bottone si disabilita durante l'operazione per impedire il doppio tocco.
+
 ## 2026-08-01 — feat-i-preferiti-si-rivedono-anche-senza-rete
 - I giorni segnati preferiti ora restano leggibili offline: al momento del toggle, page.js chiede
   al service worker (postMessage, non una seconda fetch in pagina) di conservare `/w/<canale>?date=<data>`

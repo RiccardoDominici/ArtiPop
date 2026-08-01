@@ -451,6 +451,13 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            di #dayopen — stesso file, ma con ?dl=1 per farlo arrivare sul disco
            con un nome parlante invece del blob "natura" senza estensione. -->
       <a class="btn ghost" id="daysave" hidden>salva l'immagine</a>
+      <!-- feat-condividi-l-immagine-del-giorno: stesso hasJourney di #daysave,
+           IN AND con PUO_CONDIVIDERE_FILE (v. supportaCondivisioneFile) —
+           progressive enhancement: nascosto dove il browser non offre la
+           condivisione di file (compreso il Chromium headless di
+           visual-check), nessun comportamento diverso dal ripiego #dayshare
+           in quel caso. -->
+      <button class="btn ghost" id="dayshareimg" hidden>condividi l'immagine</button>
       <!-- feat-segna-i-giorni-che-ti-piacciono: stesso hasJourney di
            #dayshare/#dayopen — nessun giorno da sfogliare, nessun giorno da
            segnare. Etichetta e aria-pressed seguono lo stato del giorno
@@ -576,6 +583,7 @@ const dayshareEl = document.getElementById("dayshare");
 const copyurlEl = document.getElementById("copyurl");
 const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
+const dayShareImgEl = document.getElementById("dayshareimg");
 const dayFavEl = document.getElementById("dayfav");
 const favPickEl = document.getElementById("favpick");
 const favListEl = document.getElementById("favlist");
@@ -778,6 +786,51 @@ async function shareLink() {
   }
 }
 dayshareEl.addEventListener("click", shareLink);
+
+/* feat-condividi-l-immagine-del-giorno: vera solo se il browser dichiara di
+   saper condividere file veri (non solo link) — Safari/Chrome mobile sì,
+   Chromium headless (visual-check) e i browser desktop più vecchi no. In
+   try/catch: un browser che lancia su `new File(...)` o su `canShare` non
+   deve rompere il resto della pagina (principio 3). Valutata una sola volta
+   all'avvio: il supporto non cambia durante la sessione. */
+function supportaCondivisioneFile() {
+  try {
+    if (!navigator.share || !navigator.canShare) return false;
+    const finto = new File(["x"], "prova.jpg", { type: "image/jpeg" });
+    return navigator.canShare({ files: [finto] });
+  } catch {
+    return false;
+  }
+}
+const PUO_CONDIVIDERE_FILE = supportaCondivisioneFile();
+
+/* Passa il file vero del giorno mostrato al foglio di condivisione di
+   sistema, invece del solo link (v. shareLink) — il caso d'uso è mandare il
+   wallpaper in chat senza doverlo prima salvare e riallegare a mano.
+   Ripiego su shareLink() per qualunque fallimento diverso dall'annullamento
+   dell'utente, così l'utente ottiene comunque qualcosa (principio 3). */
+async function condividiImmagine() {
+  if (dayShareImgEl.disabled) return; // doppio tocco: l'operazione è già in corso
+  dayShareImgEl.disabled = true;
+  try {
+    const chId = CHANNELS[order[0]].id;
+    const date = previewDate ?? TODAY;
+    const src = srcFor(chId, date, date === TODAY);
+    const res = await fetch(src);
+    if (!res.ok) throw new Error("fetch fallito: " + res.status);
+    const blob = await res.blob();
+    const file = new File([blob], \`ArtiPop-\${chId}-\${date}.jpg\`, {
+      type: blob.type || "image/jpeg",
+    });
+    await navigator.share({ files: [file], title: "ArtiPop", text: "Il wallpaper di oggi" });
+  } catch (err) {
+    if (err && err.name === "AbortError") return; // annullato dall'utente: nessun toast, nessun ripiego
+    await shareLink();
+  } finally {
+    dayShareImgEl.disabled = false;
+  }
+}
+dayShareImgEl.addEventListener("click", condividiImmagine);
 
 /* Indirizzo stabile del canale in cima (nessun ?date=/?v=): quello che la
    Shortcut deve chiamare ogni sera, utile a chi crea la Shortcut a mano
@@ -1137,6 +1190,7 @@ function renderJourney(chId) {
   dayshareEl.hidden = !hasJourney;
   dayopenEl.hidden = !hasJourney;
   daysaveEl.hidden = !hasJourney;
+  dayShareImgEl.hidden = !hasJourney || !PUO_CONDIVIDERE_FILE;
   dayFavEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
