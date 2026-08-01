@@ -92,6 +92,94 @@ describe("GET /feed/<flusso>.xml", () => {
   });
 });
 
+// feat-un-solo-feed-per-tutti-i-canali: /feed.xml unisce gli ultimi giorni di
+// tutti i canali attivi in un solo feed. Stesso stile di robustezza della
+// rotta per canale.
+describe("GET /feed.xml", () => {
+  it("200, content-type application/rss+xml, cache-control e header di sicurezza", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/feed.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/rss+xml");
+    expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    const xml = await res.text();
+    expect(xml.startsWith("<?xml")).toBe(true);
+  });
+
+  it("giorni finti su due canali: gli <item> sono ordinati dalla data più recente e nominano entrambi i canali", async () => {
+    const env = makeEnv();
+    const [a, b] = ACTIVE_CHANNELS;
+    await env.KV.put(`archive:${a.id}:2026-07-28`, "1");
+    await env.KV.put(`archive:${b.id}:2026-07-30`, "1");
+    await env.KV.put(`archive:${a.id}:2026-07-29`, "1");
+
+    const res = await callWorker(env, "/feed.xml");
+    expect(res.status).toBe(200);
+    const xml = await res.text();
+    expect(xml.match(/<item>/g)).toHaveLength(3);
+    const date = [...xml.matchAll(/<title>[^<]*?(\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]);
+    expect(date).toEqual([...date].sort().reverse());
+    expect(xml).toContain(a.name);
+    expect(xml).toContain(b.name);
+  });
+
+  it("listArchiveDates che lancia per UN canale: 200 XML con le voci degli altri canali, mai JSON né 500", async () => {
+    const kv = makeKV();
+    const id0 = ACTIVE_CHANNELS[0].id;
+    const id1 = ACTIVE_CHANNELS[1].id;
+    await kv.put(`archive:${id1}:2026-07-30`, "1");
+    const env = makeEnv({
+      KV: {
+        ...kv,
+        async list(opts) {
+          if (opts?.prefix === `archive:${id0}:`) throw new Error("KV.list non disponibile (simulato)");
+          return kv.list(opts);
+        },
+      },
+    });
+
+    const res = await callWorker(env, "/feed.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/rss+xml");
+    const xml = await res.text();
+    expect(xml.match(/<item>/g)).toHaveLength(1);
+  });
+
+  it("KV completamente rotto: risposta XML valida, mai content-type application/json", async () => {
+    const kv = makeKV();
+    const env = makeEnv({
+      KV: { ...kv, async list() { throw new Error("KV.list non disponibile (simulato)"); } },
+    });
+
+    const res = await callWorker(env, "/feed.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).not.toContain("application/json");
+    const xml = await res.text();
+    expect(xml.startsWith("<?xml")).toBe(true);
+    expect(xml.match(/<item>/g)).toBeNull();
+  });
+
+  it("zero generazioni AI: gli stub lanciano se invocati, il test resta verde", async () => {
+    const env = makeEnv();
+    await env.KV.put(`archive:${ACTIVE_CHANNELS[0].id}:2026-07-30`, "1");
+    const res = await callWorker(env, "/feed.xml");
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("regressione /feed/<flusso>.xml con /feed.xml presente", () => {
+  it("GET /feed/natura.xml resta invariato", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:natura:2026-07-30", "1");
+    const res = await callWorker(env, "/feed/natura.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/rss+xml");
+    const xml = await res.text();
+    expect(xml.match(/<item>/g)).toHaveLength(1);
+  });
+});
+
 describe("regressione rel=alternate", () => {
   it("/aiuto e /archivi restano privi del tag feed, la home lo espone una volta sola", async () => {
     const env = makeEnv();

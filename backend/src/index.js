@@ -914,6 +914,56 @@ export default {
       });
     }
 
+    // ---- Feed RSS aggregato: /feed.xml (tutti i canali attivi) ----
+    // feat-un-solo-feed-per-tutti-i-canali: una sola iscrizione invece di
+    // tre, stesso trattamento di robustezza della rotta per canale — try/
+    // catch PROPRIO che risponde sempre XML, mai JSON né un 500 grezzo.
+    // Deve stare PRIMA del matcher /feed/<flusso>.xml qui sotto: quel regex
+    // non cattura "/feed.xml" (manca lo slash e il segmento id), ma l'ordine
+    // resta la garanzia esplicita voluta dal piano.
+    if (path === "/feed.xml") {
+      const feedHeaders = {
+        "content-type": "application/rss+xml; charset=utf-8",
+        "cache-control": "public, max-age=3600",
+        ...SECURITY_HEADERS,
+      };
+      try {
+        const oggi = todayKey();
+        const perCanale = await Promise.all(
+          ACTIVE_CHANNELS.map(async (c) => {
+            let dates = [];
+            try {
+              dates = await listArchiveDates(env, c.id, 10);
+            } catch (err) {
+              console.error(`[feed.xml] date non disponibili per "${c.id}": ${err.message}`);
+              return [];
+            }
+            let voci = dates.map((data) => ({ data, conceptNome: null, elementNome: null }));
+            try {
+              voci = await Promise.all(dates.map((data) => cartaDiIdentita(env, c.id, data)));
+            } catch (err) {
+              console.error(`[feed.xml] soggetto non disponibile per "${c.id}": ${err.message}`);
+            }
+            return voci.map((v) => ({ ...v, canaleNome: c.name, canaleId: c.id }));
+          }),
+        );
+        const voci = perCanale
+          .flat()
+          .sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0))
+          .slice(0, 30);
+        const canale = { id: "", name: "tutti i canali", tagline: "Tutti i canali di ArtiPop in un solo feed." };
+        return new Response(renderFeed({ canale, voci, origin: url.origin, oggi }), {
+          headers: feedHeaders,
+        });
+      } catch (err) {
+        console.error(`[feed.xml] rotta fallita: ${err.message}`);
+        const canale = { id: "", name: "tutti i canali", tagline: "Errore temporaneo, riprova più tardi." };
+        return new Response(renderFeed({ canale, voci: [], origin: url.origin, oggi: todayKey() }), {
+          headers: feedHeaders,
+        });
+      }
+    }
+
     // ---- Feed RSS di un canale: /feed/<flusso>.xml ----
     // feat-segui-il-canale-dal-lettore-di-feed: rotta pubblica come /w/ e
     // /archivi (nessuna chiave admin). Avvolta in un try/catch PROPRIO,

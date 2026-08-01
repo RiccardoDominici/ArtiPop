@@ -1301,3 +1301,18 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovo `backend/tests/unit/home-segui-il-feed.test.js`; baseline `home-{mobile,desktop}.png`
   rigenerate contro `wrangler dev` locale per includere il nuovo comando (stesso metodo dei
   cicli precedenti).
+
+## 2026-08-01 — feat-un-solo-feed-per-tutti-i-canali
+- Chi seguiva ArtiPop con un lettore di feed doveva iscriversi a tre indirizzi separati, uno per
+  canale (`/feed/<flusso>.xml`, ciclo 93). Nuova rotta pubblica `GET /feed.xml`: unisce gli
+  ultimi giorni di tutti i canali attivi in un solo feed, ordinati dal più recente, con il nome
+  del canale in testa a ogni voce — una sola iscrizione invece di tre.
+- `renderFeed` (`backend/src/feed.js`) ora accetta voci con `canaleNome`/`canaleId` propri: se
+  presenti, il titolo antepone il nome del canale e link/guid/enclosure puntano al canale della
+  voce invece che a quello del feed; le voci senza questi campi restano identiche a prima
+  (regressione su `/feed/<flusso>.xml` verde, byte per byte).
+- Stessa robustezza della rotta per canale: ogni lettura di `listArchiveDates` è isolata in un
+  try/catch proprio (un canale che fallisce non azzera gli altri) e la rotta risponde sempre
+  XML valido, mai JSON né un 500 grezzo, anche a KV completamente rotto.
+- `/aiuto` cita `/feed.xml` come iscrizione unica, nella stessa risposta che già nomina
+  `/feed/<canale>.xml`; nessun accordion nuovo. `GUIDA.md` §2.4 elenca la nuova rotta.

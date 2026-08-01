@@ -20,28 +20,38 @@ function dataRfc822(dataKey) {
 }
 
 /**
- * Compone il feed RSS 2.0 di un canale. `canale` = { id, name, tagline }: per
- * un flusso attivo sono i suoi dati (channels.js); per un alias storico `id`
- * e `name` sono l'id richiesto (stessa convenzione di `/api/channels?all=1`
- * per i canali storici — mai il nome del flusso erede, che ha un'altra
- * identità); per un flusso sconosciuto `tagline` porta il messaggio umano da
- * mostrare al posto della descrizione.
+ * Compone il feed RSS 2.0 di un canale, o del feed aggregato di tutti i
+ * canali (feat-un-solo-feed-per-tutti-i-canali). `canale` = { id, name,
+ * tagline }: per un flusso attivo sono i suoi dati (channels.js); per un
+ * alias storico `id` e `name` sono l'id richiesto (stessa convenzione di
+ * `/api/channels?all=1` per i canali storici — mai il nome del flusso erede,
+ * che ha un'altra identità); per un flusso sconosciuto `tagline` porta il
+ * messaggio umano da mostrare al posto della descrizione; per il feed
+ * aggregato `id` è vuoto e `link`/`self` puntano alla home invece che a un
+ * canale.
  * `voci` = array di carte d'identità (`cartaDiIdentita`/`giornoRicostruito`,
  * handlers.js), una per giorno, più recente prima: bastano `data`,
- * `conceptNome`, `elementNome` (gli altri campi non servono al feed).
+ * `conceptNome`, `elementNome` (gli altri campi non servono al feed). Una
+ * voce può portare anche `canaleNome`/`canaleId`: quando presenti, il titolo
+ * antepone il nome del canale e link/guid/enclosure usano `canaleId` invece
+ * dell'id del canale del feed — così un feed aggregato può mescolare voci di
+ * più canali. Quando assenti il comportamento è quello di sempre (voci di un
+ * feed per canale singolo, invariate).
  * Nessuna rete, nessun accesso a KV qui dentro: solo composizione di stringhe.
  */
 export function renderFeed({ canale, voci, origin, oggi }) {
-  const linkCanale = `${origin}/?c=${canale.id}`;
-  const selfUrl = `${origin}/feed/${canale.id}.xml`;
+  const linkCanale = canale.id ? `${origin}/?c=${canale.id}` : `${origin}/`;
+  const selfUrl = canale.id ? `${origin}/feed/${canale.id}.xml` : `${origin}/feed.xml`;
   const descrizione = canale.tagline || "Un flusso di wallpaper AI di ArtiPop, un giorno nuovo alla volta.";
 
   const items = (voci || [])
     .map((v) => {
+      const idVoce = v.canaleId ?? canale.id;
       const soggetto = v.conceptNome && v.elementNome ? `${v.conceptNome} · ${v.elementNome}` : null;
-      const titolo = soggetto ? `${v.data} — ${soggetto}` : v.data;
-      const link = `${origin}/?c=${canale.id}&d=${v.data}`;
-      const immagine = `${origin}/w/${canale.id}?date=${v.data}`;
+      const titoloBase = soggetto ? `${v.data} — ${soggetto}` : v.data;
+      const titolo = v.canaleNome ? `${v.canaleNome} — ${titoloBase}` : titoloBase;
+      const link = `${origin}/?c=${idVoce}&d=${v.data}`;
+      const immagine = `${origin}/w/${idVoce}?date=${v.data}`;
       return `<item>
 <title>${escXml(titolo)}</title>
 <link>${escXml(link)}</link>

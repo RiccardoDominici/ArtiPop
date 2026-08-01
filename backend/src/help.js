@@ -129,7 +129,8 @@ const FAQ = [
       Se preferisci seguire un canale con un lettore di feed invece della Shortcut, iscriviti a
       <code>/feed/&lt;canale&gt;.xml</code> (es. <code>/feed/natura.xml</code>): un nuovo
       elemento al giorno con il wallpaper, gli ultimi 20 giorni, e funziona anche coi vecchi
-      indirizzi dei canali rinominati.`,
+      indirizzi dei canali rinominati. Per seguirli tutti con una sola iscrizione, senza
+      sceglierne uno, c'è anche <code>/feed.xml</code>.`,
   },
   {
     q: "Posso avere uno sfondo nuovo subito?",

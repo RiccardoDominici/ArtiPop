@@ -53,3 +53,43 @@ describe("renderFeed", () => {
     expect(xml).toContain('<guid isPermaLink="false">https://artipop.test/?c=natura&amp;d=2026-08-01</guid>');
   });
 });
+
+// feat-un-solo-feed-per-tutti-i-canali: estensione di renderFeed per voci
+// con canaleNome/canaleId propri, che alimenta il feed aggregato /feed.xml
+// senza toccare il comportamento del feed per canale singolo.
+describe("renderFeed — voci con canale proprio (feed aggregato)", () => {
+  const AGGREGATO = { id: "", name: "tutti i canali", tagline: "Tutti i canali di ArtiPop in un solo feed." };
+
+  it("regressione: una voce senza canaleNome/canaleId produce esattamente lo stesso item di oggi", () => {
+    const voci = [{ data: "2026-08-01", conceptNome: "Crescita", elementNome: "Felce" }];
+    const conCanaleAggregato = renderFeed({ canale: { ...CANALE, id: CANALE.id }, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    const senzaCampiCanale = renderFeed({ canale: CANALE, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    const itemA = conCanaleAggregato.match(/<item>[\s\S]*?<\/item>/)[0];
+    const itemB = senzaCampiCanale.match(/<item>[\s\S]*?<\/item>/)[0];
+    expect(itemA).toBe(itemB);
+  });
+
+  it("una voce con canaleNome/canaleId mette il nome del canale nel titolo e usa il canaleId proprio in link/guid/enclosure", () => {
+    const voci = [{ data: "2026-08-01", conceptNome: "Crescita", elementNome: "Felce", canaleNome: "Natura", canaleId: "natura" }];
+    const xml = renderFeed({ canale: AGGREGATO, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml).toContain("<title>Natura — 2026-08-01 — Crescita · Felce</title>");
+    expect(xml).toContain("<link>https://artipop.test/?c=natura&amp;d=2026-08-01</link>");
+    expect(xml).toContain('<guid isPermaLink="false">https://artipop.test/?c=natura&amp;d=2026-08-01</guid>');
+    expect(xml).toContain('<enclosure url="https://artipop.test/w/natura?date=2026-08-01" type="image/png" />');
+  });
+
+  it("nome di canale con & e < viene escapato nel titolo", () => {
+    const voci = [{ data: "2026-08-01", conceptNome: "Crescita", elementNome: "Felce", canaleNome: "A & B <C>", canaleId: "natura" }];
+    const xml = renderFeed({ canale: AGGREGATO, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml).toContain("<title>A &amp; B &lt;C&gt; — 2026-08-01 — Crescita · Felce</title>");
+  });
+
+  it("il feed aggregato senza voci resta XML ben formato con <channel> e zero <item>", () => {
+    const xml = renderFeed({ canale: AGGREGATO, voci: [], origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml.startsWith("<?xml")).toBe(true);
+    expect(xml.match(/<channel>/g)).toHaveLength(1);
+    expect(xml.match(/<item>/g)).toBeNull();
+    expect(xml).toContain('<atom:link href="https://artipop.test/feed.xml" rel="self" type="application/rss+xml" />');
+    expect(xml).toContain("<link>https://artipop.test/</link>");
+  });
+});
