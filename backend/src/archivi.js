@@ -8,7 +8,7 @@
 // limita a renderla — coerente con la guardia `fetches.length === 1` sulla
 // home, che questo modulo non tocca.
 
-import { FAVICON_TAG, metaAnteprima } from "./head.js";
+import { INSTALL_TAGS, metaAnteprima } from "./head.js";
 import { LEGACY_ALIASES, getChannel } from "./channels.js";
 
 /** Escape minimo per il testo dinamico inserito nell'HTML (id canale, date). */
@@ -110,8 +110,7 @@ export function renderArchiviPage(storici, origin = null, dataOggi = null) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ArtiPop — archivi storici</title>
 <meta name="description" content="I canali storici di ArtiPop non più attivi, con i loro giorni in archivio." />
-<meta name="theme-color" content="#0a0b10" />
-${FAVICON_TAG}
+${INSTALL_TAGS}
 ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi storici", "I canali storici di ArtiPop non più attivi, con i loro giorni in archivio.", null, "/archivi") : ""}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
