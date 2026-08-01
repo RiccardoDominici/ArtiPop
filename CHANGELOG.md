@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-l-aiuto-spiega-il-feed-del-canale
+- `/aiuto` non nominava mai la rotta `/feed/<canale>.xml` pubblicata nel ciclo precedente: chi non
+  usa la Shortcut non aveva modo di scoprire dal sito che può seguire il canale da un lettore RSS.
+- `help.js`: la risposta della FAQ esistente «Posso cambiare canale?» si arricchisce con un
+  paragrafo finale che spiega `/feed/<canale>.xml` (esempio `/feed/natura.xml`, ultimi 20 giorni,
+  funziona anche coi vecchi indirizzi dei canali rinominati). Nessuna domanda toccata, nessuna
+  voce FAQ aggiunta o rimossa: il conteggio delle 15 voci e gli id delle ancore restano identici,
+  così i test di conteggio esistenti (`aiuto-ancore`, `aiuto-archivi`, `aiuto-ricerca`,
+  `aiuto-viaggio`) non si toccano.
+
 ## 2026-08-01 — feat-condividere-aiuto-e-archivi-mostra-l-anteprima
 - Chi mandava in chat il link di `/aiuto` o di `/archivi` — i due modi in cui ArtiPop si passa fra
   persone, "ti spiego come si installa" e "guarda i canali vecchi" — vedeva arrivare un link nudo:
