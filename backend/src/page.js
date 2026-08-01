@@ -778,6 +778,25 @@ try {
   // frase monca, nessun "verso le undefined").
 }
 
+// feat-la-home-mostra-il-giorno-nuovo-quando-torni: pura, confronta per data
+// (non per differenza numerica) così regge anche il cambio di mese/anno.
+// La guardia sull'ora UTC evita di ricaricare prima che il cron notturno
+// abbia consegnato: altrimenti la card mostrerebbe il canale "in ritardo"
+// al posto del giorno di ieri, un passo indietro percepito dall'utente.
+function giornoNuovoDisponibile(todayServito, ora = new Date()) {
+  const oggiUtc = \`\${ora.getUTCFullYear()}-\${String(ora.getUTCMonth() + 1).padStart(2, "0")}-\${String(ora.getUTCDate()).padStart(2, "0")}\`;
+  return oggiUtc > todayServito && ora.getUTCHours() >= ORA_CRON_UTC;
+}
+document.addEventListener("visibilitychange", () => {
+  try {
+    if (document.visibilityState !== "visible") return;
+    if (previewDate !== null && previewDate !== TODAY) return; // esplorazione dell'archivio in corso: non interromperla
+    if (giornoNuovoDisponibile(TODAY)) location.reload();
+  } catch {
+    // Nessun reload in caso di errore: la home resta quella già mostrata.
+  }
+});
+
 /* ---------- viaggio nell'archivio (sfogliato dentro il mockup) ----------
    Niente più striscia di miniature: le date d'archivio servono solo a far
    scorrere l'anteprima avanti/indietro e a mostrare "N di M" sotto al
