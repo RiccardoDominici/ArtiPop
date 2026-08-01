@@ -673,3 +673,17 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   malformata/assente: home normale su oggi, nessun errore.
 - Nuovo `backend/tests/unit/home-link-al-giorno.test.js`; baseline visive
   `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo bottone.
+
+## 2026-08-01 — feat-la-home-ricorda-il-tuo-canale
+- La home riapre sull'ultimo canale portato in cima, invece di ripartire sempre dal primo del
+  mazzo: era il primo attrito per chi usa un solo canale (quello della sua Shortcut) e deve
+  ri-sfogliare le card a ogni visita.
+- `leggiCanaleRicordato()`/`ricordaCanale(id)`, chiave `artipop:canale` in `localStorage`: memoria
+  locale al dispositivo, mai un cookie, nessun dato inviato al worker. Ogni accesso è racchiuso in
+  try/catch — con storage inaccessibile (navigazione privata) la home degrada in silenzio al
+  comportamento attuale.
+- `updateChrome()`, unico punto in cui cambia la card in cima, chiama `ricordaCanale(ch.id)` ad
+  ogni cambio; all'avvio il canale ricordato è applicato solo se `?c=` non è presente e solo se
+  l'id esiste ancora in `CHANNELS` — il link condiviso vince sempre sulla memoria locale.
+- Nuovo `backend/tests/unit/home-ricorda-canale.test.js`; nessuna baseline visiva da aggiornare
+  (cambia solo quale card è in cima, stato già previsto dal componente deck).

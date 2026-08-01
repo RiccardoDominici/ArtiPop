@@ -436,6 +436,34 @@ if (sharedChannelId) {
   else pendingSharedDate = null; // canale sconosciuto: home normale su oggi, niente giorno da applicare
 }
 
+/* ---------- memoria del canale (localStorage, solo su questo dispositivo) ----------
+   Mai un cookie, nessun dato inviato al worker: solo lo storage locale del
+   browser. Ogni accesso è protetto da try/catch perché in navigazione privata
+   o con storage disabilitato può lanciare — in tal caso si degrada in
+   silenzio al comportamento attuale (nessun canale ricordato). */
+const REMEMBERED_CHANNEL_KEY = "artipop:canale";
+function leggiCanaleRicordato() {
+  try {
+    return localStorage.getItem(REMEMBERED_CHANNEL_KEY);
+  } catch {
+    return null;
+  }
+}
+function ricordaCanale(id) {
+  try {
+    localStorage.setItem(REMEMBERED_CHANNEL_KEY, id);
+  } catch {
+    /* storage inaccessibile: nessun problema, la home funziona lo stesso */
+  }
+}
+if (!sharedChannelId) {
+  const rememberedId = leggiCanaleRicordato();
+  if (rememberedId) {
+    const idx = CHANNELS.findIndex((c) => c.id === rememberedId);
+    if (idx !== -1) order = [idx, ...order.filter((i) => i !== idx)];
+  }
+}
+
 /* ---------- toast pill (già in VISUAL_SPECS §1.4, mai usato finora) ---------- */
 let toastTimer = null;
 function toast(msg) {
@@ -532,6 +560,7 @@ function updateChrome() {
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
   previewDate = null;
   loadArchive(ch.id);
+  ricordaCanale(ch.id); // memorizza il canale in cima: alla prossima visita si riapre da qui
 }
 
 /* ---------- drag stile Tinder ---------- */
