@@ -7,6 +7,8 @@ Vale per Planner, Executor e Verifier del sistema autonomo. Nessuna eccezione.
 2. **Bellezza** = conformità a `VISUAL_SPECS.md`. Mai giudizio di gusto: solo aderenza alla spec.
 3. **Robustezza** — errori gestiti, mai un crash grezzo esposto all'utente.
 4. **Essenzialità** — la soluzione più semplice che risolve il problema; niente aggiunto "perché utile".
+   Le feature nuove proposte dal planner (slug `feat-`) non violano questo principio: l'essenzialità
+   vincola il come (la realizzazione più semplice), non il cosa.
 
 ## Disciplina del contesto
 - Localizzare con Grep/Glob, mai esplorare a tappeto.
