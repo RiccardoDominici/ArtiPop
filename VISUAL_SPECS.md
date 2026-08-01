@@ -111,6 +111,15 @@ o componente nuovo.
   giorno (`/w/<id>?date=<data>`, dalla più recente alla più vecchia) in `#8fd3ff`. Presente solo
   quando la scansione ha raccolto le date del canale (chiamata legacy o `date` vuoto: nessun
   `<details>`, card identica a quella dei cicli 80-81).
+- Componente aggiuntivo «miniatura di copertina» (proposta ai sensi di §7): a sinistra di ogni
+  card, un `<a class="copertina">` con dentro `<img>` `60×128`, `object-fit:cover`, raggio `10px`,
+  bordo `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)` — stessi token del bordo/raggio
+  già in uso in questa sezione, nessun colore nuovo. `src` e `href` sono lo stesso indirizzo del
+  link "Riapri l'ultimo giorno →" (`/w/<id>?date=<ultima>`), `loading="lazy"`, `decoding="async"`,
+  `alt=""` (decorativa: id e link nominano già il canale). Il resto della card (riga1, riga2,
+  `<details class="giorni">`, riga3) si dispone a destra della miniatura, invariato nel contenuto.
+  Presente solo quando il canale ha un `ultima` non vuoto: card senza miniatura, mai un
+  contenitore vuoto o un'immagine rotta.
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 
