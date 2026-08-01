@@ -105,6 +105,12 @@ o componente nuovo.
   (contratto CLAUDE.md — scansione KV solo su richiesta esplicita, mai nel giro di produzione).
 - Lista vuota o scansione fallita: messaggio umano in `#9aa3b8` al posto dell'elenco, mai un
   contenitore vuoto o una pagina rotta.
+- Componente aggiuntivo «tutti i N giorni» (proposta ai sensi di §7): dentro ogni card, dopo la
+  riga dell'intervallo, un `<details class="giorni">` — stesso trattamento visivo dell'accordion
+  di §2, nessun token nuovo. `<summary>` in `#9aa3b8`; una volta aperto, l'elenco dei link a ogni
+  giorno (`/w/<id>?date=<data>`, dalla più recente alla più vecchia) in `#8fd3ff`. Presente solo
+  quando la scansione ha raccolto le date del canale (chiamata legacy o `date` vuoto: nessun
+  `<details>`, card identica a quella dei cicli 80-81).
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 

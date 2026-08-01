@@ -33,8 +33,10 @@ function erede(id) {
 /**
  * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array già
  * filtrato (nessun canale attivo) e ordinato da chi chiama, forma
- * `[{ id, giorni, prima, ultima }]` — stessa forma di `listChannelsWithArchive`
- * (storage.js) una volta appiattita la Map in voci con `id`.
+ * `[{ id, giorni, prima, ultima, date }]` — stessa forma di
+ * `listChannelsWithArchive` (storage.js) una volta appiattita la Map in voci
+ * con `id`. `date` (dalla più recente alla più vecchia) è opzionale: se
+ * assente o vuoto l'elenco espandibile non viene emesso (chiamata legacy).
  */
 function renderElenco(storici) {
   if (!Array.isArray(storici) || storici.length === 0) {
@@ -47,13 +49,26 @@ function renderElenco(storici) {
         ? `
         <div class="riga3 continua">la storia continua in <a class="continua" href="/?c=${encodeURIComponent(flussoErede.id)}">${esc(flussoErede.emoji)} ${esc(flussoErede.name)} →</a></div>`
         : "";
+      const elencoGiorni =
+        Array.isArray(c.date) && c.date.length > 0
+          ? `
+        <details class="giorni">
+          <summary>tutti i ${c.date.length} giorn${c.date.length === 1 ? "o" : "i"}</summary>
+          <ul class="date">${c.date
+            .map(
+              (d) =>
+                `<li><a href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}">${esc(d)}</a></li>`
+            )
+            .join("")}</ul>
+        </details>`
+          : "";
       return `
       <li>
         <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
           <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}">Riapri l'ultimo giorno →</a>
-        </div>${riga3}
+        </div>${elencoGiorni}${riga3}
       </li>`;
     })
     .join("");
@@ -111,6 +126,10 @@ ${FAVICON_TAG}
   .intervallo { color: #9aa3b8; font-size: .88rem; }
   .riga3 { margin-top: 6px; font-size: .88rem; color: #9aa3b8; }
   .riga3 a.continua { color: #8fd3ff; }
+  details.giorni { margin-top: 8px; }
+  details.giorni summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
+  details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
   a.riapri {
     display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
     text-decoration: none; font-weight: 600; flex-shrink: 0;
