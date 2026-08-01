@@ -118,11 +118,24 @@ export const CONFIG = {
 // giorno in media, sotto la soglia di 2 richiesta.
 // Riserva nota, lasciata come materiale per un ciclo POLISH (budget standard
 // da 10 generazioni/ciclo): solo veliero è stato validato con un arco gated
-// completo; canoa (l'element già segnalato rotto prima di M9) fallisce
-// ancora con la stessa riformulazione — la compattezza scende sotto il
-// minimo, un difetto nuovo di edit sparso, mai visto prima — e gli altri 8
-// element del roster non sono stati testati. Il cancello pubblica comunque
-// il candidato migliore quando i tentativi finiscono (vedi generateWithGate
-// in generate.js), quindi il rischio su questi element è di qualità/budget
-// nei giorni in cui vengono pescati, non di rottura.
+// completo; gli altri 8 element del roster (a parte canoa, vedi
+// ELEMENT_SOSPESI sotto) non sono stati testati. Il cancello pubblica
+// comunque il candidato migliore quando i tentativi finiscono (vedi
+// generateWithGate in generate.js), quindi il rischio su questi element è di
+// qualità/budget nei giorni in cui vengono pescati, non di rottura.
 export const FAMIGLIE_SOSPESE = [];
+
+// --- ELEMENT SOSPESI DAI POOL DI PESCA (granularità ELEMENT, non FAMIGLIA) ---
+// M10 (2026-07-31): misurato che `canoa` non passa il cancello nemmeno dopo
+// la riformulazione delle tappe che ha invece tarato `attraversamento`
+// (estensione ~33% fuori dal massimo del profilo, compattezza 0.35 sotto il
+// minimo) — un flusso che la pesca brucia tutti i tentativi dell'arco e
+// pubblica comunque il candidato migliore: sfondo degradato per l'utente
+// reale. Stesso meccanismo di FAMIGLIE_SOSPESE ma a granularità ELEMENT (vedi
+// poolForWith in catalog.js, l'UNICO punto che applica anche questo filtro):
+// canoa resta nel roster (concepts.js, archivio, raggiungibile per id dal
+// lab) — sparisce solo dalla pesca casuale finché un arco lab gated su
+// preview non la riporta dentro il profilo, come già fatto per
+// attraversamento in M10. Condizione di uscita: rimuovere "canoa" da questa
+// lista quando quell'arco gated è verde.
+export const ELEMENT_SOSPESI = ["canoa"];

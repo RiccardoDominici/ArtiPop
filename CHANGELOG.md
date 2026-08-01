@@ -16,6 +16,26 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-element-canoa-fuori-dalla-pesca-finche-non-e-tarato
+- `backend/src/config.js`: nuova `ELEMENT_SOSPESI = ["canoa"]`, stesso meccanismo di
+  `FAMIGLIE_SOSPESE` ma a granularità ELEMENT — la sessione M10 ha misurato che `canoa` non passa
+  il cancello nemmeno con la riformulazione delle tappe che ha invece tarato `attraversamento`
+  (estensione ~33% fuori profilo, compattezza 0.35 sotto il minimo): un flusso che la pesca brucia
+  tutti i tentativi dell'arco e pubblica comunque il candidato migliore, sfondo degradato per
+  l'utente reale (CLAUDE.md, principio 1). `canoa` non viene rimossa dal roster: resta in
+  concepts.js, in archivio e raggiungibile per id dal lab — sparisce solo dalla pesca casuale.
+  Sospensione temporanea e reversibile con una riga (togliere "canoa" dalla lista) quando un arco
+  lab gated su preview la riporta dentro il profilo, come già fatto per `attraversamento` in M10.
+- `backend/src/catalog.js`, `poolForWith`: applica anche il filtro `ELEMENT_SOSPESI` (sull'id
+  dell'element, `c.id`), nello stesso e unico punto che già filtra `FAMIGLIE_SOSPESE`. Le stesse
+  due esenzioni deliberate restano aperte: la combinazione esplicita del lab (`runLabArc`, che non
+  passa da `poolForWith`) e il proseguimento di un arco già aperto (`resolveConcept` da
+  `evolveStory`).
+- Nuovi test in `backend/tests/unit/element-sospesi.test.js`: risultato concreto su "canoa" (pool
+  reale su ogni flusso attivo, `pickConcept` su una sequenza consecutiva, `resolveConcept` ed
+  `evolveStory` per le esenzioni) più il collaudo del meccanismo generico con `vi.doMock` su un
+  altro element, per garantire che il filtro non sia cablato sul solo id "canoa".
+
 ## 2026-07-31 — s-health-dice-se-un-flusso-e-fermo
 - `backend/src/handlers.js`: nuova `buildFreschezzaState(state, oggi)`, funzione pura accanto a
   `buildCancelloState` — confronta `state.lastDate` con `oggi` (mezzogiorno UTC su entrambe le

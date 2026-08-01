@@ -51,7 +51,7 @@
 // cui i moduli ES risolvono un ciclo del genere: non toccarlo per "pulizia"
 // senza aver riletto questa nota.
 
-import { CONFIG, FAMIGLIE_SOSPESE } from "./config.js";
+import { CONFIG, FAMIGLIE_SOSPESE, ELEMENT_SOSPESI } from "./config.js";
 import { FAMILIES } from "./families.js";
 import { ELEMENTS, getConcept, getElement, conceptsForFamilies } from "./concepts.js";
 import { validaRangeProfilo, validaMonotona, validaScalareONull } from "./validazione.js";
@@ -428,10 +428,20 @@ export function resolveConcept(id, catalog) {
  * lab.js, che non passa da poolForWith): M10 deve poter continuare a chiedere
  * esplicitamente "attraversamento" per tararla, anche mentre è sospesa qui.
  *
+ * ELEMENT SOSPESI (M10, vedi config.js): stessa logica ma a granularità
+ * ELEMENT invece che FAMIGLIA — filtrata qui, nello stesso punto e con le
+ * stesse due esenzioni deliberate: la combinazione ESPLICITA del lab
+ * (runLabArc in lab.js, che non passa da poolForWith) e il proseguimento di
+ * un arco già aperto (resolveConcept chiamata da evolveStory) restano
+ * raggiungibili — la taratura futura deve poter chiedere canoa per id. Nel
+ * concept combinato `c.id` è l'id dell'ELEMENT (vedi il commento di
+ * giorno.js:33), quindi il filtro confronta contro quello, non contro
+ * `c.famiglia.id`.
+ *
  * Agisce SOLO sulla pesca di un concept NUOVO: resolveConcept() di uno stato
  * ESISTENTE (story.js: evolveStory, quando riprende l'arco di ieri) non passa
- * da questa funzione, quindi un arco già in corso su una famiglia sospesa
- * continua a evolvere e chiude comunque i suoi 7 giorni.
+ * da questa funzione, quindi un arco già in corso su una famiglia o un
+ * element sospeso continua a evolvere e chiude comunque i suoi 7 giorni.
  */
 export function poolForWith(channel, catalog) {
   const builtins = conceptsForFamilies(channel.famiglie);
@@ -439,5 +449,7 @@ export function poolForWith(channel, catalog) {
     .filter((el) => el.pubblicato === true && el.canale === channel.id)
     .map((el) => resolveConcept(el.id, catalog))
     .filter(Boolean);
-  return [...builtins, ...customi].filter((c) => !FAMIGLIE_SOSPESE.includes(c.famiglia.id));
+  return [...builtins, ...customi]
+    .filter((c) => !FAMIGLIE_SOSPESE.includes(c.famiglia.id))
+    .filter((c) => !ELEMENT_SOSPESI.includes(c.id));
 }
