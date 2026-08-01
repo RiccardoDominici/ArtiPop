@@ -16,6 +16,22 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-la-home-si-vede-anche-senza-javascript
+- Chi apre ArtiPop col JavaScript bloccato (content blocker, Lockdown Mode, proxy aziendali)
+  vedeva un riquadro vuoto: il deck dei canali è costruito interamente lato client
+  (`<div id="deck">` vuoto nel markup). Il server ha già in mano tutto il necessario
+  (`renderPage` riceve i `metas` di ogni canale), quindi ora emette un `<noscript>` statico
+  con nome, wallpaper di oggi e link alla Shortcut di ogni canale attivo, più i rimandi a
+  `/aiuto` e `/archivi`.
+- `page.js`, `noscriptBlocco()`: nuova funzione che costruisce il blocco a partire da
+  `ACTIVE_CHANNELS` e `metas`; senza meta (o senza data) la voce resta valida ma senza
+  `<img>`/`?v=`, mai un src verso un giorno inesistente. Aggiunta anche `esc()` (come in
+  `archivi.js`/`help.js`) usata solo qui: i campi del template client-side restano invariati,
+  come da nota nel file.
+- Il blocco è invisibile e senza costo di rete quando il JS gira (il browser non renderizza
+  né scarica `<noscript>`), quindi le baseline visive non cambiano — solo i token §1.1 e i
+  tap target da 44px già in uso. Nuovo paragrafo «Ripiego senza JavaScript» in VISUAL_SPECS §1.4.
+
 ## 2026-08-01 — feat-l-archivio-storico-si-legge-anche-con-lo-screen-reader
 - Su /archivi ogni card ripeteva link identici fra loro ("Riapri l'ultimo giorno", "Salva",
   l'immagine di copertina che duplica lo stesso link) senza dire di quale canale parlava: chi usa

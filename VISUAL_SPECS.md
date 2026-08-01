@@ -58,6 +58,15 @@ dell'arco (`.arcdate`) e il nome del concept (`.arctext`), con testo di ripiego 
 la riga dell'arco mostrato è evidenziata con `.on`. Comando invisibile con meno di due
 archi o senza archivio disponibile — nessun colore o misura nuovi.
 
+Ripiego senza JavaScript (`<noscript>`, feat-la-home-si-vede-anche-senza-javascript): un
+elenco testuale (`.ns-list`) con una voce (`.ns-item`) per canale attivo — nome, wallpaper
+di oggi in miniatura quando c'è un meta con data, link alla Shortcut del canale e link
+diretto al wallpaper — più i rimandi a `/aiuto` e `/archivi`. Solo i token §1.1 (testo
+`--text`, dim `--dim`, bordo `--card-border`, fondo `--card`, raggio `--radius`) e i tap
+target da 44px già in uso altrove nella pagina. Zero `<script>`, zero `fetch`, zero
+gestori inline: invisibile e senza alcun costo di rete quando il JavaScript è attivo,
+perché il browser non renderizza né scarica il contenuto di `<noscript>` in quel caso.
+
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
 

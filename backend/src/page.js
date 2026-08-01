@@ -32,6 +32,45 @@ const ORA_CRON_UTC = 3;
 // iniziare a usarla sui campi del template senza che sia una scelta a parte,
 // perché cambierebbe cosa il sito mostra.
 
+/** Escape minimo per il testo dinamico del blocco <noscript> (stesso di archivi.js/help.js). */
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
+/**
+ * Ripiego statico per chi apre la pagina con JavaScript disattivato (content
+ * blocker, Lockdown Mode, proxy aziendali): senza JS il deck resta un
+ * `<div id="deck">` vuoto (costruito lato client), quindi qui si ricostruisce
+ * a mano — con i `metas` già disponibili al render — il minimo utilizzabile:
+ * wallpaper di oggi, nome canale e link alla Shortcut, per ognuno dei
+ * canali attivi. Zero fetch, zero script: solo markup e i token §1.1.
+ */
+function noscriptBlocco(metas) {
+  const voci = ACTIVE_CHANNELS.map((c) => {
+    const meta = metas[c.id];
+    const data = meta?.date || null;
+    const img = data
+      ? `<img src="/w/${esc(c.id)}?v=${esc(data)}" alt="Wallpaper di oggi del canale ${esc(c.name)} (${esc(data)})" loading="lazy">`
+      : "";
+    return `<li class="ns-item">
+      <strong>${esc(c.emoji)} ${esc(c.name)}</strong>
+      ${img}
+      <a href="/s/${esc(c.id)}.shortcut">Scarica la Shortcut</a>
+      <a href="/w/${esc(c.id)}">Vedi il wallpaper</a>
+    </li>`;
+  }).join("\n");
+  return `<noscript>
+    <section class="ns">
+      <h2>ArtiPop funziona anche senza JavaScript</h2>
+      <p>Ecco il wallpaper di oggi di ogni canale, con il link per scaricarne la Shortcut.</p>
+      <ul class="ns-list">${voci}</ul>
+      <p><a href="/aiuto">Aiuto e problemi comuni</a> · <a href="/archivi">Archivi</a></p>
+    </section>
+  </noscript>`;
+}
+
 /**
  * Renderizza la pagina. `metas` è una mappa channelId → meta (da storage.getMeta),
  * `origin` è l'origine pubblica del worker, `dateKey` la data di oggi (YYYY-MM-DD).
@@ -67,6 +106,7 @@ export function renderPage(metas, origin, dateKey, condiviso = null) {
   const pageTitle = "ArtiPop — un wallpaper nuovo ogni giorno, che evolve";
   const pageDescription =
     "Wallpaper AI gratuiti per iPhone che evolvono giorno per giorno. Nessuna app: solo una Shortcut.";
+  const noscript = noscriptBlocco(metas);
 
   return `<!doctype html>
 <html lang="it">
@@ -256,6 +296,16 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .arcrow .arctext { display: block; font-size: .8rem; line-height: 1.4; }
   .arcrow.on { color: var(--text); }
 
+  /* ---------- ripiego senza JavaScript (invisibile col JS attivo) ---------- */
+  .ns { margin-top: 1.6rem; text-align: center; color: var(--text); }
+  .ns h2 { font-size: 1.15rem; font-weight: 700; }
+  .ns > p { color: var(--dim); font-size: .85rem; margin-top: .4rem; }
+  .ns-list { list-style: none; margin: 1.2rem auto 0; padding: 0; display: grid; gap: 1rem; max-width: 22rem; }
+  .ns-item { border: 1px solid var(--card-border); border-radius: var(--radius); background: var(--card); padding: 1rem; }
+  .ns-item strong { display: block; margin-bottom: .6rem; }
+  .ns-item img { max-width: 100%; border-radius: 12px; display: block; margin: 0 auto .6rem; }
+  .ns-item a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 .6rem; color: var(--text); }
+
   /* ---------- setup ---------- */
   section.setup { margin-top: 3.4rem; }
   .setup h2 { text-align: center; font-size: 1.6rem; font-weight: 750; letter-spacing: -.02em; }
@@ -400,6 +450,8 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
       <div class="arcstory" id="arclist" hidden></div>
     </section>
   </div>
+
+  ${noscript}
 
   <section class="setup" id="setup">
     <h2>Come si imposta lo sfondo</h2>
