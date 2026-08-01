@@ -572,3 +572,17 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovo `backend/tests/unit/guida-sospensioni.test.js`: anti-drift fra le liste di sospensione in
   `config.js` e il blocco di GUIDA.md — se domani si aggiunge una sospensione senza documentarla,
   la suite fallisce.
+
+## 2026-08-01 — s-la-guida-spiega-lo-sfondo-segnaposto
+- GUIDA.md §1.6 «Se qualcosa non va» ora ha una voce sintomo → causa → rimedio per il segnaposto di
+  M4: quando `/w/<flusso>` non ha un'immagine da servire (canale appena aggiunto e non ancora
+  generato, o `?date=` di un giorno inesistente) risponde comunque con un'immagine valida — mai un
+  errore — perché la Shortcut che scarica quei byte per la lock screen non deve mai rompersi. Prima
+  questo comportamento era documentato solo nel runbook §2.9 per il maintainer: chi lo incontrava
+  dal lato utente (rettangolo scuro senza disegno) non aveva modo di distinguerlo da un guasto.
+- §1.5, riga «Riscaricare un giorno preciso»: rimando a §1.6 per il caso della data non presente in
+  archivio.
+- Nuovo `backend/tests/unit/guida-segnaposto.test.js`: verifica che la voce nomini entrambe le
+  cause e dica esplicitamente che la risposta resta un'immagine; anti-drift su `index.js` (il blocco
+  `/w/` deve continuare a servire `PLACEHOLDER_PNG_BYTES` su almeno due rami, altrimenti la GUIDA
+  smette di essere vera).

@@ -122,7 +122,7 @@ Da stasera è tutto automatico. 🌇
 | Averlo anche la mattina | Aggiungi una seconda automazione all'**Alba** |
 | Cambiare canale | Apri la Shortcut e sostituisci l'URL, o scarica quella dell'altro canale |
 | Rivedere i giorni passati | Sul sito, sezione **"Il viaggio finora"** |
-| Riscaricare un giorno preciso | `…/w/island?date=2026-07-16` |
+| Riscaricare un giorno preciso | `…/w/island?date=2026-07-16` (data inesistente? → §1.6) |
 
 ## 1.6 Se qualcosa non va
 
@@ -138,6 +138,16 @@ Il caso di gran lunga più frequente:
 > si ferma lì, senza errore.
 > Rimedio: spegni "Mostra anteprima". Le Shortcut scaricate dal sito ce l'hanno
 > già spento; se la tua è vecchia, riscaricala.
+
+> **Lo sfondo è diventato un rettangolo scuro senza disegno.**
+> Causa: l'indirizzo ha risposto, ma per quel canale/data non c'è ancora
+> un'immagine — il canale è nuovo e non è ancora stato generato, oppure hai
+> chiesto `?date=` di un giorno in cui quel canale non esisteva. Per scelta di
+> progetto l'indirizzo risponde sempre con un'immagine valida, mai con un
+> errore: meglio uno sfondo segnaposto che una Shortcut rotta.
+> Rimedio: se hai usato `?date=`, togli il parametro o scegli una data
+> presente in **"Il viaggio finora"** sul sito; se il canale è appena stato
+> aggiunto, aspetta il cron della notte perché produca la prima immagine.
 
 ---
 ---
