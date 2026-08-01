@@ -487,11 +487,11 @@ def read_runcount():
 
 def default_max_runs():
     """Default per MAX_RUNS: da env MONITOR_MAX_RUNS se presente e valido
-    (1-999), altrimenti 50. Mai un'eccezione su un env var malformato."""
+    (1-9999), altrimenti 50. Mai un'eccezione su un env var malformato."""
     raw = os.environ.get("MONITOR_MAX_RUNS", "")
     try:
         value = int(raw)
-        if 1 <= value <= 999:
+        if 1 <= value <= 9999:
             return value
     except ValueError:
         pass
@@ -500,7 +500,7 @@ def default_max_runs():
 
 def parse_max_runs(raw, default):
     """Valida l'input testuale del prompt MAX_RUNS. Vuoto -> (True, default);
-    intero 1-999 -> (True, valore); qualunque altra cosa (non numerico, fuori
+    intero 1-9999 -> (True, valore); qualunque altra cosa (non numerico, fuori
     range, incluso '0') -> (False, None). Mai un'eccezione su input strano."""
     raw = (raw or "").strip()
     if raw == "":
@@ -508,7 +508,7 @@ def parse_max_runs(raw, default):
     if not raw.isdigit():
         return False, None
     value = int(raw)
-    if not (1 <= value <= 999):
+    if not (1 <= value <= 9999):
         return False, None
     return True, value
 
@@ -1388,13 +1388,13 @@ def main():
                             container_status = check_container_running()
                             last_docker_poll = time.monotonic()
                         else:
-                            status_message = "MAX_RUNS non valido (1-999), avvio annullato"
+                            status_message = "MAX_RUNS non valido (1-9999), avvio annullato"
                         status_message_until = time.monotonic() + 6.0
                         input_mode = None
                         input_buffer = ""
                     elif key in ("\x7f", "\x08"):  # backspace/DEL: corregge
                         input_buffer = input_buffer[:-1]
-                    elif key.isdigit() and len(input_buffer) < 3:
+                    elif key.isdigit() and len(input_buffer) < 4:
                         input_buffer += key
                     # qualunque altro tasto durante l'inserimento viene
                     # ignorato: mai crash, mai azioni accidentali a meta' digitazione
