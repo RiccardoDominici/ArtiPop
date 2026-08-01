@@ -16,6 +16,24 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-la-pesca-non-resta-mai-a-secco-per-una-sospensione
+- `backend/src/catalog.js`, `poolForWith`: le sospensioni (`FAMIGLIE_SOSPESE`/`ELEMENT_SOSPESI`,
+  config.js) sono una preferenza di TARATURA, non una guardia di sicurezza — se coprono l'INTERO pool
+  pescabile di un flusso (es. `citta`, che pesca solo da `timelapse`+`attraversamento`: sospenderle
+  entrambe lo svuoterebbe), prima del fix `pickConcept` lanciava e quel flusso non produceva più
+  nulla, ogni giorno, per sempre, senza che il self-check di `channels.js` se ne accorgesse (usa
+  `poolFor()` built-in non filtrato). Ora `poolForWith` calcola il pool unito PRIMA dei filtri e, solo
+  se il pool unito non era vuoto ma i filtri lo svuotano, ripiega su quello non filtrato con un
+  `console.error` che nomina il flusso e quali famiglie/element hanno morso — stessa scelta già fatta
+  dal cancello di collaudo in `generate.js`: uno sfondo fuori range vale più di nessuno sfondo. Il
+  caso "pool vuoto di suo" (flusso senza alcun concept) resta invariato: lì `pickConcept` continua a
+  lanciare "nessun concept disponibile" (story.test.js:117-121, non toccato).
+- Nuovo `backend/tests/unit/pool-mai-vuoto.test.js`: guardia sul config reale (nessun flusso attivo
+  pesca da un pool vuoto), il ripiego con `FAMIGLIE_SOSPESE`/`ELEMENT_SOSPESI` mockate a coprire
+  l'intero pool (sia su `citta` sia su un flusso custom senza built-in pescabili), la non-regressione
+  quando la sospensione copre solo una famiglia (il filtro resta pieno, nessun ripiego) e il caso
+  pool-vuoto-di-suo (`pickConcept` lancia ancora).
+
 ## 2026-08-01 — s-immagine-di-oggi-non-si-perde-se-lo-stato-non-si-salva
 - `backend/src/handlers.js`, `runChannel`: avvolta la SOLA `putState` (dopo `putImage` riuscita) in
   try/catch. Prima, un `putState` fallito (KV transitorio) propagava l'eccezione: `/run/<flusso>`
