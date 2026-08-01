@@ -790,7 +790,7 @@ dayshareEl.addEventListener("click", shareLink);
 /* feat-condividi-l-immagine-del-giorno: vera solo se il browser dichiara di
    saper condividere file veri (non solo link) — Safari/Chrome mobile sì,
    Chromium headless (visual-check) e i browser desktop più vecchi no. In
-   try/catch: un browser che lancia su `new File(...)` o su `canShare` non
+   try/catch: un browser che lancia su new File(...) o su canShare non
    deve rompere il resto della pagina (principio 3). Valutata una sola volta
    all'avvio: il supporto non cambia durante la sessione. */
 function supportaCondivisioneFile() {
@@ -804,6 +804,28 @@ function supportaCondivisioneFile() {
 }
 const PUO_CONDIVIDERE_FILE = supportaCondivisioneFile();
 
+/* Ricava il blob JPEG dell'immagine già a schermo nella card in cima,
+   ridisegnandola su un canvas invece di riscaricarla — la guardia
+   anti-ciclo-77 (backend/tests/unit/home-preferiti-senza-rete.test.js e
+   affini) ammette una sola chiamata di rete in tutta la pagina, già
+   occupata dall'archivio; il file da condividere è quindi la stessa
+   immagine che previewDay ha già assegnato a top.src = srcFor(...), senza
+   una seconda richiesta di rete (più veloce, e nessuna rottura della
+   guardia). Stesso dominio del worker: nessun problema di canvas taintato. */
+function catturaFrameCorrente(img) {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  canvas.getContext("2d").drawImage(img, 0, 0);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("toBlob nullo"))),
+      "image/jpeg",
+      0.92
+    );
+  });
+}
+
 /* Passa il file vero del giorno mostrato al foglio di condivisione di
    sistema, invece del solo link (v. shareLink) — il caso d'uso è mandare il
    wallpaper in chat senza doverlo prima salvare e riallegare a mano.
@@ -815,13 +837,10 @@ async function condividiImmagine() {
   try {
     const chId = CHANNELS[order[0]].id;
     const date = previewDate ?? TODAY;
-    const src = srcFor(chId, date, date === TODAY);
-    const res = await fetch(src);
-    if (!res.ok) throw new Error("fetch fallito: " + res.status);
-    const blob = await res.blob();
-    const file = new File([blob], \`ArtiPop-\${chId}-\${date}.jpg\`, {
-      type: blob.type || "image/jpeg",
-    });
+    const img = deckEl.querySelector(".card.top .wall");
+    if (!img || !img.complete || !img.naturalWidth) throw new Error("immagine non pronta");
+    const blob = await catturaFrameCorrente(img);
+    const file = new File([blob], \`ArtiPop-\${chId}-\${date}.jpg\`, { type: "image/jpeg" });
     await navigator.share({ files: [file], title: "ArtiPop", text: "Il wallpaper di oggi" });
   } catch (err) {
     if (err && err.name === "AbortError") return; // annullato dall'utente: nessun toast, nessun ripiego
