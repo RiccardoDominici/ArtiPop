@@ -136,7 +136,10 @@ const FAQ = [
     q: "Che fine fanno gli sfondi vecchi?",
     a: `Restano in archivio per sempre, ma "Il viaggio finora" sulla home mostra solo l'arco in
       corso, non tutto lo storico. Ogni immagine passata ha comunque un suo indirizzo diretto,
-      sempre raggiungibile, del tipo <code>/w/natura?date=2026-07-16</code>.`,
+      sempre raggiungibile, del tipo <code>/w/natura?date=2026-07-16</code>. Anche i canali che
+      non esistono più — rinominati o sostituiti da uno nuovo — conservano il loro archivio
+      intatto: si sfoglia giorno per giorno dalla pagina <a href="/archivi">Archivi storici</a>,
+      che indica anche quale canale attivo ne raccoglie l'eredità.`,
   },
   {
     q: "A che ora viene generato lo sfondo del giorno?",
