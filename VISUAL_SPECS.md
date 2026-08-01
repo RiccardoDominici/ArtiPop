@@ -67,6 +67,15 @@ target da 44px già in uso altrove nella pagina. Zero `<script>`, zero `fetch`, 
 gestori inline: invisibile e senza alcun costo di rete quando il JavaScript è attivo,
 perché il browser non renderizza né scarica il contenuto di `<noscript>` in quel caso.
 
+Selettore di data (`#dayPick`, `<input type="date">`, feat-salta-al-giorno-che-cerchi —
+proposta ai sensi di §7): campo nativo nella riga di navigazione del giorno, accanto alle
+frecce ‹ ›. Sfondo `--bg`, testo `--text`, bordo `--dim`, `color-scheme: dark` per far
+rendere in scuro anche i controlli nativi del browser (calendario/frecce del picker),
+altezza minima pari a quella di `.dayctrl` (`2.3rem`). Nessun colore o token nuovo oltre
+§1.1. `min`/`max`/`value` seguono sempre l'archivio del canale mostrato (più vecchio, più
+recente, giorno corrente); invisibile insieme al resto di `.daynav` quando non c'è un
+viaggio da sfogliare (meno di due giorni in archivio).
+
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
 

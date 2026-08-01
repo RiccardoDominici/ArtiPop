@@ -279,6 +279,11 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .dayinfo { min-width: 8rem; display: grid; gap: .1rem; }
   .dayinfo .ddate { font-size: .92rem; font-weight: 650; text-transform: capitalize; }
   .dayinfo .dpos { font-size: .74rem; color: var(--dim); }
+  .daypick {
+    min-height: 2.3rem; padding: 0 .6rem; border-radius: 999px;
+    border: 1px solid var(--dim); background: var(--bg); color: var(--text);
+    font: inherit; color-scheme: dark;
+  }
   .dcap { color: var(--dim); font-size: .78rem; line-height: 1.5; margin: .8rem auto 0; max-width: 26rem; }
   .dcap strong { color: var(--text); font-weight: 650; }
   /* feat-leggi-la-storia-dell-arco: elenco delle tappe dell'arco visualizzato,
@@ -406,6 +411,13 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
         </div>
         <button class="dayctrl" id="daynext" aria-label="Giorno successivo dell'archivio">›</button>
       </div>
+      <!-- feat-salta-al-giorno-che-cerchi: con centinaia di giorni in archivio,
+           le frecce e il dito muovono un giorno alla volta — per un giorno
+           preciso (il compleanno, il giorno che qualcuno ti ha condiviso)
+           serve un salto diretto. min/max/value seguono l'archivio del
+           canale mostrato (v. updateDayNav). -->
+      <input type="date" class="daypick" id="dayPick" hidden
+        aria-label="Vai a un giorno specifico dell'archivio">
       <!-- feat-rivedi-l-arco-precedente: visibile solo quando, oltre alla
            finestra mostrata, esiste almeno un arco (settimana/concept) più
            vecchio scaricato da /api/archive ma non ancora raggiungibile. -->
@@ -543,6 +555,7 @@ const copyurlEl = document.getElementById("copyurl");
 const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
 const dayTodayEl = document.getElementById("daytoday");
+const dayPickEl = document.getElementById("dayPick");
 const toastEl = document.getElementById("toast");
 const journeyEl = document.querySelector(".journey");
 
@@ -958,6 +971,7 @@ function renderJourney(chId) {
   // frecce, niente tasto play, solo un avviso — evita comandi inutili.
   const hasJourney = !!dates && dates.length >= 2;
   daynavEl.hidden = !hasJourney;
+  dayPickEl.hidden = !hasJourney;
   dayshareEl.hidden = !hasJourney;
   dayopenEl.hidden = !hasJourney;
   daysaveEl.hidden = !hasJourney;
@@ -1028,6 +1042,16 @@ function updateDayNav(chId) {
   // Nascosto solo quando si sta già guardando oggi nell'arco in corso —
   // altrimenti (giorno diverso o arco passato) offre il ritorno diretto.
   dayTodayEl.hidden = previewDate === null && (arcIndexCache[chId] ?? 0) === 0;
+  // feat-salta-al-giorno-che-cerchi: min/max coprono l'intero archivio noto
+  // del canale (unione degli archi, non solo la finestra sfogliata ora),
+  // così si può saltare anche a un giorno di un arco già chiuso.
+  const known = (arcsCache[chId] || []).flat();
+  const range = known.length ? known : dates;
+  if (range.length) {
+    dayPickEl.min = range.reduce((a, b) => (b < a ? b : a));
+    dayPickEl.max = range.reduce((a, b) => (b > a ? b : a));
+  }
+  dayPickEl.value = date;
   updateDayCaption(chId, date);
   updateArcStoryHighlight(date);
   aggiornaTitolo();
@@ -1181,6 +1205,25 @@ function stepDay(dir) {
 }
 dayPrevEl.addEventListener("click", () => stepDay(-1));
 dayNextEl.addEventListener("click", () => stepDay(1));
+
+/* feat-salta-al-giorno-che-cerchi: salto diretto alla data scelta nel
+   selettore. Cerca l'arco che la contiene (può essere un arco già chiuso,
+   non solo la finestra sfogliata ora) e ci si sposta come fa il link
+   condiviso di un giorno passato. Se la data non ha wallpaper, nessun
+   salto: si avvisa e il campo torna al giorno mostrato — mai uno schermo
+   nero, mai un errore grezzo. */
+dayPickEl.addEventListener("change", () => {
+  const chId = CHANNELS[order[0]].id;
+  const d = dayPickEl.value;
+  const arcs = arcsCache[chId] || [];
+  const arcIdx = arcs.findIndex((arc) => arc.includes(d));
+  if (arcIdx === -1) {
+    toast("nessun wallpaper per quel giorno");
+    dayPickEl.value = previewDate ?? TODAY;
+    return;
+  }
+  goToArc(chId, arcIdx, d);
+});
 
 /* Il listener globale su window (riga 705) manda ArrowLeft/ArrowRight al
    mazzo dei canali: chi ha appena mosso il fuoco dentro "Il viaggio finora"
