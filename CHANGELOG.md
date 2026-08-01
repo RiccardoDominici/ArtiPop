@@ -1057,3 +1057,28 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   rigenerate contro il dev server locale (`wrangler dev`, KV locale) — cambio visivo dichiarato.
 - Nuovi `backend/tests/unit/aiuto-stato-canali.test.js` e
   `backend/tests/integration/aiuto-stato-canali.test.js`.
+
+## 2026-08-01 — feat-gli-archivi-storici-si-riaprono-dal-sito
+- Gli archivi dei canali storici (island, bloom, studio, neon, …) erano raggiungibili solo
+  chiamando `/w/<id>?date=...` a mano: nessuna pagina del sito li elencava, quindi chi non
+  conosceva già gli id storici non aveva modo di scoprirli o riaprirli.
+- Ciclo 77 (opus) aveva tentato una direzione diversa — link costruiti client-side con una
+  nuova `fetch()` in `page.js` — ed era FALLITO(EXEC): tre test congelati impongono
+  `fetches.length === 1` sull'HTML della home come guardia contro nuove rotte di rete. Questo
+  ciclo prende una strada che non tocca affatto quella guardia.
+- Nuovo modulo `backend/src/archivi.js` (`renderArchiviPage`): HTML statico, nessun
+  JavaScript, nessuna `fetch`, stesso linguaggio visivo di `help.js` (token `--bg #0a0b10`,
+  `--text #f2f3f8`, `--dim #9aa3b8`, link `#8fd3ff`). Lista vuota o scansione fallita → sempre
+  200 con un messaggio umano, mai una pagina rotta.
+- Nuova rotta pubblica `GET /archivi` (`backend/src/index.js`): legge
+  `listChannelsWithArchive(env)` — già esistente in `storage.js`, finora usata solo dal
+  tuning tool — SOLO quando l'utente visita la pagina, mai nel giro di produzione. Esclude gli
+  id di `ACTIVE_CHANNELS`, ordina per data più recente.
+- `backend/src/page.js`: un solo link statico `<a href="/archivi">Archivi</a>` nel footer della
+  home. Zero nuove `fetch(` nell'HTML reso: i tre test congelati restano intatti e verdi.
+- `VISUAL_SPECS.md` §2 estesa con la sottosezione «Pagina /archivi»: adozione integrale dei
+  token e del layout piatto già in spec, nessun colore o componente nuovo. `GUIDA.md` aggiorna
+  la mappa del repo e la tabella degli endpoint.
+- Baseline `home-mobile.png`/`home-desktop.png` rigenerate (footer cambiato); baseline di
+  `/aiuto` e del tuning tool byte-identiche. Nuovi
+  `backend/tests/unit/archivi-pagina.test.js` e `backend/tests/integration/archivi-rotta.test.js`.

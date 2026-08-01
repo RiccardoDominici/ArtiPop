@@ -202,6 +202,7 @@ Dettagli tecnici: [`backend/README.md`](backend/README.md).
 | `backend/src/storage.js` | layout delle chiavi KV |
 | `backend/src/page.js` | landing page |
 | `backend/src/help.js` | pagina `/aiuto` (troubleshooting + FAQ) |
+| `backend/src/archivi.js` | pagina `/archivi` (elenco dei canali storici e link all'ultimo giorno) |
 | `backend/src/config.js` | tutti i parametri regolabili, documentati |
 | `shortcut/` | template, build e verifica dei file `.shortcut` firmati |
 | `tuning/` | strumento locale per il maintainer — vedi [`tuning/README.md`](tuning/README.md) |
@@ -268,6 +269,7 @@ usano il sito e lo strumento di tuning in sola lettura.
 | `GET /health` *(pubblico)* | per flusso: `id`, `famiglie`, `concepts`, `cancello` dell'ultima esecuzione, `freschezza` (`ultimaData`, `aggiornato`, `giorniDiRitardo` rispetto a oggi); più `flussiFermi` (numero di flussi con `freschezza.aggiornato:false`) e `misuratore` (booleano, binding Images disponibile) |
 | `GET /w/<flusso>[.jpg\|.png][?date=\|?v=][&dl=1]` *(pubblico)* | immagine del giorno per la lock screen; il corpo è **sempre** byte immagine, **mai** JSON — se il canale non ha ancora generato nulla o `?date=` non esiste, risponde con il placeholder statico. Con `?dl=1` la risposta aggiunge `content-disposition: attachment` con un nome file parlante (`artipop-<flusso>-<data>.png`/`.jpg`), per far arrivare il salvataggio su disco con un nome riconoscibile invece del blob senza estensione — non emesso sul placeholder |
 | `GET /s/<flusso>[-base].shortcut` *(pubblico)* | Shortcut firmata da installare (variante principale o base, vedi [2.7](#27-le-shortcut-firmate)) |
+| `GET /archivi` *(pubblico)* | pagina HTML: i canali storici (island, bloom, studio, neon, …) con giorni in archivio, intervallo date e link per riaprire l'ultimo giorno di ciascuno |
 
 ## 2.5 Come sono fatti i canali
 
