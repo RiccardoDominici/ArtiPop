@@ -16,6 +16,18 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-apri-il-wallpaper-del-giorno-a-schermo-intero
+- Nuova ancora `#dayopen` (`btn ghost`, `target="_blank"`, `rel="noopener"`) accanto a `#dayshare`
+  nella sezione «Il viaggio finora»: apre il file vero del giorno mostrato nel mockup, alla sua
+  risoluzione piena — prima l'unica strada per ottenere l'immagine era conoscere a memoria la
+  sintassi `/w/<canale>?date=<data>`.
+- `updateDayNav()` — l'unico punto che già conosce canale e data correnti — aggancia
+  `dayopen.href` a `srcFor(chId, date, date === TODAY)`: stessa URL già usata dal crossfade
+  dell'anteprima, nessun calcolo nuovo.
+- Visibilità legata allo stesso `hasJourney` di `#dayshare` in `renderJourney()`: nessun link
+  penzolante quando non c'è navigazione fra giorni.
+- Nessuna nuova regola CSS: riusa `.btn` e `.btn.ghost` già in VISUAL_SPECS §1.4.
+
 ## 2026-08-01 — feat-la-home-dice-se-il-canale-e-in-ritardo
 - `renderPage` calcola `inRitardo` per ogni canale confrontando `metas[c.id]?.date` con `dateKey`:
   vero solo se esiste un meta con una data reale precedente a oggi (un canale senza meta ricade su

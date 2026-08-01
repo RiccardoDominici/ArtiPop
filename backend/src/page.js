@@ -330,6 +330,10 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
            di #daynav (stesso hasJourney in renderJourney) — niente da
            condividere quando non c'è navigazione fra giorni. -->
       <button class="btn ghost" id="dayshare" hidden>copia link</button>
+      <!-- feat-apri-il-wallpaper-del-giorno-a-schermo-intero: stesso hasJourney
+           di #dayshare — porta al file vero del giorno mostrato, alla sua
+           risoluzione piena (srcFor(), la stessa URL del crossfade). -->
+      <a class="btn ghost" id="dayopen" target="_blank" rel="noopener" hidden>apri l'immagine</a>
       <p class="dcap" id="dcap" hidden></p>
     </section>
   </div>
@@ -408,6 +412,7 @@ const dayPrevEl = document.getElementById("dayprev");
 const dayNextEl = document.getElementById("daynext");
 const dcapEl = document.getElementById("dcap");
 const dayshareEl = document.getElementById("dayshare");
+const dayopenEl = document.getElementById("dayopen");
 const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
@@ -649,6 +654,7 @@ function renderJourney(chId) {
   const hasJourney = !!dates && dates.length >= 2;
   daynavEl.hidden = !hasJourney;
   dayshareEl.hidden = !hasJourney;
+  dayopenEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
   if (!hasJourney) {
@@ -686,6 +692,7 @@ function updateDayNav(chId) {
   dposEl.textContent = dates.length ? \`\${idx === -1 ? "?" : dates.length - idx} di \${dates.length}\` : "";
   dayPrevEl.disabled = idx === -1 || idx >= dates.length - 1;
   dayNextEl.disabled = idx <= 0;
+  dayopenEl.href = srcFor(chId, date, date === TODAY);
   updateDayCaption(chId, date);
 }
 
