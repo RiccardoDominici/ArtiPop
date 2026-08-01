@@ -67,3 +67,4 @@ catalogo-tuning · sito-web · pagina-aiuto · tuning-tool · sicurezza · docs
 | 2026-08-01 04:15 UTC | POLISH | deploy | s-il-deploy-punta-sempre-al-worker-configurato | backend/tests/unit/config-deploy-coerente.test.js, CHANGELOG.md | opus | FATTO | auto/20260801-041103 | 8eb10070-8480-48c5-8061-fe4f1c2096db |
 | 2026-08-01 04:22 UTC | POLISH | deploy | s-ogni-binding-usato-dal-codice-esiste-nei-due-ambienti | backend/tests/helpers/jsonc.js, backend/tests/unit/config-binding-completi.test.js, backend/tests/unit/config-preview-isolato.test.js, backend/tests/unit/config-deploy-coerente.test.js, CHANGELOG.md | opus | FATTO | auto/20260801-041552 | f3c8d408-d724-449e-9703-1d9433121a96 |
 | 2026-08-01 04:23 UTC | POLISH | - | nessuna-proposta | - | opus | NESSUNA-PROPOSTA | auto/20260801-042232 | - |
+| 2026-08-01 04:24 UTC | POLISH | - | nessuna-proposta | - | opus | NESSUNA-PROPOSTA | auto/20260801-042327 | - |
