@@ -109,7 +109,15 @@ const FAQ = [
     a: `Ogni canale racconta un progetto che avanza di un pezzo al giorno e si completa in
       <strong>${CONFIG.ARC_LENGTH_DAYS} giorni</strong>. Al settimo giorno il progetto è finito:
       l'ottavo giorno si riparte da una <strong>base nuova</strong> — nuova scena, nuovo progetto —
-      e il ciclo ricomincia. Così non vedi mai due settimane uguali.`,
+      e il ciclo ricomincia. Così non vedi mai due settimane uguali.
+      <br><br>
+      Per sfogliare il viaggio dalla home usa le <strong>frecce</strong> sul mockup e il
+      contatore "N di M" per muoverti fra i giorni; <strong>torna a oggi</strong> per rientrare
+      al giorno corrente; <strong>arco precedente</strong> e <strong>arco successivo</strong>
+      per passare da un progetto all'altro; <strong>scegli l'arco</strong> per saltare
+      direttamente a uno dall'elenco; <strong>leggi la storia</strong> per vedere tutte le
+      tappe dell'arco in corso. Ogni giorno ha anche un indirizzo diretto e condivisibile
+      (<code>?date=</code>).`,
   },
   {
     q: "Posso cambiare canale?",

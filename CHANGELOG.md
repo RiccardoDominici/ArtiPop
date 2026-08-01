@@ -868,3 +868,17 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   `renderArcList`, chiamata dove già si chiama `renderArcStory`.
 - Nuovo `backend/tests/unit/home-scegli-arco.test.js`; baseline visive
   `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo comando.
+
+## 2026-08-01 — feat-l-aiuto-spiega-come-sfogliare-il-viaggio
+- Il ciclo 63 aveva provato ad aggiungere una 16ª voce all'accordion per spiegare i comandi di
+  sfoglio del viaggio (frecce, archi, torna a oggi), ma i conteggi «15 voci» sono hardcoded in
+  tre test (`aiuto-ricerca`, `aiuto-ancore`, `aiuto-contenuto`): perimetro dichiarato troppo
+  stretto, revert in EXEC. Questo ciclo cambia direzione senza aggiungere voci.
+- La FAQ esistente «Come funziona la storia degli sfondi?» — il posto naturale dell'argomento —
+  guadagna un capoverso che spiega come sfogliare il viaggio dalla home: le frecce e il
+  contatore «N di M», «torna a oggi», «arco precedente»/«arco successivo», «scegli l'arco»,
+  «leggi la storia» e l'indirizzo diretto `?date=`. Domanda, id dell'ancora, numero di voci (15)
+  e aspetto ad accordion chiusi restano tutti invariati, quindi zero rischio per i tre test di
+  conteggio e zero baseline visive da rigenerare.
+- Nuovo `backend/tests/unit/aiuto-viaggio.test.js` verifica il contenuto arricchito e la stabilità
+  di conteggio/id.
