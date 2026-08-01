@@ -27,6 +27,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
   poteva far scrivere il loop autonomo sul KV di produzione senza che nulla se ne accorgesse.
   Zero generazioni AI, nessuna modifica a `wrangler.jsonc` o a `scripts/deploy.sh`.
 
+## 2026-08-01 — s-il-deploy-punta-sempre-al-worker-configurato
+- Nuovo `backend/tests/unit/config-deploy-coerente.test.js`: legge `scripts/deploy.sh` come testo
+  (mai eseguito, mai modificato — file vietato) ed estrae con una regex le quattro costanti
+  `WORKER_PROD`, `WORKER_PREVIEW`, `URL_PROD`, `URL_PREVIEW`, poi le confronta con `name`,
+  `env.preview.name`, `vars.PUBLIC_ORIGIN` ed `env.preview.vars.PUBLIC_ORIGIN` di
+  `backend/wrangler.jsonc`. Prima di questo test le due fonti (script di deploy e configurazione
+  del worker) potevano divergere in silenzio: il loop avrebbe deployato un worker e fatto lo smoke
+  test (o il rollback) su un altro. La regex fallisce esplicitamente se una costante non viene
+  trovata, invece di confrontare due `undefined`. Zero generazioni AI, nessuna modifica a
+  `wrangler.jsonc` o a `scripts/deploy.sh`.
+
 ## 2026-08-01 — s-i-ripieghi-del-generatore-sono-sotto-test
 - Nuovo `backend/tests/unit/daygen-ripieghi.test.js`: `generateDay` (`backend/src/daygen.js`) è
   l'anello che decide se cron, backfill e lab producono o no l'immagine del giorno, ma nessun test
