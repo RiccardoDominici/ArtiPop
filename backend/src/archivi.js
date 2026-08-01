@@ -9,12 +9,25 @@
 // home, che questo modulo non tocca.
 
 import { FAVICON_TAG } from "./head.js";
+import { LEGACY_ALIASES, getChannel } from "./channels.js";
 
 /** Escape minimo per il testo dinamico inserito nell'HTML (id canale, date). */
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[c]);
+}
+
+/**
+ * Il flusso attivo che ha raccolto l'eredità di un canale storico, o `null`
+ * se l'id non ha alias o l'erede non è (più) attivo.
+ */
+function erede(id) {
+  const targetId = LEGACY_ALIASES[id];
+  if (!targetId) return null;
+  const channel = getChannel(targetId);
+  if (!channel || !channel.active) return null;
+  return channel;
 }
 
 /**
@@ -28,16 +41,21 @@ function renderElenco(storici) {
     return `<p class="msg">Nessun archivio storico da mostrare.</p>`;
   }
   const righe = storici
-    .map(
-      (c) => `
+    .map((c) => {
+      const flussoErede = erede(c.id);
+      const riga3 = flussoErede
+        ? `
+        <div class="riga3 continua">la storia continua in <a class="continua" href="/?c=${encodeURIComponent(flussoErede.id)}">${esc(flussoErede.emoji)} ${esc(flussoErede.name)} →</a></div>`
+        : "";
+      return `
       <li>
         <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
           <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}">Riapri l'ultimo giorno →</a>
-        </div>
-      </li>`
-    )
+        </div>${riga3}
+      </li>`;
+    })
     .join("");
   return `<ul class="archivi">${righe}</ul>`;
 }
@@ -91,6 +109,8 @@ ${FAVICON_TAG}
   .riga1 .giorni { color: #9aa3b8; font-weight: 400; }
   .riga2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
   .intervallo { color: #9aa3b8; font-size: .88rem; }
+  .riga3 { margin-top: 6px; font-size: .88rem; color: #9aa3b8; }
+  .riga3 a.continua { color: #8fd3ff; }
   a.riapri {
     display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
     text-decoration: none; font-weight: 600; flex-shrink: 0;
