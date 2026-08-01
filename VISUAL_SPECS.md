@@ -86,6 +86,17 @@ mostrato — nessun colore, token o misura nuovi. `#dayfav` invisibile insieme a
 del giorno quando non c'è un viaggio da sfogliare; `#favpick`/`#favlist` invisibili quando il
 canale mostrato non ha alcun giorno segnato.
 
+Condividi l'immagine (`#dayshareimg`, feat-condividi-l-immagine-del-giorno — proposta ai sensi
+di §7): comando ghost nella fila dei comandi del pannello, accanto a "salva l'immagine" —
+stessa pill `.btn.ghost` già canonica, nessun colore, token o misura nuovi. Invisibile insieme
+al resto dei comandi del giorno quando non c'è un viaggio da sfogliare, E dove il browser non
+dichiara di saper condividere file (`navigator.share`/`navigator.canShare({files})`) — compreso
+il Chromium headless di `visual-check`, che non implementa `canShare`: per questo le baseline
+`home-mobile.png`/`home-desktop.png` restano invariate. Al tocco passa il file immagine del
+giorno mostrato (stessa URL di "apri l'immagine") al foglio di condivisione di sistema, con
+ripiego sul comportamento di `#dayshare` (copia link) per qualunque errore diverso
+dall'annullamento dell'utente.
+
 Nota di connessione (`#netstate`, feat-la-home-dice-quando-sei-senza-rete): riga `.hint`
 dentro l'hero, subito dopo `#nextdrop` — stesso posto, stesso registro di linguaggio della
 nota di freschezza. Compare (toglie `hidden`) solo quando il browser dichiara l'assenza di
