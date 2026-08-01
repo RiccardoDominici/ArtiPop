@@ -11,7 +11,7 @@
 
 import { ACTIVE_CHANNELS } from "./channels.js";
 import { CONFIG } from "./config.js";
-import { FAVICON_TAG, metaAnteprima } from "./head.js";
+import { INSTALL_TAGS, metaAnteprima } from "./head.js";
 
 /** Voci di troubleshooting: sintomo → causa → rimedio. `priority` le mette in cima. */
 const PROBLEMI = [
@@ -232,8 +232,7 @@ export function renderShortcutMancante(flusso) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ArtiPop — Shortcut non disponibile</title>
-<meta name="theme-color" content="#0a0b10" />
-${FAVICON_TAG}
+${INSTALL_TAGS}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
@@ -297,8 +296,7 @@ export function renderErroreTemporaneo() {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ArtiPop — qualcosa non ha funzionato</title>
-<meta name="theme-color" content="#0a0b10" />
-${FAVICON_TAG}
+${INSTALL_TAGS}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
@@ -345,8 +343,7 @@ export function renderPaginaNonTrovata() {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ArtiPop — pagina non trovata</title>
-<meta name="theme-color" content="#0a0b10" />
-${FAVICON_TAG}
+${INSTALL_TAGS}
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body {
@@ -443,8 +440,7 @@ export function renderHelpPage(stato = null, origin = null, dataOggi = null) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ArtiPop — aiuto e problemi comuni</title>
 <meta name="description" content="Perché l'automazione dello sfondo non parte, e tutte le altre domande su ArtiPop." />
-<meta name="theme-color" content="#0a0b10" />
-${FAVICON_TAG}
+${INSTALL_TAGS}
 ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — aiuto e problemi comuni", "Perché l'automazione dello sfondo non parte, e tutte le altre domande su ArtiPop.", null, "/aiuto") : ""}
 <style>
   *, *::before, *::after { box-sizing: border-box; }

@@ -16,6 +16,19 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-aggiungi-artipop-alla-schermata-home
+- Chi apre ArtiPop da telefono ogni giorno può ora installarlo sulla schermata Home invece di
+  tenerlo in un tab del browser: nuove rotte pubbliche `GET /manifest.webmanifest` e
+  `GET /icona.svg` (`backend/src/manifest.js`), e nuovi tag in `<head>` (manifest, `theme-color`,
+  meta Apple) esposti da `INSTALL_TAGS` in `backend/src/head.js` e inseriti nelle quattro pagine
+  HTML del worker (`/`, `/aiuto`, `/archivi`, pagina 404).
+- L'icona è la stessa `ICON_SVG` già disegnata per la favicon (estratta come costante condivisa,
+  nessun disegno nuovo); `theme_color`/`background_color` riusano il token `--bg` #0a0b10 di
+  VISUAL_SPECS §1.1, nessun colore nuovo.
+- Limite dichiarato: su iOS l'icona della schermata Home resta lo screenshot finché non esiste un
+  `apple-touch-icon` PNG — fetta separata, non in questo ciclo. Questo ciclo porta comunque
+  l'apertura a tutto schermo e il nome breve su iOS, e anche l'icona su Android/desktop.
+
 ## 2026-08-01 — feat-l-aiuto-spiega-i-giorni-preferiti
 - Il tentativo precedente (ciclo 101) provava ad aggiungere una voce nuova all'accordion di /aiuto
   e cadeva su un conteggio (15) blindato da asserzioni hardcoded in sei file di test: revert

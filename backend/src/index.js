@@ -48,6 +48,7 @@ import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
 import { renderArchiviPage } from "./archivi.js";
+import { renderManifest, iconaSvg } from "./manifest.js";
 import { renderFeed } from "./feed.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
@@ -909,6 +910,30 @@ export default {
       return new Response(renderHelpPage(stato, url.origin, todayKey()), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
+
+    // ---- Installazione sulla schermata Home: manifest + icona ----
+    // feat-aggiungi-artipop-alla-schermata-home: rotte pubbliche di sola
+    // lettura, nessuna chiave admin, nessun accesso al KV — pure funzioni di
+    // rendering come le pagine HTML qui sopra.
+    if (path === "/manifest.webmanifest") {
+      return new Response(renderManifest(), {
+        headers: {
+          "content-type": "application/manifest+json; charset=utf-8",
+          "cache-control": "public, max-age=3600",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
+
+    if (path === "/icona.svg") {
+      return new Response(iconaSvg(), {
+        headers: {
+          "content-type": "image/svg+xml; charset=utf-8",
+          "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
         },
       });

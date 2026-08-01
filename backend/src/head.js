@@ -5,17 +5,37 @@
 // Solo token già presenti in VISUAL_SPECS §1.1 (`--bg` #0a0b10, accenti
 // natura #7ec8a9/#f2b878): nessun colore nuovo, nessuna risorsa esterna.
 
-// Icona inline: cerchio di sfondo `--bg` con un glifo a goccia nel gradiente
-// natura. Data-URI URL-encoded a mano (niente encodeURIComponent qui: servono
-// solo i caratteri che romperebbero l'attributo href).
-const FAVICON_SVG =
+// Icona: cerchio di sfondo `--bg` con un glifo a goccia nel gradiente
+// natura. `ICON_SVG` è la sorgente unica (markup SVG vero, `#` non
+// codificato) — serve sia come file a sé (feat-aggiungi-artipop-alla-
+// schermata-home: rotta `/icona.svg` per il manifest, che non può puntare a
+// un `data:` inline) sia per la favicon inline qui sotto.
+export const ICON_SVG =
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>` +
-  `<circle cx='32' cy='32' r='32' fill='%230a0b10'/>` +
-  `<path d='M32 12c10 12 16 20 16 28a16 16 0 1 1-32 0c0-8 6-16 16-28z' fill='%237ec8a9'/>` +
-  `<circle cx='32' cy='42' r='8' fill='%23f2b878'/>` +
+  `<circle cx='32' cy='32' r='32' fill='#0a0b10'/>` +
+  `<path d='M32 12c10 12 16 20 16 28a16 16 0 1 1-32 0c0-8 6-16 16-28z' fill='#7ec8a9'/>` +
+  `<circle cx='32' cy='42' r='8' fill='#f2b878'/>` +
   `</svg>`;
 
+// Data-URI URL-encoded a mano (niente encodeURIComponent qui: servono solo
+// i caratteri che romperebbero l'attributo href).
+const FAVICON_SVG = ICON_SVG.replace(/#/g, "%23");
+
 export const FAVICON_TAG = `<link rel="icon" href="data:image/svg+xml,${FAVICON_SVG}" />`;
+
+/**
+ * Tag d'installazione sulla schermata Home
+ * (feat-aggiungi-artipop-alla-schermata-home): manifest, colore della
+ * barra di stato, e i meta Apple che su iOS abilitano l'apertura a tutto
+ * schermo e il nome breve sotto l'icona (l'icona vera resta lo screenshot
+ * finché non esiste un `apple-touch-icon` PNG — fetta separata, non qui).
+ */
+export const INSTALL_TAGS = `${FAVICON_TAG}
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0a0b10" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="ArtiPop" />`;
 
 /**
  * `<link rel="alternate">` verso il feed RSS di un canale
