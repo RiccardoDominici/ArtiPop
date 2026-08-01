@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-l-aiuto-spiega-i-giorni-preferiti
+- Il tentativo precedente (ciclo 101) provava ad aggiungere una voce nuova all'accordion di /aiuto
+  e cadeva su un conteggio (15) blindato da asserzioni hardcoded in sei file di test: revert
+  obbligato. Questa versione non tocca il conteggio — arricchisce la risposta già esistente della
+  FAQ «Che fine fanno gli sfondi vecchi?» (`backend/src/help.js`), la casa naturale del tema.
+- La voce ora spiega come segnare un giorno con «☆ segna preferito», dove rivederli (pannello
+  «i tuoi preferiti»), che la memoria è nel localStorage per canale solo su quel
+  dispositivo/browser, e come portarli su un altro telefono col link di trasferimento introdotto
+  nel ciclo precedente. Nuovo test `aiuto-preferiti.test.js`, nessuna baseline visiva toccata
+  (accordion chiuso di default).
+
 ## 2026-08-01 — feat-porta-i-tuoi-preferiti-su-un-altro-telefono
 - I giorni segnati preferiti (ciclo 98) vivevano solo nel localStorage del browser: cambiando
   telefono, o svuotando i dati di Safari, si perdevano senza preavviso e senza modo di rifarli.
