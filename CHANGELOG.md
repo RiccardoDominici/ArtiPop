@@ -16,6 +16,18 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-il-link-condiviso-apre-il-giorno-anche-di-un-arco-passato
+- Un link condiviso (`/?c=<canale>&d=<data>`) veniva onorato solo se la data cadeva nella finestra
+  dell'arco in corso: qualunque link riletto più di ~7 giorni dopo (il caso normale) veniva scartato
+  in silenzio, e chi lo apriva vedeva il timelapse di oggi senza sapere perché — un link che il sito
+  stesso produce e di cui genera l'anteprima social, ma poi non onora.
+- `page.js`: `goToArc` accetta ora un terzo parametro opzionale `dataTarget` per posizionarsi su una
+  data precisa dell'arco di destinazione (senza il parametro il comportamento resta invariato).
+  `renderJourney`, quando la data condivisa non è nella finestra corrente, la cerca in `arcsCache` e
+  salta all'arco che la contiene, fermo su quel giorno (nessun autoplay, come per il caso già gestito);
+  se la data non è in nessun arco archiviato, un `toast` lo dice esplicitamente invece di tacere.
+- Nessuna nuova fetch: `arcsCache` è già popolato da `loadArchive` per ogni canale.
+
 ## 2026-08-01 — feat-i-vecchi-indirizzi-aprono-il-canale-erede
 - Un link con un vecchio nome di canale (`?c=island`, `?c=studio`, …) apriva la home sul canale
   di default, ignorando l'alias: `channels.js` dichiara che quegli indirizzi "devono continuare a
