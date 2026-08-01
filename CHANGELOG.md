@@ -608,3 +608,16 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   cause e dica esplicitamente che la risposta resta un'immagine; anti-drift su `index.js` (il blocco
   `/w/` deve continuare a servire `PLACEHOLDER_PNG_BYTES` su almeno due rami, altrimenti la GUIDA
   smette di essere vera).
+
+## 2026-08-01 — s-ogni-binding-usato-dal-codice-esiste-nei-due-ambienti
+- Nuovo `backend/tests/unit/config-binding-completi.test.js`: ricava con una regex l'elenco dei
+  binding `env.<NOME>` letti da `backend/src/` e verifica che ognuno sia dichiarato sia al top
+  level (produzione) sia in `env.preview` di `backend/wrangler.jsonc` — che non eredita nulla dal
+  top level — oppure sia un secret in allowlist (oggi solo `ADMIN_KEY`). Prima nessun test
+  derivava l'elenco dei binding dai sorgenti: un binding nuovo usato nel codice e dichiarato in un
+  solo ambiente avrebbe superato il deploy per poi far crashare il worker a runtime sull'ambiente
+  scoperto. La guardia esplicita sull'estrazione non vuota impedisce che un cambio della regex
+  faccia passare il test in silenzio senza controllare nulla.
+- Estratta `stripJsonc`/`leggiWrangler` in `backend/tests/helpers/jsonc.js`, prima duplicata
+  identica in `config-preview-isolato.test.js` e `config-deploy-coerente.test.js`; entrambi ora la
+  importano, stesse asserzioni di prima.
