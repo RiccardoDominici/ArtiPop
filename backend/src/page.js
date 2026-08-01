@@ -693,6 +693,26 @@ function togglePreferito(chId, date) {
   scriviPreferiti(tutti);
 }
 
+// feat-i-preferiti-si-rivedono-anche-senza-rete: chiede al service worker
+// di conservare in cache il giorno appena segnato preferito, nella stessa
+// forma "?date=" con cui il pannello preferiti lo riapre (v. addrGiorno).
+// Nessuna richiesta di rete qui in pagina: la conservazione vera avviene
+// dentro il service worker (backend/src/sw.js, ascoltatore "message"), così
+// la guardia anti-ciclo-77 sull'unica occorrenza della chiamata di rete
+// nella pagina resta verde.
+// Senza service worker attivo (browser vecchio, SW non registrato) questa
+// funzione non fa nulla: la home resta identica a oggi.
+function conservaOffline(chId, date) {
+  try {
+    const url = "/w/" + chId + "?date=" + date;
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ tipo: "conserva", url });
+    }
+  } catch {
+    /* SW assente o postMessage non disponibile: nessun problema, si resta al comportamento di oggi */
+  }
+}
+
 // Link di trasferimento: le date preferite di un canale, in un solo
 // parametro leggibile da importaPreferiti su un altro dispositivo. Nessun
 // link per un canale senza preferiti — non c'è nulla da trasferire.
@@ -1341,9 +1361,11 @@ function updateDayFavButton(chId, date) {
 dayFavEl.addEventListener("click", () => {
   const chId = CHANNELS[order[0]].id;
   const date = previewDate ?? TODAY;
+  const eraGiaPreferito = isPreferito(chId, date);
   togglePreferito(chId, date);
   updateDayFavButton(chId, date);
   renderFavList(chId);
+  if (!eraGiaPreferito) conservaOffline(chId, date);
 });
 
 /* feat-segna-i-giorni-che-ti-piacciono: elenco dei giorni segnati per il

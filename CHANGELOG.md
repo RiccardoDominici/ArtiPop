@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-i-preferiti-si-rivedono-anche-senza-rete
+- I giorni segnati preferiti ora restano leggibili offline: al momento del toggle, page.js chiede
+  al service worker (postMessage, non una seconda fetch in pagina) di conservare `/w/<canale>?date=<data>`
+  — la forma esatta con cui il pannello preferiti riapre i giorni (page.js:1082), diversa da quella
+  già in cache passivamente (`?v=<oggi>`), da cui il cache miss che perdeva il giorno preferito.
+- Direzione diversa dal tentativo fallito del ciclo 111 (che rompeva la guardia anti-ciclo-77 con una
+  seconda `fetch(` nell'HTML reso): qui la fetch di conservazione vive dentro sw.js (ascoltatore
+  `message`), riusando `inCache` come unico punto di verità per gli URL ammessi.
+
 ## 2026-08-01 — feat-l-aiuto-spiega-cosa-funziona-senza-rete
 - I cicli 104-109 hanno costruito il comportamento «app installata senza rete» (manifest,
   service worker network-first, riga di stato sulla home), ma /aiuto non ne parlava: chi tocca

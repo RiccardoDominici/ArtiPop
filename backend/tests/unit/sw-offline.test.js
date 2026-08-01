@@ -54,4 +54,61 @@ describe("serviceWorkerJs", () => {
     expect(src).toContain('nome !== CACHE_NAME');
     expect(src).toContain("caches.delete(nome)");
   });
+
+  it("feat-i-preferiti-si-rivedono-anche-senza-rete: ha un ascoltatore message che valida con inCache e salva solo risposte 200", () => {
+    const src = serviceWorkerJs();
+    expect(src).toContain('self.addEventListener("message"');
+    const msgBody = src.match(/self\.addEventListener\("message", \(event\) => \{[\s\S]*?\n\}\);/)[0];
+    expect(msgBody).toContain('dati.tipo !== "conserva"');
+    expect(msgBody).toContain("inCache(url.pathname)");
+    expect(msgBody).toContain("risposta.status === 200");
+    expect(msgBody).toContain("cache.put(url, risposta)");
+  });
+
+  it("feat-i-preferiti-si-rivedono-anche-senza-rete: un URL non ammesso da inCache non viene conservato", () => {
+    const src = serviceWorkerJs();
+
+    const CACHE_NAME = "artipop-v1";
+    let messageHandler;
+    const globalObj = {
+      location: { origin: "https://example.com" },
+      addEventListener: (tipo, handler) => {
+        if (tipo === "message") messageHandler = handler;
+      },
+    };
+    const fetchCalls = [];
+    const cachePutCalls = [];
+    const caches = {
+      open: async (nome) => ({
+        put: async (url, risposta) => cachePutCalls.push([url, risposta]),
+      }),
+    };
+    const fetch = async (url) => {
+      fetchCalls.push(String(url));
+      return { status: 200 };
+    };
+    const fn = new Function(
+      "self",
+      "caches",
+      "fetch",
+      `${src}\nreturn self;`
+    );
+    fn(globalObj, caches, fetch);
+
+    expect(typeof messageHandler).toBe("function");
+
+    let waited = [];
+    messageHandler({
+      data: { tipo: "conserva", url: "https://example.com/api/channels" },
+      waitUntil: (p) => waited.push(p),
+    });
+    expect(waited.length).toBe(0);
+    expect(fetchCalls.length).toBe(0);
+
+    messageHandler({
+      data: { tipo: "conserva", url: "https://example.com/w/veliero?date=2026-07-01" },
+      waitUntil: (p) => waited.push(p),
+    });
+    expect(waited.length).toBe(1);
+  });
 });
