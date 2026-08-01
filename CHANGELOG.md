@@ -16,6 +16,29 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-immagine-di-oggi-non-si-perde-se-lo-stato-non-si-salva
+- `backend/src/handlers.js`, `runChannel`: avvolta la SOLA `putState` (dopo `putImage` riuscita) in
+  try/catch. Prima, un `putState` fallito (KV transitorio) propagava l'eccezione: `/run/<flusso>`
+  rispondeva 500, e il ritentativo del cron (ciclo 14, `fanOutAll`) richiamava `runChannel` che —
+  trovando `lastDate` ancora a ieri — RIGENERAVA una seconda immagine con l'AI sovrascrivendo quella
+  già pubblicata, con l'utente reale che se la vede cambiare sotto lo sfondo scaricato a giornata
+  iniziata (CLAUDE.md, principio 1) e una generazione AI bruciata per niente. `putState` fallita ora
+  logga (`console.error`, mai stack né variabili d'ambiente) e ritorna `statoNonSalvato: true`;
+  `putImage` resta FUORI dal try/catch, invariato — se quella fallisce non c'è nessuna immagine da
+  salvare e il 500 attuale resta la risposta giusta, perché è proprio quel caso che il ritentativo
+  del cron deve poter riprendere. Sul percorso felice il risultato di `runChannel` non cambia di un
+  byte: nessun campo nuovo, quindi `fanOutAll` (che ritenta su `status !== 200`) non ritenta più un
+  canale il cui unico problema era lo stato non salvato.
+- `backend/tests/helpers/fakeEnv.js`, `makeKV`: nuova opzione facoltativa `putFallisce(chiave)` per
+  far fallire una singola `KV.put` per prefisso di chiave (es. solo `state:<canale>`), lasciando sane
+  tutte le altre scritture. Default `() => false`: nessun comportamento nuovo per i test esistenti.
+- Nuovo `backend/tests/integration/orchestrazione-stato.test.js`: `putState` guasto → `runChannel`
+  non lancia, ritorna `statoNonSalvato: true` e l'immagine di oggi è in archivio (anche via
+  `/run/<flusso>`, risposta 200 non 500); `putImage` guasto → `runChannel` lancia ancora (invariato);
+  percorso felice → nessun campo `statoNonSalvato` nel risultato; `fanOutAll` con `putState` rotto su
+  un solo canale → una sola chiamata a `/run/<canale>`, mai `ritentato`, a riprova che non si rigenera
+  una seconda immagine.
+
 ## 2026-08-01 — s-cron-ritenta-una-volta-il-flusso-fallito
 - `backend/src/handlers.js`, `fanOutAll`: estratta la passata singola in `unaPassata(env, canali, {
   force })`; `fanOutAll` ora fa una seconda e ULTIMA passata, solo sui canali falliti al primo colpo

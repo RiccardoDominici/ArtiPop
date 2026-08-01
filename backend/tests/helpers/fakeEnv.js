@@ -14,8 +14,14 @@
 
 import worker from "../../src/index.js";
 
-/** KV in-memory: stessa forma del binding reale, minimo indispensabile. */
-export function makeKV() {
+/**
+ * KV in-memory: stessa forma del binding reale, minimo indispensabile.
+ * `putFallisce`, se passata, decide per CHIAVE se una singola `put` deve
+ * lanciare — serve a simulare un guasto transitorio su una sola scrittura
+ * (es. solo `state:<canale>`) mantenendo sane tutte le altre. Default
+ * `() => false`: nessun comportamento nuovo per i test esistenti.
+ */
+export function makeKV({ putFallisce = () => false } = {}) {
   const store = new Map(); // key (string) -> { value: string|Uint8Array, metadata }
 
   function toStream(value) {
@@ -43,6 +49,7 @@ export function makeKV() {
       return { value, metadata: entry.metadata ?? null };
     },
     async put(key, value, opts = {}) {
+      if (putFallisce(key)) throw new Error(`KV.put su "${key}" non disponibile (simulato)`);
       store.set(key, { value, metadata: opts.metadata ?? null });
     },
     async delete(key) {

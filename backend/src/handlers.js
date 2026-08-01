@@ -206,21 +206,31 @@ export async function runChannel(env, channelId, { force = false } = {}) {
   await putImage(env, id, img, buildInfoGiorno({ date, concept, state, img }));
 
   const { improntaPrec, ...statoDaSalvare } = state;
-  await putState(env, id, {
-    ...statoDaSalvare,
-    impronta: img.impronta ? encodeFingerprint(img.impronta) : null,
-    // L'impronta del keyframe resta per tutto l'arco: e' il metro con cui si
-    // misura se la storia sta andando avanti o indietro.
-    improntaAncora: img.ancora && img.impronta
-      ? encodeFingerprint(img.impronta)
-      : (state.improntaAncora ?? null),
-    occupazione: img.ancora ? 0 : (img.misure?.occupazione ?? state.occupazione ?? 0),
-    misure: img.misure ?? null,
-    // Segnale del cancello dell'ultima esecuzione, letto da /health (ROADMAP M5).
-    cancello: buildCancelloState(img),
-  });
+  let statoNonSalvato = false;
+  try {
+    await putState(env, id, {
+      ...statoDaSalvare,
+      impronta: img.impronta ? encodeFingerprint(img.impronta) : null,
+      // L'impronta del keyframe resta per tutto l'arco: e' il metro con cui si
+      // misura se la storia sta andando avanti o indietro.
+      improntaAncora: img.ancora && img.impronta
+        ? encodeFingerprint(img.impronta)
+        : (state.improntaAncora ?? null),
+      occupazione: img.ancora ? 0 : (img.misure?.occupazione ?? state.occupazione ?? 0),
+      misure: img.misure ?? null,
+      // Segnale del cancello dell'ultima esecuzione, letto da /health (ROADMAP M5).
+      cancello: buildCancelloState(img),
+    });
+  } catch (err) {
+    // L'immagine di oggi è già in archivio: se è lo stato a non salvarsi non è
+    // il caso in cui il ritentativo del cron (fanOutAll) debba rigenerare —
+    // rigenerare qui sovrascriverebbe uno sfondo già pubblicato e brucerebbe
+    // una generazione AI per niente (vedi PLAN.md di questo ciclo).
+    console.error(`[run] ${id} ${date}: immagine pubblicata ma stato non salvato: ${err.message}`);
+    statoNonSalvato = true;
+  }
 
-  return {
+  const risultato = {
     channel: id,
     date,
     concept: concept.id,
@@ -236,6 +246,8 @@ export async function runChannel(env, channelId, { force = false } = {}) {
     size: `${img.width}x${img.height}`,
     bytes: img.bytes.length,
   };
+  if (statoNonSalvato) risultato.statoNonSalvato = true;
+  return risultato;
 }
 
 /**
