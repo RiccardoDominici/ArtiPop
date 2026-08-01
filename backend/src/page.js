@@ -451,6 +451,11 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            di #dayopen — stesso file, ma con ?dl=1 per farlo arrivare sul disco
            con un nome parlante invece del blob "natura" senza estensione. -->
       <a class="btn ghost" id="daysave" hidden>salva l'immagine</a>
+      <!-- feat-segna-i-giorni-che-ti-piacciono: stesso hasJourney di
+           #dayshare/#dayopen — nessun giorno da sfogliare, nessun giorno da
+           segnare. Etichetta e aria-pressed seguono lo stato del giorno
+           mostrato (v. renderJourney/updateDayNav). -->
+      <button class="btn ghost" id="dayfav" aria-pressed="false" hidden>☆ segna preferito</button>
       <!-- feat-torna-a-oggi-da-qualunque-giorno: nessun percorso di ritorno
            diretto esisteva prima di questo ciclo — stepDay muove di un
            giorno, goToNextArc di un arco: chi è sceso di più passi doveva
@@ -471,6 +476,12 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            contenuto, non forma. -->
       <button class="btn ghost" id="arcpick" hidden>scegli l'arco</button>
       <div class="arcstory" id="arclist" hidden></div>
+      <!-- feat-segna-i-giorni-che-ti-piacciono: visibile solo quando il
+           canale mostrato ha almeno un preferito (v. renderFavList). Riusa
+           .arcstory/.arcrow, stessa forma di elenco-tappe ed elenco-archi:
+           cambia il contenuto, non la forma. Chiuso di default come #arcpick. -->
+      <button class="btn ghost" id="favpick" hidden>i tuoi preferiti</button>
+      <div class="arcstory" id="favlist" hidden></div>
     </section>
   </div>
 
@@ -565,6 +576,9 @@ const dayshareEl = document.getElementById("dayshare");
 const copyurlEl = document.getElementById("copyurl");
 const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
+const dayFavEl = document.getElementById("dayfav");
+const favPickEl = document.getElementById("favpick");
+const favListEl = document.getElementById("favlist");
 const dayTodayEl = document.getElementById("daytoday");
 const dayPickEl = document.getElementById("dayPick");
 const toastEl = document.getElementById("toast");
@@ -623,6 +637,47 @@ if (!sharedChannelId) {
     const idx = CHANNELS.findIndex((c) => c.id === rememberedId);
     if (idx !== -1) order = [idx, ...order.filter((i) => i !== idx)];
   }
+}
+
+/* ---------- memoria dei preferiti (localStorage, per canale) ----------
+   feat-segna-i-giorni-che-ti-piacciono: stesso principio difensivo della
+   memoria del canale sopra — try/catch su ogni accesso, ripiego a oggetto
+   vuoto se lo storage non è disponibile o il JSON salvato è illeggibile o
+   non è un oggetto (es. un valore scritto da una versione futura). */
+const PREFERITI_KEY = "artipop:preferiti";
+function leggiPreferiti() {
+  try {
+    const raw = localStorage.getItem(PREFERITI_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function scriviPreferiti(tutti) {
+  try {
+    localStorage.setItem(PREFERITI_KEY, JSON.stringify(tutti));
+  } catch {
+    /* storage inaccessibile: nessun problema, i preferiti restano solo in memoria per questa vista */
+  }
+}
+// Date del canale, ordinate dal più recente al più vecchio.
+function preferitiDi(chId) {
+  const tutti = leggiPreferiti();
+  const date = Array.isArray(tutti[chId]) ? tutti[chId] : [];
+  return date.slice().sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+}
+function isPreferito(chId, date) {
+  return preferitiDi(chId).includes(date);
+}
+function togglePreferito(chId, date) {
+  const tutti = leggiPreferiti();
+  const attuali = Array.isArray(tutti[chId]) ? tutti[chId] : [];
+  tutti[chId] = attuali.includes(date)
+    ? attuali.filter((d) => d !== date)
+    : [...attuali, date];
+  scriviPreferiti(tutti);
 }
 
 /* ---------- toast pill (già in VISUAL_SPECS §1.4, mai usato finora) ---------- */
@@ -994,6 +1049,7 @@ function renderJourney(chId) {
   dayshareEl.hidden = !hasJourney;
   dayopenEl.hidden = !hasJourney;
   daysaveEl.hidden = !hasJourney;
+  dayFavEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
   updateArcNav(chId);
@@ -1004,11 +1060,14 @@ function renderJourney(chId) {
     arcstoryEl.hidden = true;
     arcPickEl.hidden = true;
     arcListEl.hidden = true;
+    favPickEl.hidden = true;
+    favListEl.hidden = true;
     pendingSharedDate = null;
     return;
   }
   renderArcStory(chId);
   renderArcList(chId);
+  renderFavList(chId);
   updateDayNav(chId);
   precaricaAdiacenti(chId, TODAY); // il primo passo dello sfoglio parte già precaricato
   // Link condiviso con una data valida e presente nell'archivio: si mostra
@@ -1073,6 +1132,8 @@ function updateDayNav(chId) {
   dayPickEl.value = date;
   updateDayCaption(chId, date);
   updateArcStoryHighlight(date);
+  updateDayFavButton(chId, date);
+  updateFavListHighlight(date);
   aggiornaTitolo();
 }
 
@@ -1199,6 +1260,79 @@ function renderArcList(chId) {
 arcPickEl.addEventListener("click", () => {
   arcListEl.hidden = !arcListEl.hidden;
 });
+
+/* feat-segna-i-giorni-che-ti-piacciono: etichetta e aria-pressed di #dayfav
+   seguono lo stato del giorno mostrato — chiamata da updateDayNav ad ogni
+   cambio di giorno e subito dopo il toggle, così i due percorsi restano
+   sempre coerenti senza duplicare la logica di stato. */
+function updateDayFavButton(chId, date) {
+  const attivo = isPreferito(chId, date);
+  dayFavEl.textContent = attivo ? "★ preferito" : "☆ segna preferito";
+  dayFavEl.setAttribute("aria-pressed", String(attivo));
+}
+dayFavEl.addEventListener("click", () => {
+  const chId = CHANNELS[order[0]].id;
+  const date = previewDate ?? TODAY;
+  togglePreferito(chId, date);
+  updateDayFavButton(chId, date);
+  renderFavList(chId);
+});
+
+/* feat-segna-i-giorni-che-ti-piacciono: elenco dei giorni segnati per il
+   canale mostrato — stessa forma di renderArcList (righe .arcrow dentro
+   .arcstory), dal più recente al più vecchio (preferitiDi già ordina così).
+   Il testo di ogni riga è il nome del concept di quel giorno se noto dalla
+   cache d'archivio, altrimenti un testo di ripiego — mai "undefined" in
+   pagina. Il click riusa goToArc (lo stesso percorso di salto di #dayPick e
+   di #arclist), non una seconda implementazione del salto d'arco. */
+function renderFavList(chId) {
+  favListEl.innerHTML = "";
+  const date = previewDate ?? TODAY;
+  const cap = capCache[chId] || {};
+  const preferiti = preferitiDi(chId);
+  for (const d of preferiti) {
+    const g = cap[d];
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "arcrow" + (d === date ? " on" : "");
+    row.dataset.date = d;
+    const label = document.createElement("span");
+    label.className = "arcdate";
+    label.textContent = formatDayLabel(d);
+    const text = document.createElement("span");
+    text.className = "arctext";
+    text.textContent = (g && g.conceptNome) || "giorno preferito";
+    row.appendChild(label);
+    row.appendChild(text);
+    row.addEventListener("click", () => {
+      const arcs = arcsCache[chId] || [];
+      const arcIdx = arcs.findIndex((arc) => arc.includes(d));
+      if (arcIdx === -1) {
+        toast("quel giorno non è più in archivio");
+        return;
+      }
+      stopPlayback();
+      goToArc(chId, arcIdx, d);
+    });
+    favListEl.appendChild(row);
+  }
+  // Nessun preferito per questo canale: niente comando, niente elenco —
+  // stessa regola di #arcpick con meno di due archi.
+  favPickEl.hidden = preferiti.length === 0;
+  favListEl.hidden = true;
+}
+favPickEl.addEventListener("click", () => {
+  favListEl.hidden = !favListEl.hidden;
+});
+
+/* Evidenzia la riga del giorno mostrato in #favlist senza ricostruire il
+   DOM — stessa meccanica di updateArcStoryHighlight, chiamata da
+   updateDayNav ad ogni cambio di giorno. */
+function updateFavListHighlight(date) {
+  for (const row of favListEl.children) {
+    row.classList.toggle("on", row.dataset.date === date);
+  }
+}
 
 /* Evidenzia la riga della data mostrata senza ricostruire il DOM — chiamata
    da updateDayNav ad ogni cambio di giorno, sia da click sull'elenco sia
