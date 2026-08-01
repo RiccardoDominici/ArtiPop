@@ -223,6 +223,8 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
   .dayinfo { min-width: 8rem; display: grid; gap: .1rem; }
   .dayinfo .ddate { font-size: .92rem; font-weight: 650; text-transform: capitalize; }
   .dayinfo .dpos { font-size: .74rem; color: var(--dim); }
+  .dcap { color: var(--dim); font-size: .78rem; line-height: 1.5; margin: .8rem auto 0; max-width: 26rem; }
+  .dcap strong { color: var(--text); font-weight: 650; }
 
   /* ---------- setup ---------- */
   section.setup { margin-top: 3.4rem; }
@@ -319,6 +321,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
         </div>
         <button class="dayctrl" id="daynext" aria-label="Giorno successivo dell'archivio">›</button>
       </div>
+      <p class="dcap" id="dcap" hidden></p>
     </section>
   </div>
 
@@ -394,11 +397,13 @@ const ddateEl = document.getElementById("ddate");
 const dposEl = document.getElementById("dpos");
 const dayPrevEl = document.getElementById("dayprev");
 const dayNextEl = document.getElementById("daynext");
+const dcapEl = document.getElementById("dcap");
 const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
 let previewDate = null;                 // data in preview nel mockup (null = oggi)
 const archiveCache = {};                // channelId → [date, ...]
+const capCache = {};                    // channelId → { date → {conceptNome, elementNome, tappa, testoTappa, giornoNellArco} }
 
 /* ---------- costruzione card ---------- */
 function cardHTML(ch) {
@@ -538,7 +543,15 @@ async function loadArchive(chId) {
   try {
     if (!archiveCache[chId]) {
       const res = await fetch(\`/api/archive/\${chId}?limit=30\`);
-      let dates = (await res.json()).dates || [];
+      const body = await res.json();
+      let dates = body.dates || [];
+      // Didascalia ("il viaggio racconta il giorno"): stessa risposta di sopra,
+      // giorni[] porta già soggetto e testo della tappa — zero fetch in più.
+      const cap = {};
+      for (const g of body.giorni || []) {
+        if (g && g.data) cap[g.data] = g;
+      }
+      capCache[chId] = cap;
       // Limita l'anteprima all'arco (settimana/concept) in corso: l'archivio
       // permanente attraversa più arc nel tempo, e sfogliarli tutti di fila
       // mischia storie diverse (es. giorni di un cactus seguiti di colpo da
@@ -577,6 +590,7 @@ function renderJourney(chId) {
   jmsgEl.hidden = hasJourney;
   if (!hasJourney) {
     jmsgEl.textContent = "il viaggio inizia oggi ✨";
+    dcapEl.hidden = true;
     return;
   }
   updateDayNav(chId);
@@ -597,6 +611,30 @@ function updateDayNav(chId) {
   dposEl.textContent = dates.length ? \`\${idx === -1 ? "?" : dates.length - idx} di \${dates.length}\` : "";
   dayPrevEl.disabled = idx === -1 || idx >= dates.length - 1;
   dayNextEl.disabled = idx <= 0;
+  updateDayCaption(chId, date);
+}
+
+/* Didascalia sotto la posizione: soggetto del giorno + testo della tappa.
+   Nascosta (non stringa vuota) quando per il giorno mancano i dati narrativi
+   (giorno ricostruito, origine "assente") — mai "null"/"undefined" in pagina. */
+function updateDayCaption(chId, date) {
+  const g = (capCache[chId] || {})[date];
+  if (!g || !g.testoTappa) {
+    dcapEl.hidden = true;
+    dcapEl.textContent = "";
+    return;
+  }
+  dcapEl.innerHTML = "";
+  const subjectText = [g.conceptNome, g.elementNome].filter(Boolean).join(" ");
+  if (subjectText) {
+    const subject = document.createElement("strong");
+    subject.textContent = subjectText;
+    dcapEl.appendChild(subject);
+    dcapEl.appendChild(document.createTextNode(" — " + g.testoTappa));
+  } else {
+    dcapEl.appendChild(document.createTextNode(g.testoTappa));
+  }
+  dcapEl.hidden = false;
 }
 
 /* Un passo avanti/indietro nell'archivio: dir=-1 giorno precedente (più
