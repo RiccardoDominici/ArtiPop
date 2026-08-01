@@ -1240,3 +1240,32 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Baseline `home-mobile.png`/`home-desktop.png` rigenerate contro il dev server locale
   (`wrangler dev`, KV locale).
 - Nuovo `backend/tests/unit/home-salta-a-una-data.test.js`.
+
+## 2026-08-01 — feat-segui-il-canale-dal-lettore-di-feed
+- Fino ad oggi l'unico modo di sapere che è uscito il wallpaper nuovo era tornare sul sito o
+  avere la Shortcut su iPhone: chi segue un canale da desktop, o vuole seguirne l'arco come una
+  serie, doveva ricordarsi di controllare. Nuova rotta pubblica `GET /feed/<flusso>.xml`: un
+  feed RSS 2.0 sugli ultimi 20 giorni d'archivio di un canale, iscrivibile da un lettore feed
+  qualsiasi.
+- Nuovo `backend/src/feed.js` (`renderFeed`): compone l'XML a mano, nessuna dipendenza. Ogni
+  testo interpolato passa da un `escXml` locale; `pubDate` in RFC 822/1123 via `Date#toUTCString`.
+- `backend/src/index.js`: la rotta risolve l'id con `resolveChannel` (un alias storico come
+  `island` serve il feed della sua stessa storia, non quella del flusso erede — stessa
+  convenzione di `/w/?date=`), legge le date con `listArchiveDates` e arricchisce ogni voce con
+  `cartaDiIdentita` in un try/catch separato dalla lettura delle date (stesso schema di
+  `/archivi`): un guasto KV degrada il feed a "zero item" o "soli titoli-data", mai a un 500.
+  L'intera rotta ha un try/catch proprio (non quello globale, che risponderebbe JSON): un feed
+  RSS deve sempre ricevere XML, anche nel caso peggiore. Flusso inesistente → 404 con corpo XML.
+  Deviazione dal testo del piano: i link punteggiano `/?c=<canale>&d=<data>` e non `/?ch=`,
+  perché è `c` il parametro che la home legge davvero (`risolviCondiviso`, index.js) — un link
+  con `?ch=` sarebbe stato un feed sintatticamente valido ma con collegamenti morti, contro il
+  principio 1 (Utilizzabilità) di CLAUDE.md.
+- `backend/src/head.js`: nuovo `feedLinkTag(feedUrl)`, un `<link rel="alternate"
+  type="application/rss+xml">` emesso solo se `feedUrl` è passato — `/aiuto` e `/archivi`
+  restano invariati, non lo passano.
+- `backend/src/page.js`: `renderPage` accetta un `feedUrl` opzionale (quinto parametro), verso
+  il feed del canale reso lato server (quello del link condiviso, o il primo flusso attivo).
+  Nessun elemento visibile aggiunto, nessuna modifica al CSS: il tag vive solo nel `<head>`.
+- Nuovi `backend/tests/unit/feed-render.test.js` e `backend/tests/integration/feed-rotta.test.js`;
+  `node scripts/visual-check.mjs` (contro `wrangler dev` locale) senza difetti e baseline
+  invariate, coerente con una modifica invisibile.

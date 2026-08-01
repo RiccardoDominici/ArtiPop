@@ -27,7 +27,7 @@
 import { ACTIVE_CHANNELS, CHANNELS, resolveChannel, LEGACY_ALIASES } from "./channels.js";
 import { todayKey } from "./story.js";
 import {
-  getImage, getMeta, getState, listChannelsWithArchive,
+  getImage, getMeta, getState, listChannelsWithArchive, listArchiveDates,
 } from "./storage.js";
 import {
   fingerprintFromArchive, compare, verdict, formatMeasures, diagnose,
@@ -48,6 +48,7 @@ import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
 import { renderArchiviPage } from "./archivi.js";
+import { renderFeed } from "./feed.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
@@ -913,6 +914,66 @@ export default {
       });
     }
 
+    // ---- Feed RSS di un canale: /feed/<flusso>.xml ----
+    // feat-segui-il-canale-dal-lettore-di-feed: rotta pubblica come /w/ e
+    // /archivi (nessuna chiave admin). Avvolta in un try/catch PROPRIO,
+    // separato dalla rete di sicurezza globale più sotto, perché quella
+    // risponderebbe JSON su un percorso che un lettore RSS si aspetta sempre
+    // in XML (mai un 500 grezzo verso un lettore di feed, che di norma
+    // disiscrive dopo errori ripetuti).
+    const feedMatch = path.match(/^\/feed\/([a-z]+)\.xml$/);
+    if (feedMatch) {
+      const richiesto = feedMatch[1];
+      const feedHeaders = {
+        "content-type": "application/rss+xml; charset=utf-8",
+        "cache-control": "public, max-age=3600",
+        ...SECURITY_HEADERS,
+      };
+      try {
+        const { channel, isLegacy, requestedId } = resolveChannel(richiesto);
+        if (!channel) {
+          const canale = { id: richiesto, name: richiesto, tagline: "Questo canale non esiste." };
+          return new Response(renderFeed({ canale, voci: [], origin: url.origin, oggi: todayKey() }), {
+            status: 404,
+            headers: feedHeaders,
+          });
+        }
+        // Come /w/?date=: l'archivio si legge sotto l'id RICHIESTO, così un
+        // alias storico (island, bloom, studio…) serve il feed della sua
+        // stessa storia, non quella del flusso erede.
+        let dates = [];
+        try {
+          dates = await listArchiveDates(env, requestedId, 20);
+        } catch (err) {
+          console.error(`[feed] date non disponibili per "${requestedId}": ${err.message}`);
+          dates = [];
+        }
+        // Arricchimento in un try/catch separato dalla lettura delle date
+        // (stesso schema di /archivi): se il soggetto non è disponibile il
+        // feed esce comunque, coi soli titoli-data.
+        let voci = dates.map((data) => ({ data, conceptNome: null, elementNome: null }));
+        try {
+          voci = await Promise.all(dates.map((data) => cartaDiIdentita(env, requestedId, data)));
+        } catch (err) {
+          console.error(`[feed] soggetto non disponibile per "${requestedId}": ${err.message}`);
+        }
+        // Canale storico: stessa convenzione di /api/channels?all=1(nome =
+        // id), mai il nome del flusso erede che ha un'altra identità.
+        const canale = isLegacy
+          ? { id: requestedId, name: requestedId, tagline: null }
+          : { id: channel.id, name: channel.name, tagline: channel.tagline };
+        return new Response(renderFeed({ canale, voci, origin: url.origin, oggi: todayKey() }), {
+          headers: feedHeaders,
+        });
+      } catch (err) {
+        console.error(`[feed] rotta fallita per "${richiesto}": ${err.message}`);
+        const canale = { id: richiesto, name: richiesto, tagline: "Errore temporaneo, riprova più tardi." };
+        return new Response(renderFeed({ canale, voci: [], origin: url.origin, oggi: todayKey() }), {
+          headers: feedHeaders,
+        });
+      }
+    }
+
     // ---- Pagina archivi storici ----
     if (path === "/archivi") {
       // feat-gli-archivi-storici-si-riaprono-dal-sito: scansione KV SOLO su
@@ -971,7 +1032,10 @@ export default {
       // verso una rotta che non esiste.
       const oggi = todayKey();
       const condiviso = risolviCondiviso(url, oggi);
-      return new Response(renderPage(metas, url.origin, oggi, condiviso), {
+      // feat-segui-il-canale-dal-lettore-di-feed: il feed del canale reso
+      // lato server (quello del link condiviso, o il primo flusso attivo).
+      const feedUrl = `${url.origin}/feed/${condiviso?.canale ?? ACTIVE_CHANNELS[0].id}.xml`;
+      return new Response(renderPage(metas, url.origin, oggi, condiviso, feedUrl), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300",
           ...SECURITY_HEADERS,

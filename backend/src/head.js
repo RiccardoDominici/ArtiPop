@@ -17,6 +17,16 @@ const FAVICON_SVG =
 
 export const FAVICON_TAG = `<link rel="icon" href="data:image/svg+xml,${FAVICON_SVG}" />`;
 
+/**
+ * `<link rel="alternate">` verso il feed RSS di un canale
+ * (feat-segui-il-canale-dal-lettore-di-feed): assente se `feedUrl` non è
+ * passato, così `/aiuto` e `/archivi` (che non lo passano) restano invariati.
+ */
+export function feedLinkTag(feedUrl) {
+  if (!feedUrl) return "";
+  return `<link rel="alternate" type="application/rss+xml" title="ArtiPop" href="${feedUrl}" />`;
+}
+
 // Data YYYY-MM-DD → "28 luglio 2026". Mezzogiorno UTC fisso per non far
 // scivolare il giorno per via del fuso (vedi CONFIG.TIMEZONE altrove): qui
 // la data è già una chiave calendario, non un istante da localizzare.

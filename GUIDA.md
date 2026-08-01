@@ -123,6 +123,7 @@ Da stasera è tutto automatico. 🌇
 | Cambiare canale | Apri la Shortcut e sostituisci l'URL, o scarica quella dell'altro canale |
 | Rivedere i giorni passati | Sul sito, sezione **"Il viaggio finora"** |
 | Riscaricare un giorno preciso | `…/w/island?date=2026-07-16` (data inesistente? → §1.6) |
+| Seguire un canale da un lettore di feed | Iscrivi il tuo lettore RSS a `…/feed/<canale>.xml` |
 
 ## 1.6 Se qualcosa non va
 
@@ -270,6 +271,7 @@ usano il sito e lo strumento di tuning in sola lettura.
 | `GET /w/<flusso>[.jpg\|.png][?date=\|?v=][&dl=1]` *(pubblico)* | immagine del giorno per la lock screen; il corpo è **sempre** byte immagine, **mai** JSON — se il canale non ha ancora generato nulla o `?date=` non esiste, risponde con il placeholder statico. Con `?dl=1` la risposta aggiunge `content-disposition: attachment` con un nome file parlante (`artipop-<flusso>-<data>.png`/`.jpg`), per far arrivare il salvataggio su disco con un nome riconoscibile invece del blob senza estensione — non emesso sul placeholder |
 | `GET /s/<flusso>[-base].shortcut` *(pubblico)* | Shortcut firmata da installare (variante principale o base, vedi [2.7](#27-le-shortcut-firmate)) |
 | `GET /archivi` *(pubblico)* | pagina HTML: i canali storici (island, bloom, studio, neon, …) con giorni in archivio, intervallo date e link per riaprire l'ultimo giorno di ciascuno |
+| `GET /feed/<flusso>.xml` *(pubblico)* | feed RSS 2.0 degli ultimi 20 giorni d'archivio (accetta alias storici); un `<item>` per giorno con titolo, link, `pubDate` ed enclosure verso `/w/<flusso>?date=`; flusso inesistente → 404 con corpo XML, mai JSON |
 
 ## 2.5 Come sono fatti i canali
 
