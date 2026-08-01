@@ -347,10 +347,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
       <p class="hint" id="jmsg" hidden></p>
       <div class="daynav" id="daynav" hidden>
         <button class="dayctrl" id="dayprev" aria-label="Giorno precedente dell'archivio">‹</button>
-        <!-- feat-il-viaggio-si-racconta-anche-a-chi-non-vede: aria-live annuncia
-             il cambio giorno a chi non vede lo schermo (VoiceOver/TalkBack),
-             che altrimenti non saprebbe mai quale giorno sta guardando. -->
-        <div class="dayinfo" aria-live="polite" aria-atomic="true">
+        <div class="dayinfo">
           <span class="ddate" id="ddate"></span>
           <span class="dpos" id="dpos"></span>
         </div>
@@ -626,12 +623,6 @@ function aggiornaTitolo() {
     document.title = TITOLO_BASE;
   }
 }
-// feat-il-viaggio-si-racconta-anche-a-chi-non-vede: unica formula della
-// descrizione del wallpaper, riusata da cardHTML() (alt statico) e da
-// previewDay() (alt aggiornato a ogni cambio giorno), per non biforcare il testo.
-function descrizioneWallpaper(ch, date, isToday) {
-  return \`\${ch.name} — wallpaper \${isToday ? "di oggi" : "del " + fmtDataEstesa(date)}\`;
-}
 function cardHTML(ch) {
   return \`
     <div class="phone" aria-hidden="true">
@@ -645,7 +636,7 @@ function cardHTML(ch) {
            usa per distinguere questa richiesta (il sito, cacheabile un'ora)
            da quella della Shortcut sullo stesso indirizzo senza query
            (sempre no-store, deve ricevere il file fresco). -->
-      <img class="wall" src="/w/\${ch.id}?v=\${ch.date}" alt="\${descrizioneWallpaper(ch, ch.date, !ch.inRitardo)}" draggable="false" />
+      <img class="wall" src="/w/\${ch.id}?v=\${ch.date}" alt="\${ch.name} — wallpaper \${ch.inRitardo ? "del " + fmtDataEstesa(ch.date) : "di oggi"}" draggable="false" />
     </div>
     <div class="cinfo">
       <h2>\${ch.emoji} \${ch.name}</h2>
@@ -1244,12 +1235,6 @@ function previewDay(chId, date, isToday) {
   pre.onload = () => {
     if (pendingPreviewSrc !== src) return; // l'utente ha già cambiato giorno: non sovrascrivere
     top.src = src;
-    // feat-il-viaggio-si-racconta-anche-a-chi-non-vede: senza questo, l'alt
-    // resta quello statico di cardHTML() ("wallpaper di oggi") anche
-    // sfogliando giorni passati — descrive solo l'immagine che è davvero
-    // a schermo, mai quella scartata da onerror.
-    const ch = CHANNELS.find((c) => c.id === chId);
-    if (ch) top.alt = descrizioneWallpaper(ch, date, isToday);
     top.style.opacity = 1;
   };
   // feat-il-viaggio-non-resta-mai-a-schermo-nero: senza onerror, una rete che

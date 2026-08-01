@@ -16,20 +16,6 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
-## 2026-08-01 — feat-il-viaggio-si-racconta-anche-a-chi-non-vede
-- Chi sfoglia il viaggio con VoiceOver/TalkBack non aveva modo di sapere quale giorno stava
-  guardando: `previewDay()` aggiornava `top.src` ma mai `top.alt` (restava quello statico
-  "wallpaper di oggi" anche su un giorno di tre archi fa), e il cambio di `#ddate`/`#dpos` non
-  veniva mai annunciato — le frecce hanno già `aria-label`, mancava solo l'esito dell'azione.
-- `page.js`: aggiunti `aria-live="polite"` e `aria-atomic="true"` sul contenitore `.dayinfo` di
-  `#daynav`, così l'aggiornamento di `updateDayNav()` viene letto dagli screen reader.
-- Estratta la formula della descrizione del wallpaper in `descrizioneWallpaper(ch, date, isToday)`,
-  riusata sia da `cardHTML()` (alt iniziale, comportamento invariato) sia da `previewDay()`, che ora
-  assegna `top.alt` dentro `pre.onload`, sotto la stessa guardia `pendingPreviewSrc` già presente.
-  Il ramo `pre.onerror` non tocca `alt`: l'immagine mostrata resta quella precedente, quindi la sua
-  descrizione deve restarlo anche lei.
-- Nessun cambiamento d'aspetto: solo due attributi ARIA e un refactor JS, `VISUAL_SPECS.md` invariato.
-
 ## 2026-08-01 — feat-il-link-condiviso-apre-il-giorno-anche-di-un-arco-passato
 - Un link condiviso (`/?c=<canale>&d=<data>`) veniva onorato solo se la data cadeva nella finestra
   dell'arco in corso: qualunque link riletto più di ~7 giorni dopo (il caso normale) veniva scartato

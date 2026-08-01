@@ -52,17 +52,11 @@ describe("home — nota di freschezza quando il canale è in ritardo", () => {
   });
 
   it("il template client-side sceglie l'alt in base a ch.inRitardo, senza mai toccare src/?v=", () => {
-    // feat-il-viaggio-si-racconta-anche-a-chi-non-vede: la formula dell'alt è
-    // stata estratta in descrizioneWallpaper(ch, date, isToday) per essere
-    // riusata anche da previewDay() — cardHTML() ora la invoca con
-    // isToday=!ch.inRitardo, stesso comportamento reso di prima.
     const html = renderPage({}, "https://example.com", "2026-08-01");
-    const descrizioneBody = html.match(/function descrizioneWallpaper\(ch, date, isToday\) \{[\s\S]*?\n\}/)[0];
-    expect(descrizioneBody).toContain("di oggi");
-    expect(descrizioneBody).toMatch(/isToday \? "di oggi" : "del " \+ fmtDataEstesa\(date\)/);
     const cardHTMLBody = html.match(/function cardHTML\(ch\) \{[\s\S]*?\n\}/)[0];
-    const altExpr = cardHTMLBody.match(/alt="\$\{descrizioneWallpaper\(ch, ch\.date, !ch\.inRitardo\)\}"/);
-    expect(altExpr).not.toBeNull();
+    const altExpr = cardHTMLBody.match(/alt="\$\{ch\.name\}[\s\S]*?draggable/)[0];
+    expect(altExpr).toContain("di oggi");
+    expect(altExpr).toContain('ch.inRitardo ? "del "');
     expect(cardHTMLBody).toContain('src="/w/${ch.id}?v=${ch.date}"');
   });
 
