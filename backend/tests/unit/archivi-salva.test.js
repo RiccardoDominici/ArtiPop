@@ -19,7 +19,7 @@ const CON_ULTIMA_E_DATE = [
 describe("renderArchiviPage(storici) — link di salvataggio (dl=1)", () => {
   it("card con ultima valorizzata: link di salvataggio verso /w/<id>?date=<ultima>&dl=1", () => {
     const html = renderArchiviPage(CON_ULTIMA_E_DATE);
-    expect(html).toContain('<a class="salva" href="/w/island?date=2025-01-03&amp;dl=1">Salva</a>');
+    expect(html).toContain('<a class="salva" href="/w/island?date=2025-01-03&amp;dl=1" aria-label="Salva l\'ultimo wallpaper di island">Salva</a>');
   });
 
   it("ogni data dell'elenco ha il proprio link con dl=1 e aria-label non vuoto", () => {

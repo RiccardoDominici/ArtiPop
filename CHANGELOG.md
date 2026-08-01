@@ -16,6 +16,21 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-l-archivio-storico-si-legge-anche-con-lo-screen-reader
+- Su /archivi ogni card ripeteva link identici fra loro ("Riapri l'ultimo giorno", "Salva",
+  l'immagine di copertina che duplica lo stesso link) senza dire di quale canale parlava: chi usa
+  uno screen reader sentiva la stessa coppia di annunci per ogni riga della lista, senza modo di
+  distinguerle.
+- `archivi.js`, `renderElenco`: `a.copertina` (link-immagine duplicato di `a.riapri`, stessa
+  destinazione) nascosto alle tecnologie assistive con `aria-hidden="true" tabindex="-1"` (tecnica
+  WCAG standard per link ridondanti); `a.riapri`, `a.salva` e il `summary` dell'elenco giorni
+  hanno ora un `aria-label` che include l'id del canale (e per il summary anche il conteggio, con
+  lo stesso plurale del testo visibile) — id sempre passato da `esc()`.
+- Nessun cambio a CSS, testo visibile o struttura dei tag: il diff tocca solo attributi, l'aspetto
+  della pagina resta identico (VISUAL_SPECS.md non toccato).
+- Nuovo `archivi-accessibile.test.js` copre i quattro criteri più i casi `storici=[]`/`null`;
+  aggiornata l'unica asserzione esatta rotta dal nuovo attributo in `archivi-salva.test.js`.
+
 ## 2026-08-01 — feat-l-archivio-storico-dice-cosa-si-vedeva
 - Su /archivi ogni card di un canale storico mostrava solo un id tecnico ("neon", "atelier",
   "island"): la pagina diceva quanti giorni conserva e quando, ma mai COSA si vedeva — l'unica
