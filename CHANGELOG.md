@@ -850,3 +850,21 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   sostituita dal calcolo equivalente dentro `copyChannelUrl`.
 - Nuovo `backend/tests/unit/home-copia-indirizzo.test.js`; baseline visive
   `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo bottone.
+
+## 2026-08-01 — feat-scegli-l-arco-dall-elenco
+- L'unico modo per raggiungere un arco vecchio era premere «‹ arco precedente» un arco alla
+  volta, ricaricando l'anteprima ad ogni tocco e senza mai sapere in quale arco ci si trovasse
+  né quanti ce ne fossero: con mesi di archivio (il cron genera ogni notte) il percorso era di
+  fatto impraticabile.
+- Nuovo comando ghost `#arcpick` ("scegli l'arco") ed elenco `#arclist` dentro `.journey`,
+  stessa forma canonica dell'elenco-tappe (`.arcstory`/`.arcrow`, VISUAL_SPECS §1.4 esteso):
+  una riga per arco del canale (dal più recente al più vecchio) con l'intervallo di date e il
+  nome del concept, ripiego testuale se manca; tocco = salto diretto a quell'arco, evidenziato
+  con `.on`. Invisibile con meno di due archi o senza archivio disponibile.
+- Nuova `goToArc(chId, idx)` per il salto arbitrario da elenco: stessa meccanica già collaudata
+  di `goToPreviousArc`/`goToNextArc`/`goToToday` (mai unire due archi, giorno più recente del
+  nuovo arco). Le tre funzioni esistenti restano invariate nel corpo (i test preesistenti ne
+  fissano l'implementazione letterale) e aggiornano anche `#arclist` con la nuova
+  `renderArcList`, chiamata dove già si chiama `renderArcStory`.
+- Nuovo `backend/tests/unit/home-scegli-arco.test.js`; baseline visive
+  `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo comando.

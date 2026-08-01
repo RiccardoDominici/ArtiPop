@@ -387,6 +387,14 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            quando renderArcStory trova almeno una tappa con testoTappa. -->
       <button class="btn ghost" id="storytoggle" hidden>leggi la storia</button>
       <div class="arcstory" id="arcstory" hidden></div>
+      <!-- feat-scegli-l-arco-dall-elenco: unico modo, oggi, di raggiungere un
+           arco lontano nell'archivio era martellare #arcprev un arco alla
+           volta. Visibile solo con più di un arco (updateArcNav) — con un
+           solo arco il salto non ha senso. Riusa .arcstory/.arcrow (stessa
+           forma dell'elenco-tappe, VISUAL_SPECS §1.4): il componente cambia
+           contenuto, non forma. -->
+      <button class="btn ghost" id="arcpick" hidden>scegli l'arco</button>
+      <div class="arcstory" id="arclist" hidden></div>
     </section>
   </div>
 
@@ -468,6 +476,8 @@ const arcNextEl = document.getElementById("arcnext");
 const dcapEl = document.getElementById("dcap");
 const storytoggleEl = document.getElementById("storytoggle");
 const arcstoryEl = document.getElementById("arcstory");
+const arcPickEl = document.getElementById("arcpick");
+const arcListEl = document.getElementById("arclist");
 const dayshareEl = document.getElementById("dayshare");
 const copyurlEl = document.getElementById("copyurl");
 const dayopenEl = document.getElementById("dayopen");
@@ -821,10 +831,13 @@ function renderJourney(chId) {
     dcapEl.hidden = true;
     storytoggleEl.hidden = true;
     arcstoryEl.hidden = true;
+    arcPickEl.hidden = true;
+    arcListEl.hidden = true;
     pendingSharedDate = null;
     return;
   }
   renderArcStory(chId);
+  renderArcList(chId);
   updateDayNav(chId);
   // Link condiviso con una data valida e presente nell'archivio: si mostra
   // subito quella scena, ferma — chi arriva da un link vede ciò che gli è
@@ -938,6 +951,53 @@ storytoggleEl.addEventListener("click", () => {
   arcstoryEl.hidden = !arcstoryEl.hidden;
 });
 
+/* feat-scegli-l-arco-dall-elenco: elenco degli archi del canale — una riga
+   per arco (dal più recente al più vecchio, ordine nativo di arcsCache, mai
+   .reverse() sull'array in cache), tocco = salto diretto a quell'arco via
+   goToArc. Ricostruita ad ogni cambio di arco/canale (stesse chiamate di
+   renderArcStory) così l'evidenziazione ".on" resta corretta senza una
+   funzione di highlight separata. Righe con createElement/textContent, mai
+   innerHTML con testo del catalogo — stessa disciplina di renderArcStory. */
+function renderArcList(chId) {
+  arcListEl.innerHTML = "";
+  const arcs = arcsCache[chId] || [];
+  const cap = capCache[chId] || {};
+  const idx = arcIndexCache[chId] ?? 0;
+  arcs.forEach((arc, i) => {
+    const newest = arc[0];
+    const oldest = arc[arc.length - 1];
+    const range = newest === oldest
+      ? formatDayLabel(newest)
+      : \`\${formatDayLabel(oldest)} – \${formatDayLabel(newest)}\`;
+    let concept = null;
+    for (const d of arc) {
+      const g = cap[d];
+      if (g && g.conceptNome) { concept = g.conceptNome; break; }
+    }
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "arcrow" + (i === idx ? " on" : "");
+    const label = document.createElement("span");
+    label.className = "arcdate";
+    label.textContent = range;
+    const text = document.createElement("span");
+    text.className = "arctext";
+    text.textContent = concept || "arco senza titolo";
+    row.appendChild(label);
+    row.appendChild(text);
+    row.addEventListener("click", () => goToArc(chId, i));
+    arcListEl.appendChild(row);
+  });
+  // Con un solo arco (o nessuno) il salto non serve: niente comando, niente
+  // elenco. Chiuso di default e richiuso ad ogni ricostruzione (cambio di
+  // canale o di arco), come da §1.4.
+  arcPickEl.hidden = arcs.length <= 1;
+  arcListEl.hidden = true;
+}
+arcPickEl.addEventListener("click", () => {
+  arcListEl.hidden = !arcListEl.hidden;
+});
+
 /* Evidenzia la riga della data mostrata senza ricostruire il DOM — chiamata
    da updateDayNav ad ogni cambio di giorno, sia da click sull'elenco sia
    dalle frecce ‹ ›. */
@@ -973,6 +1033,28 @@ function updateArcNav(chId) {
   arcNextEl.hidden = idx <= 0;
 }
 
+// feat-scegli-l-arco-dall-elenco: salto diretto a un indice d'arco
+// arbitrario, usato dal click su una riga di #arclist — la stessa
+// meccanica di goToPreviousArc/goToNextArc/goToToday (mai unire due archi
+// nella stessa finestra sfogliabile, si posiziona sul giorno più recente
+// del nuovo arco, salvo l'arco in corso dove punta a oggi se già in
+// archivio). Le tre funzioni sotto restano dedicate ai loro comandi
+// (frecce ‹ ›, "torna a oggi": test preesistenti ne fissano il corpo) e
+// aggiornano #arclist con renderArcList senza passare da qui.
+function goToArc(chId, idx) {
+  const arcs = arcsCache[chId] || [];
+  if (idx < 0 || idx >= arcs.length) return;
+  stopPlayback();
+  arcIndexCache[chId] = idx;
+  archiveCache[chId] = arcs[idx];
+  updateArcNav(chId);
+  renderArcStory(chId);
+  renderArcList(chId);
+  const dates = archiveCache[chId];
+  const d = dates.includes(TODAY) ? TODAY : dates[0];
+  previewDay(chId, d, d === TODAY);
+}
+
 // Sposta la finestra sfogliabile sull'arco precedente, mai unendola a quella
 // corrente (un arco alla volta, la regola del ciclo 47 resta intatta), e si
 // posiziona sul giorno più recente del nuovo arco.
@@ -986,6 +1068,7 @@ function goToPreviousArc() {
   archiveCache[chId] = arcs[idx + 1];
   updateArcNav(chId);
   renderArcStory(chId);
+  renderArcList(chId);
   const d = archiveCache[chId][0];
   previewDay(chId, d, d === TODAY);
 }
@@ -1005,6 +1088,7 @@ function goToNextArc() {
   archiveCache[chId] = arcs[idx - 1];
   updateArcNav(chId);
   renderArcStory(chId);
+  renderArcList(chId);
   const d = archiveCache[chId][0];
   previewDay(chId, d, d === TODAY);
 }
@@ -1024,6 +1108,7 @@ function goToToday() {
   archiveCache[chId] = arcsCache[chId][0];
   updateArcNav(chId);
   renderArcStory(chId);
+  renderArcList(chId);
   const dates = archiveCache[chId];
   const d = dates.includes(TODAY) ? TODAY : dates[0];
   previewDay(chId, d, d === TODAY);
