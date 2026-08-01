@@ -16,6 +16,18 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-l-aiuto-resta-leggibile-anche-se-non-l-hai-mai-aperto
+- Il service worker conserva `/aiuto` già alla propria installazione (`PRECACHE` in
+  `backend/src/sw.js`, ascoltatore `install` in `event.waitUntil`): prima si poteva rivedere una
+  pagina offline solo se già visitata online, ma /aiuto è esattamente la pagina che serve quando
+  qualcosa non va (spesso la rete stessa) — chi installa l'icona e va offline prima di averla mai
+  aperta oggi trovava la pagina d'errore del browser sulle istruzioni per rimediare.
+- Ogni voce di `PRECACHE` è protetta da un try/catch proprio (nessun `cache.addAll`, che fallisce in
+  blocco): una rete assente durante l'installazione non impedisce l'attivazione del worker né la
+  conservazione delle altre voci. `self.skipWaiting()` resta fuori dalla `waitUntil`.
+- `/` e i wallpaper restano fuori dal precaching: sono contenuto del giorno, dinamico — congelarlo
+  all'installazione mostrerebbe un giorno sbagliato. Comportamento network-first invariato.
+
 ## 2026-08-01 — feat-condividi-l-immagine-del-giorno
 - Nuovo comando ghost `#dayshareimg` ("condividi l'immagine") accanto a "salva l'immagine": passa
   il file JPEG del giorno mostrato al foglio di condivisione di sistema (Web Share API con `files`)
