@@ -71,3 +71,4 @@ catalogo-tuning · sito-web · pagina-aiuto · tuning-tool · sicurezza · docs
 | 2026-08-01 04:24 UTC | POLISH | - | nessuna-proposta | - | opus | NESSUNA-PROPOSTA | auto/20260801-042411 | - |
 | 2026-08-01 04:25 UTC | POLISH | - | nessuna-proposta | - | opus | NESSUNA-PROPOSTA | auto/20260801-042502 | - |
 | 2026-08-01 04:26 UTC | POLISH | - | nessuna-proposta | - | opus | NESSUNA-PROPOSTA | auto/20260801-042551 | - |
+| 2026-08-01 07:13 UTC | POLISH | sito-web | feat-il-viaggio-racconta-il-giorno | backend/src/page.js, backend/tests/unit/home-racconto-del-giorno.test.js, tests/visual/baseline/home-mobile.png, tests/visual/baseline/home-desktop.png, CHANGELOG.md | opus | FATTO | auto/20260801-070341 | 72f8ee06-b38b-430f-a035-b49f82ca5a8e |
