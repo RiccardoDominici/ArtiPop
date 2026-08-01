@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-la-home-mostra-il-giorno-nuovo-quando-torni
+- Chi lascia la scheda della home aperta (sera prima, telefono in tasca) al ritorno la ritrovava
+  ferma al wallpaper di ieri, ancora etichettato "oggi": `TODAY` è una costante congelata dal
+  server e nulla la rivedeva finché non si ricaricava a mano — disattendendo la promessa fatta
+  dal conto alla rovescia ("il wallpaper cambia da solo ogni notte").
+- `page.js`: aggiunta `giornoNuovoDisponibile(todayServito, ora)`, pura, che confronta la data UTC
+  corrente per valore (non per differenza numerica, regge il cambio di mese/anno) e verifica che
+  l'ora UTC abbia già superato `ORA_CRON_UTC` — prima di quel momento il cron non ha ancora
+  consegnato e un reload mostrerebbe un canale "in ritardo" al posto del giorno di ieri.
+- Un solo listener `visibilitychange` chiama la funzione al ritorno in primo piano e ricarica solo
+  se serve; nessun polling, nessun timer nuovo. Se l'utente sta esplorando un giorno d'archivio
+  (`previewDate` diverso da oggi) il reload è sospeso per non perdere la sua posizione nel viaggio;
+  il corpo è avvolto in try/catch così un errore qui non rompe il resto dello script.
+
 ## 2026-08-01 — feat-il-viaggio-si-racconta-anche-a-chi-non-vede
 - Chi sfoglia il viaggio con VoiceOver/TalkBack non aveva modo di sapere quale giorno stava
   guardando: `previewDay()` aggiornava `top.src` ma mai `top.alt` (restava quello statico
