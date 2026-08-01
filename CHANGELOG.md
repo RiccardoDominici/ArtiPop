@@ -1220,3 +1220,23 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   token di §2, nessun colore nuovo.
 - Nuovo `backend/tests/unit/archivi-giorni.test.js`; `backend/tests/integration/archivi-rotta.test.js`
   esteso a verificare che TUTTI i giorni del canale storico compaiano, non solo l'ultimo.
+
+## 2026-08-01 — feat-salta-al-giorno-che-cerchi
+- Dopo `feat-l-archivio-non-finisce-a-trenta-giorni` il viaggio di un canale può contenere
+  centinaia di giorni, ma per raggiungerne uno preciso (il wallpaper del giorno che qualcuno ti
+  ha condiviso, quello del tuo compleanno) esistevano solo la freccia giorno-per-giorno, lo
+  sfoglio col dito, la tastiera e l'elenco degli archi — che salta all'arco, non al giorno.
+- `backend/src/page.js`: nuovo `<input type="date" id="dayPick">` nativo nella riga di
+  navigazione del giorno, accanto alle frecce ‹ ›; zero dipendenze, zero date-picker custom.
+  `updateDayNav` (già chiamata ad ogni cambio giorno/arco/canale) valorizza `min`/`max` con
+  l'unione delle date note nell'archivio del canale (`arcsCache`, ripiego `archiveCache`) e
+  `value` col giorno mostrato. Sull'evento `change`, se la data appartiene a un arco (anche uno
+  già chiuso) → `goToArc(chId, arcIdx, data)`, la stessa meccanica del link condiviso di un
+  giorno passato; se non ha wallpaper → nessun salto, un messaggio umano (`toast`) e il campo
+  torna al giorno mostrato — mai uno schermo nero, mai un errore grezzo.
+- `VISUAL_SPECS.md` §1.4 estesa col nuovo componente (proposta ai sensi di §7): solo token
+  §1.1 (`--bg`, `--text`, `--dim`), `color-scheme: dark` per rendere in scuro anche i controlli
+  nativi del browser, stessa altezza minima di tocco di `.dayctrl`.
+- Baseline `home-mobile.png`/`home-desktop.png` rigenerate contro il dev server locale
+  (`wrangler dev`, KV locale).
+- Nuovo `backend/tests/unit/home-salta-a-una-data.test.js`.
