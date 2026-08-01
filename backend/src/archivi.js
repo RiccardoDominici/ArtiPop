@@ -62,13 +62,19 @@ function renderElenco(storici) {
             .join("")}</ul>
         </details>`
           : "";
+      const copertina = c.ultima
+        ? `
+        <a class="copertina" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
+        : "";
       return `
-      <li>
+      <li>${copertina}
+        <div class="contenuto">
         <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
           <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}">Riapri l'ultimo giorno →</a>
         </div>${elencoGiorni}${riga3}
+        </div>
       </li>`;
     })
     .join("");
@@ -119,6 +125,14 @@ ${FAVICON_TAG}
   ul.archivi li {
     border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
     background: rgba(255,255,255,.03); margin-bottom: 10px; padding: 14px 18px;
+    display: flex; gap: 14px;
+  }
+  .contenuto { flex: 1; min-width: 0; }
+  .copertina { flex-shrink: 0; display: block; }
+  .copertina img {
+    width: 60px; height: 128px; object-fit: cover; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03);
+    display: block;
   }
   .riga1 { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
   .riga1 .giorni { color: #9aa3b8; font-weight: 400; }

@@ -27,6 +27,19 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Nuovo `aiuto-archivi.test.js`: verifica il link, il conteggio invariato e l'id/permalink
   invariato della voce arricchita.
 
+## 2026-08-01 — feat-l-archivio-storico-si-riconosce-a-colpo-d-occhio
+- Su /archivi ogni canale storico era identificato dal solo id testuale (island, bloom, studio,
+  neon, …): id che non esistono in CHANNELS (solo in LEGACY_ALIASES), quindi senza nome né emoji.
+  Chi riapriva un vecchio archivio doveva indovinare com'era il canale invece di vederlo.
+- `archivi.js`: ogni card mostra ora una miniatura dell'ultimo giorno del canale, riusando
+  l'immagine già servita e cacheata da `/w/<id>?date=<ultima>` — nessuna generazione nuova, nessun
+  dato nuovo (`ultima` era già nel payload). `loading="lazy"` per non scaricare più immagini
+  960×2048 in una volta. Assente quando il canale non ha un `ultima`: mai un contenitore vuoto.
+- VISUAL_SPECS §2.1 aggiornata (proposta ai sensi di §7): componente «miniatura di copertina»,
+  60×128, stessi token di bordo/raggio/sfondo già in uso nella sezione — nessun colore nuovo.
+- Nuovo `archivi-copertina.test.js`: presenza/assenza della miniatura, escaping di id/data
+  nell'`src`, invarianti di robustezza (lista vuota, scansione fallita) e assenza di `<script>`.
+
 ## 2026-08-01 — feat-la-home-mostra-il-giorno-nuovo-quando-torni
 - Chi lascia la scheda della home aperta (sera prima, telefono in tasca) al ritorno la ritrovava
   ferma al wallpaper di ieri, ancora etichettato "oggi": `TODAY` è una costante congelata dal
