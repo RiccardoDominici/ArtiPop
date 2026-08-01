@@ -395,3 +395,21 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   `dayInArc`/`stage`/`arcIndex` interi e `scene` una stringa non vuota, che un `dayInArc` corrotto non
   apra un arco nuovo quando quello in corso non è davvero finito, e che un `extraIndex` corrotto su un
   arco bloccato in tappa finale produca comunque un intero ≥ 0.
+
+## 2026-08-01 — s-il-cancello-non-premia-l-immagine-peggiore
+- `backend/src/metrics.js`, `verdict()`: le guardie assolute (`maxDeriva`, `maxDegrado`) dividevano il
+  contributo alla distanza per la soglia grezza. Con soglia `0` (clampata e salvabile da
+  `PUT /tuning`) il contributo va a `Infinity`: `generate.js:310` sceglie il candidato con distanza
+  MINIMA quando i tentativi finiscono, quindi con più candidati fuori soglia il cancello smetteva di
+  scegliere (tutti `Infinity` → tiene il primo). Con soglia negativa (raggiungibile da un concept
+  custom via `validaScalareONull`, che accetta qualunque numero finito) il contributo diventava
+  negativo, potendo annullare un contributo positivo su un'altra misura e portare `distanza` a `0`
+  cioè `ok: true` su un'immagine fuori range. Con soglia non numerica (`NaN`, stringa) la guardia si
+  spegneva in silenzio. Nuova `sogliaGuardia(v, ripiego)` che ricade sul default di `CONFIG` solo per
+  input non numerici/non finiti; il contributo ora divide per `Math.max(soglia, 1e-6)` — stesso
+  idioma già in uso in `outside()` — così resta sempre finito e ≥ 0, mentre il confronto (`m.deriva >
+  soglia`) e il testo dei motivi restano sulla soglia grezza, invariati.
+- Nuovo `backend/tests/unit/cancello-guardie.test.js`: soglia 0 (distanza finita e > 0, discrimina
+  fra due derive diverse), soglia negativa (nessun contributo negativo, niente cancellazione fra
+  contributi), soglia non numerica (ricade su `CONFIG`, guardia attiva), non regressione sul caso
+  normale. `backend/tests/unit/metrics.test.js` non toccato.

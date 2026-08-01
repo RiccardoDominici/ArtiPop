@@ -334,6 +334,17 @@ function outside(value, [lo, hi]) {
 }
 
 /**
+ * Soglia di una guardia assoluta: usa `v` solo se è un numero finito e
+ * utilizzabile come soglia, altrimenti ricade sul default di `CONFIG`. Copre
+ * i valori raggiungibili dall'utente reale (`PUT /tuning` clampa in [0, 100],
+ * un concept custom accetta qualunque numero finito via `validaScalareONull`)
+ * senza spegnere la guardia in silenzio su NaN o non-numeri.
+ */
+function sogliaGuardia(v, ripiego) {
+  return typeof v === "number" && Number.isFinite(v) ? v : ripiego;
+}
+
+/**
  * Confronta le misure col profilo del concept e decide.
  * Ritorna { ok, distanza, motivi[] }:
  *   - `ok` true se tutto rientra;
@@ -378,15 +389,19 @@ export function verdict(m, profile) {
   // Guardie assolute: valgono per ogni concept, salvo deroga esplicita della
   // famiglia (la metamorfosi astratta ha diritto a spostare il colore, perché
   // lì il colore È il soggetto).
-  const maxDeriva = profile.maxDeriva ?? CONFIG.MAX_DERIVA;
-  const maxDegrado = profile.maxDegrado ?? CONFIG.MAX_DEGRADO;
+  const maxDeriva = sogliaGuardia(profile.maxDeriva, CONFIG.MAX_DERIVA);
+  const maxDegrado = sogliaGuardia(profile.maxDegrado, CONFIG.MAX_DEGRADO);
 
   if (m.deriva > maxDeriva) {
-    distanza += (m.deriva - maxDeriva) / maxDeriva;
+    // Scala separata dalla soglia grezza (idioma di `outside()`): con una
+    // soglia 0 o negativa dividere per la soglia stessa manda `distanza` a
+    // Infinity o sotto zero, e generate.js:310 sceglie il candidato con
+    // `distanza` minima — quindi smette di scegliere o premia il peggiore.
+    distanza += (m.deriva - maxDeriva) / Math.max(maxDeriva, 1e-6);
     motivi.push(`è cambiata la luce di tutta la scena (deriva ${m.deriva.toFixed(1)} > ${maxDeriva})`);
   }
   if (m.degrado > maxDegrado) {
-    distanza += (m.degrado - maxDegrado) / maxDegrado;
+    distanza += (m.degrado - maxDegrado) / Math.max(maxDegrado, 1e-6);
     motivi.push(`l'immagine ha perso dettaglio (degrado ${m.degrado.toFixed(1)}% > ${maxDegrado}%)`);
   }
 
