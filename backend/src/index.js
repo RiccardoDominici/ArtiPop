@@ -55,6 +55,7 @@ import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.j
 // testa di handlers.js per il perché della separazione.
 import {
   runChannel, backfillChannel, fanOutAll, regenDay, archivioCanale, buildFreschezzaState,
+  cartaDiIdentita,
 } from "./handlers.js";
 
 /**
@@ -930,6 +931,22 @@ export default {
       } catch (err) {
         console.error(`[archivi] scansione KV non disponibile: ${err.message}`);
         storici = null;
+      }
+      // feat-l-archivio-storico-dice-cosa-si-vedeva: arricchimento col
+      // soggetto dell'ultimo giorno in un try/catch proprio, separato dalla
+      // scansione sopra — un errore qui non deve mai degradare l'elenco già
+      // costruito, solo lasciarlo senza soggetto (mai un 500, mai una card vuota).
+      if (storici) {
+        try {
+          storici = await Promise.all(
+            storici.map(async (voce) => {
+              const { conceptNome, elementNome } = await cartaDiIdentita(env, voce.id, voce.ultima);
+              return { ...voce, conceptNome, elementNome };
+            })
+          );
+        } catch (err) {
+          console.error(`[archivi] soggetto non disponibile: ${err.message}`);
+        }
       }
       return new Response(renderArchiviPage(storici), {
         headers: {

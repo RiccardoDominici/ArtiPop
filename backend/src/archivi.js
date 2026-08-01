@@ -33,10 +33,12 @@ function erede(id) {
 /**
  * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array già
  * filtrato (nessun canale attivo) e ordinato da chi chiama, forma
- * `[{ id, giorni, prima, ultima, date }]` — stessa forma di
- * `listChannelsWithArchive` (storage.js) una volta appiattita la Map in voci
- * con `id`. `date` (dalla più recente alla più vecchia) è opzionale: se
- * assente o vuoto l'elenco espandibile non viene emesso (chiamata legacy).
+ * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome }]` — stessa
+ * forma di `listChannelsWithArchive` (storage.js) una volta appiattita la Map
+ * in voci con `id`, arricchita da `cartaDiIdentita` (handlers.js). `date`
+ * (dalla più recente alla più vecchia), `elementNome` e `conceptNome` sono
+ * opzionali: se assenti l'elenco espandibile / la riga del soggetto non
+ * vengono emessi (chiamata legacy).
  */
 function renderElenco(storici) {
   if (!Array.isArray(storici) || storici.length === 0) {
@@ -69,10 +71,15 @@ function renderElenco(storici) {
       const salva = c.ultima
         ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1">Salva</a>`
         : "";
+      const soggetto =
+        c.elementNome || c.conceptNome
+          ? `
+        <div class="soggetto">${[c.elementNome, c.conceptNome].filter(Boolean).map(esc).join(" · ")}</div>`
+          : "";
       return `
       <li>${copertina}
         <div class="contenuto">
-        <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>
+        <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${soggetto}
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
           <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}">Riapri l'ultimo giorno →</a>${salva}
@@ -139,6 +146,7 @@ ${FAVICON_TAG}
   }
   .riga1 { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
   .riga1 .giorni { color: #9aa3b8; font-weight: 400; }
+  .soggetto { color: #9aa3b8; font-size: .88rem; margin-top: 2px; }
   .riga2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
   .intervallo { color: #9aa3b8; font-size: .88rem; }
   .riga3 { margin-top: 6px; font-size: .88rem; color: #9aa3b8; }

@@ -130,6 +130,14 @@ o componente nuovo.
   non è autoesplicativo). `riga2` può andare a capo (`flex-wrap: wrap`) sui viewport stretti
   invece di comprimere i link. Presente solo quando `ultima`/`date` sono valorizzati — stessa
   guardia della miniatura di copertina: card senza dati, nessun link di salvataggio.
+- Componente aggiuntivo «riga del soggetto» (proposta ai sensi di §7): dentro `.contenuto`, subito
+  sotto riga1, un `<div class="soggetto">` in `#9aa3b8`, `font-size:.88rem` — stessi token delle
+  altre righe secondarie di questa sezione (`.intervallo`, `.riga3`), nessun colore o misura
+  nuovi. Contenuto: nome dell'element e del concept dell'ultimo giorno del canale, separati da
+  «·» (`{elementNome} · {conceptNome}`); se solo uno dei due è presente, quel nome da solo, senza
+  separatore orfano. Presente solo quando almeno uno dei due nomi è disponibile (carta d'identità
+  registrata in KV o ricostruzione onesta per i canali a tema fisso, `RICOSTRUZIONE_STORICA` in
+  backend/src/handlers.js): card senza dati, nessuna riga del soggetto, mai un contenitore vuoto.
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 
