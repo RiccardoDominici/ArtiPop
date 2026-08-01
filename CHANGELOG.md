@@ -30,6 +30,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
   (`previewDate` diverso da oggi) il reload è sospeso per non perdere la sua posizione nel viaggio;
   il corpo è avvolto in try/catch così un errore qui non rompe il resto dello script.
 
+## 2026-08-01 — feat-il-viaggio-si-sfoglia-senza-attesa
+- Sfogliare "Il viaggio finora" era il gesto più frequente della navigazione appena costruita
+  (cicli 62-78) ma anche il più lento: `previewDay` scaricava il giorno richiesto SOLO quando
+  l'utente lo chiedeva, con la card ferma all'opacità precedente finché il PNG da 960×2048 non
+  arrivava — attrito pagato a ogni singolo passo, soprattutto da mobile in mobilità.
+- `page.js`: aggiunta `precaricaAdiacenti(chId, date)`, che precarica in silenzio solo i due
+  giorni immediatamente adiacenti a quello mostrato (mai l'arco intero, per non far pagare a chi
+  apre il viaggio e non lo sfoglia il peso di tutte le immagini) usando `new Image()` — mai
+  `fetch`, per non rompere la guardia `fetches.length === 1` di altri test. Un `Set` a livello di
+  modulo evita di richiedere due volte lo stesso URL nella stessa visita; il corpo è avvolto in
+  try/catch perché un precaricamento è un lusso, non deve mai poter interrompere lo sfoglio.
+- Chiamata da `previewDay` (dopo ogni cambio di giorno) e da `renderJourney` su `TODAY` (quando il
+  viaggio è sfogliabile), così anche il primissimo passo dell'utente parte già precaricato.
+
 ## 2026-08-01 — feat-il-viaggio-si-racconta-anche-a-chi-non-vede
 - Chi sfoglia il viaggio con VoiceOver/TalkBack non aveva modo di sapere quale giorno stava
   guardando: `previewDay()` aggiornava `top.src` ma mai `top.alt` (restava quello statico
