@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-il-preview-non-puo-mai-scrivere-sul-kv-di-produzione
+- Nuovo `backend/tests/unit/config-preview-isolato.test.js`: legge `backend/wrangler.jsonc` dal
+  filesystem (nessuna copia inline) e verifica gli invarianti di isolamento fra `env.preview` e
+  la produzione — namespace KV distinto, binding `SELF` verso `artipop-preview` (mai verso
+  `artipop`), `PUBLIC_ORIGIN` preview distinto, e presenza di tutti i binding (`kv_namespaces`,
+  `ai`, `images`, `services`, `vars`) dentro `env.preview` visto che wrangler non li eredita dal
+  top level per un environment nominato. Prima di questo test nessuna riga della suite leggeva
+  `wrangler.jsonc`: un futuro cambiamento distratto nella configurazione del cron o del deploy
+  poteva far scrivere il loop autonomo sul KV di produzione senza che nulla se ne accorgesse.
+  Zero generazioni AI, nessuna modifica a `wrangler.jsonc` o a `scripts/deploy.sh`.
+
 ## 2026-08-01 — s-i-ripieghi-del-generatore-sono-sotto-test
 - Nuovo `backend/tests/unit/daygen-ripieghi.test.js`: `generateDay` (`backend/src/daygen.js`) è
   l'anello che decide se cron, backfill e lab producono o no l'immagine del giorno, ma nessun test
