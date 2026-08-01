@@ -23,9 +23,38 @@ const metaKey = (ch) => `meta:${ch}`;
 const giornoKey = (ch, date) => `giorno:${ch}:${date}`;
 const ARCHIVE_PREFIX = (ch) => `archive:${ch}:`;
 
-/** Stato narrativo del canale (o null al primo giorno). */
+/**
+ * Analizza il testo grezzo di una chiave KV come documento JSON oggetto:
+ * `null`/assente → null; JSON non valido → null (con warn); JSON valido ma di
+ * forma sbagliata (stringa, array) → null, come già fa `loadNote` col suo
+ * documento. Presa a parte da `getState`/`getMeta` (e non un try/catch attorno
+ * a `env.KV.get(key, { type: "json" })` come `getGiorno`) per restare dentro
+ * al perimetro del piano: un `KV.get` che fallisce PER INTERO (connettività,
+ * non un singolo valore corrotto) deve continuare a propagare fino alla rete
+ * di sicurezza globale del router (ciclo 6, rete-di-sicurezza.test.js), non
+ * essere assorbito qui.
+ */
+function parseDocumentoOggetto(label, raw) {
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch (err) {
+    console.warn(`[storage] ${label} illeggibile, considerato assente: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Stato narrativo del canale (o null al primo giorno / se illeggibile). È
+ * l'unica lettura fuori dalla rete di `fetch` (gira nel cron via
+ * `scheduled`→`fanOutAll`→`runChannel`): senza questo, una chiave
+ * `state:<canale>` corrotta bloccherebbe il flusso di quel canale OGNI
+ * giorno, ripetendo lo stesso errore a ogni ritentativo (ciclo 14).
+ */
 export async function getState(env, channelId) {
-  return env.KV.get(stateKey(channelId), { type: "json" });
+  const raw = await env.KV.get(stateKey(channelId));
+  return parseDocumentoOggetto(stateKey(channelId), raw);
 }
 
 export async function putState(env, channelId, state) {
@@ -196,9 +225,15 @@ export async function listChannelsWithArchive(env) {
   return risultato;
 }
 
-/** Metadati leggeri del canale per la pagina web (o null se mai generato). */
+/**
+ * Metadati leggeri del canale per la pagina web (o null se mai generato /
+ * illeggibile). Stesso trattamento di `getState`: una singola chiave
+ * `meta:<canale>` corrotta non deve far cadere `/` insieme a tutti gli altri
+ * canali.
+ */
 export async function getMeta(env, channelId) {
-  return env.KV.get(metaKey(channelId), { type: "json" });
+  const raw = await env.KV.get(metaKey(channelId));
+  return parseDocumentoOggetto(metaKey(channelId), raw);
 }
 
 /**
