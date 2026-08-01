@@ -102,7 +102,14 @@ const FAQ = [
   {
     q: "Quanto costa?",
     a: `Niente, e non è una prova gratuita: ArtiPop gira interamente dentro i piani gratuiti di
-      Cloudflare. Non c'è account da creare, non c'è app da installare, non ci sono pubblicità.`,
+      Cloudflare. Non c'è account da creare, non ci sono pubblicità.
+      <br><br>
+      Non serve <strong>installare</strong> nessuna app: ArtiPop è un sito web. Se però vuoi
+      averlo a portata di tocco, puoi aggiungerlo alla <strong>schermata Home</strong> come se
+      fosse un'app: su iPhone/iPad, da Safari, tocca <strong>Condividi</strong> e poi
+      <strong>«Aggiungi a schermata Home»</strong>; su Android, da Chrome, apri il menu
+      <strong>⋮</strong> e scegli <strong>«Aggiungi a schermata Home»</strong> (a volte indicato
+      come «Installa app»).`,
   },
   {
     q: "Come funziona la storia degli sfondi?",
