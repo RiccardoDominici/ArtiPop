@@ -536,7 +536,9 @@ async function fetchNoteEQuietRefresh() {
     noteArrivato = true;
     AP.store.emit("note", AP.store.dati.note); // solo sul successo (vedi store.js, fetchCanali)
   } catch (e) {
-    NOTE_ERROR = `questo Worker non espone ancora /note: aggiornalo per segnare giorni e salvare assetti. (dettaglio: ${e.message})`;
+    NOTE_ERROR = e.status === 403
+      ? `manca la chiave admin: inseriscila in alto per leggere e salvare giorni e assetti. (dettaglio: ${e.message})`
+      : `questo Worker non espone ancora /note: aggiornalo per segnare giorni e salvare assetti. (dettaglio: ${e.message})`;
   }
   renderAssettiList();
   renderNotebook();
@@ -553,7 +555,9 @@ AP.store.on("tuning", () => { renderCards(); aggiornaStatoGlobale(); });
 AP.store.on("note", () => { NOTE_ERROR = null; noteArrivato = true; renderAssettiList(); renderNotebook(); refreshAllMarks(); });
 AP.store.on("errore", (info) => {
   if (info.sezione === "note") {
-    NOTE_ERROR = `questo Worker non espone ancora /note: aggiornalo per segnare giorni e salvare assetti. (dettaglio: ${info.errore.message})`;
+    NOTE_ERROR = info.errore.status === 403
+      ? `manca la chiave admin: inseriscila in alto per leggere e salvare giorni e assetti. (dettaglio: ${info.errore.message})`
+      : `questo Worker non espone ancora /note: aggiornalo per segnare giorni e salvare assetti. (dettaglio: ${info.errore.message})`;
     renderAssettiList();
     renderNotebook();
   }

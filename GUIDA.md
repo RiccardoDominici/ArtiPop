@@ -250,7 +250,7 @@ usano il sito e lo strumento di tuning in sola lettura.
 | `/test-metrics?ch=&a=&b=[&concept=]` | misura il cambiamento fra due giorni d'archivio |
 | `GET /tuning` *(pubblico)* · `PUT`/`DELETE /tuning` | range del cancello: lettura libera, scrittura protetta |
 | `GET /catalogo` *(pubblico)* · `PUT`/`DELETE /catalogo/concept`, `/catalogo/element` | concept/element aggiunti da fuori, senza rideploy |
-| `GET /note` *(pubblico)* · `PUT /note/giorno`, `PUT`/`DELETE /note/assetto` | marcature dei giorni e assetti di tuning salvati |
+| `GET /note` · `PUT /note/giorno` · `PUT`/`DELETE /note/assetto` — tutte protette dalla chiave admin | marcature dei giorni e assetti di tuning salvati |
 | `GET/POST /lab/arc?concept=&element=&days=&gate=` | genera un arco di prova (non tocca la produzione) |
 | `GET /lab/img?run=&n=` | serve un'immagine di prova del Lab |
 | `GET /api/channels[?all=1]` *(pubblico)* | stato dei canali attivi, incluso `famiglie` per canale; con `all=1` anche i canali storici, marcati `storico:true` |

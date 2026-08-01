@@ -1,8 +1,12 @@
-// Copre TUTTE le rotte guardate da isAuthorized in src/index.js: 16 occorrenze
-// (contate con `grep -c "isAuthorized" src/index.js` meno la definizione della
-// funzione), una per riga qui sotto — enumerate dal codice, non a memoria.
-// isAuthorized confronta ?key=/x-artipop-key con env.ADMIN_KEY: senza chiave
-// (o senza ADMIN_KEY configurato) ogni rotta deve rifiutare, MAI eseguire.
+// Copre TUTTE le rotte guardate da nonAutorizzato in src/index.js: 17
+// occorrenze (contate con `grep -c 'nonAutorizzato(request, env, {},'
+// src/index.js` — esclude sia la definizione sia la chiamata con
+// `chiaveNellUrl: true` di GET /lab/img, l'unica eccezione ammessa e coperta
+// a parte in chiave-solo-in-header.test.js), una per riga qui sotto —
+// enumerate dal codice, non a memoria. isAuthorized (chiamata da
+// nonAutorizzato) confronta ?key=/x-artipop-key con env.ADMIN_KEY: senza
+// chiave (o senza ADMIN_KEY configurato) ogni rotta deve rifiutare, MAI
+// eseguire.
 import { describe, it, expect } from "vitest";
 import { makeEnv, callWorker } from "../helpers/fakeEnv.js";
 
@@ -13,6 +17,7 @@ export const ROTTE_PROTETTE = [
   ["DELETE", "/catalogo/concept"],
   ["PUT", "/catalogo/element"],
   ["DELETE", "/catalogo/element"],
+  ["GET", "/note"],
   ["PUT", "/note/giorno"],
   ["PUT", "/note/assetto"],
   ["DELETE", "/note/assetto"],
