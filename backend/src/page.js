@@ -874,6 +874,30 @@ function srcFor(chId, date, isToday) {
   return isToday ? \`/w/\${chId}?v=\${TODAY}\` : \`/w/\${chId}?date=\${date}\`;
 }
 
+// feat-il-viaggio-si-sfoglia-senza-attesa: senza anticipo, ogni passo di
+// stepDay mostra la card ferma finché il PNG da 960×2048 non arriva. Qui si
+// scaricano in silenzio SOLO i due vicini immediati (il giorno prima e il
+// giorno dopo di quello mostrato ora) — mai l'arco intero, per non far
+// pagare a chi apre il viaggio e non lo sfoglia il peso di tutte le immagini.
+const precaricati = new Set();
+function precaricaAdiacenti(chId, date) {
+  try {
+    const dates = archiveCache[chId] || [];
+    const idx = dates.indexOf(date);
+    if (idx === -1) return; // giorno fuori dalla finestra dell'arco corrente
+    [dates[idx - 1], dates[idx + 1]].forEach((d) => {
+      if (!d) return;
+      const src = srcFor(chId, d, d === TODAY);
+      if (precaricati.has(src)) return;
+      precaricati.add(src);
+      const im = new Image();
+      im.src = src;
+    });
+  } catch {
+    // un precaricamento è un lusso: non deve mai poter interrompere lo sfoglio.
+  }
+}
+
 function renderJourney(chId) {
   if (CHANNELS[order[0]].id !== chId) return; // nel frattempo l'utente ha cambiato card
   const dates = archiveCache[chId];
@@ -900,6 +924,7 @@ function renderJourney(chId) {
   renderArcStory(chId);
   renderArcList(chId);
   updateDayNav(chId);
+  precaricaAdiacenti(chId, TODAY); // il primo passo dello sfoglio parte già precaricato
   // Link condiviso con una data valida e presente nell'archivio: si mostra
   // subito quella scena, ferma — chi arriva da un link vede ciò che gli è
   // stato condiviso, non un'animazione che glielo porta via. Si applica una
@@ -1284,6 +1309,7 @@ function previewDay(chId, date, isToday) {
   };
   pre.src = src;
   updateDayNav(chId);
+  precaricaAdiacenti(chId, date); // i prossimi due passi (avanti/indietro) sono già in cache al ritorno
 }
 
 /* ---------- timelapse "GIF" del viaggio nel mockup ---------- */
