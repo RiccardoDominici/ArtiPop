@@ -1391,3 +1391,14 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   con il paragrafo «Preferiti» (proposta ai sensi di §7); baseline `home-{mobile,desktop}.png`
   rigenerate contro `wrangler dev` locale, con un piccolo archivio seminato a mano nel KV locale
   (mai remoto, mai produzione) per far comparire il nuovo comando nello screenshot.
+
+## 2026-08-01 — feat-l-icona-installata-apre-anche-archivi-e-aiuto
+- Da quando l'icona di ArtiPop sta sulla schermata Home (ciclo 104) sa fare una cosa sola: aprire
+  `start_url` `/`. Aggiunto il campo `shortcuts` a `renderManifest()` (`backend/src/manifest.js`)
+  con le due sole rotte pubbliche di lettura diverse dalla home — «Archivi storici» → `/archivi`
+  e «Aiuto» → `/aiuto` — così tenere premuta l'icona installata apre direttamente una delle due
+  senza passare dalla home. Nessuna icona per voce (l'unica disegnata è già quella del manifest,
+  ripeterla non distingue nulla); `url` restano relative per non rompere preview/production.
+- Esteso `backend/tests/unit/manifest-app.test.js`: `shortcuts` è un array di due voci nell'ordine
+  dichiarato, ciascuna con `name`/`short_name` non vuoti e `url` dentro `scope`; test di
+  regressione che i campi preesistenti del manifest restano identici a prima del ciclo.

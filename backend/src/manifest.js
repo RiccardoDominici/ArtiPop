@@ -36,6 +36,23 @@ export function renderManifest() {
         purpose: "any maskable",
       },
     ],
+    // feat-l-icona-installata-apre-anche-archivi-e-aiuto: le uniche due rotte
+    // pubbliche di lettura diverse da `start_url` (`/`). Niente `icons` per
+    // voce: l'unica icona disegnata è già quella del manifest, ripeterla qui
+    // non distingue nulla. `url` restano relative per non rompere preview/
+    // production (dominio diverso a runtime).
+    shortcuts: [
+      {
+        name: "Archivi storici",
+        short_name: "Archivi",
+        url: "/archivi",
+      },
+      {
+        name: "Aiuto",
+        short_name: "Aiuto",
+        url: "/aiuto",
+      },
+    ],
   };
   return JSON.stringify(manifest);
 }
