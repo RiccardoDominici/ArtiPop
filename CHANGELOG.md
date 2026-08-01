@@ -16,6 +16,22 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-quando-arriva-il-prossimo-wallpaper
+- L'orario del cron di generazione (`0 3 * * *` UTC, `backend/wrangler.jsonc`) viveva solo in
+  GUIDA.md §2.2, cioè per il maintainer: chi aveva attivato la Shortcut non aveva modo di sapere
+  a che ora aspettarsi il wallpaper nuovo, né dalla home né da `/aiuto`.
+- Nuova riga `.hint#nextdrop` sotto le azioni: testo servito dal server indipendente dal fuso
+  ("Il wallpaper cambia da solo ogni notte."), sostituito lato client da `testoProssimoWallpaper`
+  con l'orario tradotto nel fuso locale del dispositivo — frase senza "oggi"/"domani" così resta
+  identica per tutto il giorno (baseline visiva stabile). Se il calcolo fallisce (try/catch),
+  resta il testo servito dal server: nessuna frase monca.
+- `ORA_CRON_UTC` in `page.js` è specchio del cron di produzione; nuovo test
+  `config-cron-coerente.test.js` lega i due valori così uno spostamento del cron senza aggiornare
+  la pagina rompe la suite invece di lasciare la home a mentire.
+- Nessun componente/colore nuovo: riuso di `.hint` così com'è, nessuna modifica a
+  `VISUAL_SPECS.md`. Baseline `home-{mobile,desktop}.png` rigenerate contro il dev server locale
+  per includere la riga in più.
+
 ## 2026-08-01 — feat-rivedi-l-arco-precedente
 - `loadArchive` scaricava `?limit=30` da `/api/archive/<canale>` ma teneva solo la finestra
   dell'arco in corso (`dates.slice(0, ch.giorno)`, ciclo 47): chi aveva seguito l'arco della

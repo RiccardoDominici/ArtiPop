@@ -19,6 +19,13 @@
 import { ACTIVE_CHANNELS } from "./channels.js";
 import { FAVICON_TAG, metaAnteprima } from "./head.js";
 
+// feat-quando-arriva-il-prossimo-wallpaper: specchio di triggers.crons in
+// backend/wrangler.jsonc (ambiente di produzione) — il cron di generazione
+// gira alle 03:00 UTC. Se quell'orario cambia senza aggiornare questa
+// costante, la home mostrerebbe un orario sbagliato all'utente: il test
+// backend/tests/unit/config-cron-coerente.test.js rompe apposta in quel caso.
+const ORA_CRON_UTC = 3;
+
 // NOTA: qui viveva esc(), un escape HTML mai chiamato nel file — i campi del
 // template (ch.name, ch.tagline, ch.scene, ch.concept) vengono inseriti senza
 // escaping già oggi. Rimuovere la funzione morta non cambia questo: NON
@@ -320,6 +327,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
       <button class="btn ghost" id="copyurl">copia l'indirizzo del canale</button>
     </div>
     <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
+    <p class="hint" id="nextdrop">Il wallpaper cambia da solo ogni notte.</p>
 
     <section class="journey">
       <div class="jhead">
@@ -438,6 +446,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
 const CHANNELS = ${JSON.stringify(channelData)};
 const ORIGIN = ${JSON.stringify(origin)};
 const TODAY = ${JSON.stringify(dateKey)};
+const ORA_CRON_UTC = ${JSON.stringify(ORA_CRON_UTC)};
 
 const deckEl = document.getElementById("deck");
 const dotsEl = document.getElementById("dots");
@@ -690,6 +699,25 @@ function tickClock() {
   document.querySelectorAll(".ldate").forEach((el) => (el.textContent = date));
 }
 setInterval(tickClock, 10_000);
+
+// feat-quando-arriva-il-prossimo-wallpaper: frase pura, senza riferimenti al
+// giorno ("oggi"/"domani") così resta identica per tutta la giornata e la
+// baseline visiva non cambia da un tick all'altro. Converte l'ora UTC del
+// cron nel fuso del dispositivo con Intl — se fallisce, il chiamante tiene
+// il testo già servito dal server (vedi sotto).
+function testoProssimoWallpaper(oraUtc, ora = new Date()) {
+  const d = new Date(Date.UTC(ora.getUTCFullYear(), ora.getUTCMonth(), ora.getUTCDate(), oraUtc, 0, 0));
+  const time = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  if (!/^\\d{2}:\\d{2}$/.test(time)) throw new Error("orario inatteso");
+  return \`Il wallpaper cambia da solo ogni notte, verso le \${time}.\`;
+}
+try {
+  const nextdropEl = document.getElementById("nextdrop");
+  nextdropEl.textContent = testoProssimoWallpaper(ORA_CRON_UTC);
+} catch {
+  // Nodo lasciato com'è: conserva il testo servito dal server (nessuna
+  // frase monca, nessun "verso le undefined").
+}
 
 /* ---------- viaggio nell'archivio (sfogliato dentro il mockup) ----------
    Niente più striscia di miniature: le date d'archivio servono solo a far
