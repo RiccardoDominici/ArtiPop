@@ -317,6 +317,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            Comandi rapidi. -->
       <a class="btn primary" id="dlShortcut" href="/s/natura.shortcut">⬇️ Scarica la Shortcut</a>
       <a class="btn ghost" href="#setup">Come si attiva</a>
+      <button class="btn ghost" id="copyurl">copia l'indirizzo del canale</button>
     </div>
     <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
 
@@ -453,6 +454,7 @@ const dcapEl = document.getElementById("dcap");
 const storytoggleEl = document.getElementById("storytoggle");
 const arcstoryEl = document.getElementById("arcstory");
 const dayshareEl = document.getElementById("dayshare");
+const copyurlEl = document.getElementById("copyurl");
 const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
 const toastEl = document.getElementById("toast");
@@ -518,23 +520,41 @@ function toast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
 }
 
-/* Copia l'indirizzo del giorno mostrato in cima. Se la clipboard non è
-   disponibile o rifiuta (contesto non sicuro, permesso negato) non lancia:
-   mostra l'indirizzo in chiaro nel toast perché l'utente possa selezionarlo
-   a mano — mai un errore non gestito in console. */
+/* Prova a mettere il link negli appunti; lancia se la clipboard non è
+   disponibile o rifiuta (contesto non sicuro, permesso negato) — sta ai
+   chiamanti decidere il messaggio di ripiego, mai un errore non gestito in
+   console. */
+async function copiaNegliAppunti(link) {
+  if (!navigator.clipboard) throw new Error("clipboard non disponibile");
+  await navigator.clipboard.writeText(link);
+}
 async function shareLink() {
   const chId = CHANNELS[order[0]].id;
   const date = previewDate ?? TODAY;
   const link = ORIGIN + "/?c=" + chId + "&d=" + date;
   try {
-    if (!navigator.clipboard) throw new Error("clipboard non disponibile");
-    await navigator.clipboard.writeText(link);
+    await copiaNegliAppunti(link);
     toast("link copiato");
   } catch {
     toast(link);
   }
 }
 dayshareEl.addEventListener("click", shareLink);
+
+/* Indirizzo stabile del canale in cima (nessun ?date=/?v=): quello che la
+   Shortcut deve chiamare ogni sera, utile a chi crea la Shortcut a mano
+   perché iOS blocca l'importazione di quella firmata. */
+async function copyChannelUrl() {
+  const chId = CHANNELS[order[0]].id;
+  const link = ORIGIN + "/w/" + chId;
+  try {
+    await copiaNegliAppunti(link);
+    toast("indirizzo del canale copiato");
+  } catch {
+    toast(link);
+  }
+}
+copyurlEl.addEventListener("click", copyChannelUrl);
 
 /* ---------- costruzione card ---------- */
 // Data leggibile in italiano per la nota di freschezza (stesso approccio di tickClock).
@@ -546,7 +566,6 @@ function fmtDataEstesa(dateStr) {
   });
 }
 function cardHTML(ch) {
-  const url = ORIGIN + "/w/" + ch.id;
   return \`
     <div class="phone" aria-hidden="true">
       <div class="island"></div>
