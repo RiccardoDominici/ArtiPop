@@ -1082,3 +1082,16 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Baseline `home-mobile.png`/`home-desktop.png` rigenerate (footer cambiato); baseline di
   `/aiuto` e del tuning tool byte-identiche. Nuovi
   `backend/tests/unit/archivi-pagina.test.js` e `backend/tests/integration/archivi-rotta.test.js`.
+
+## 2026-08-01 — feat-l-archivio-storico-dice-dove-continua-la-storia
+- Chi riapre l'archivio di `island` o `studio` su `/archivi` (ciclo 80) si fermava a un vicolo
+  cieco: nessun indizio che quelle storie continuano oggi in Natura e Quiete, pur essendo il dato
+  già disponibile server-side in `LEGACY_ALIASES` (`channels.js`).
+- `backend/src/archivi.js`: nuova funzione pura `erede(id)` che risolve l'alias storico nel
+  flusso attivo corrispondente (o `null` se assente o non più attivo). `renderElenco` aggiunge,
+  solo quando l'erede esiste, una terza riga nella card con il link `/?c=<erede>`; nessuna riga
+  in più per i canali senza erede attivo. Nessuno `<script>`, nessuna `fetch(` introdotta.
+- `VISUAL_SPECS.md` §2.1 aggiornata con la terza riga (testo `#9aa3b8`, link `#8fd3ff`, stessi
+  token, nessun colore o componente nuovo).
+- Nuovo `backend/tests/unit/archivi-eredita.test.js`: copre island→natura, studio→quiete, un id
+  senza alias (nessun link in più), l'assenza di `<script`/`fetch(` e i casi `[]`/`null` invariati.
