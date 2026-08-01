@@ -321,6 +321,10 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
         </div>
         <button class="dayctrl" id="daynext" aria-label="Giorno successivo dell'archivio">›</button>
       </div>
+      <!-- feat-condividi-il-giorno-che-stai-guardando: segue sempre lo stato
+           di #daynav (stesso hasJourney in renderJourney) — niente da
+           condividere quando non c'è navigazione fra giorni. -->
+      <button class="btn ghost" id="dayshare" hidden>copia link</button>
       <p class="dcap" id="dcap" hidden></p>
     </section>
   </div>
@@ -398,12 +402,56 @@ const dposEl = document.getElementById("dpos");
 const dayPrevEl = document.getElementById("dayprev");
 const dayNextEl = document.getElementById("daynext");
 const dcapEl = document.getElementById("dcap");
+const dayshareEl = document.getElementById("dayshare");
 const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
 let previewDate = null;                 // data in preview nel mockup (null = oggi)
 const archiveCache = {};                // channelId → [date, ...]
 const capCache = {};                    // channelId → { date → {conceptNome, elementNome, tappa, testoTappa, giornoNellArco} }
+
+/* ---------- link condiviso (?c=<canale>&d=<data>) ----------
+   Letto una sola volta all'avvio, prima di costruire il deck: se il canale è
+   noto lo porta in cima, se la data è nel formato atteso la si applica non
+   appena l'archivio di quel canale è caricato (vedi renderJourney) — non si
+   può sapere se la data esiste nell'archivio prima del fetch. */
+const sharedParams = new URLSearchParams(location.search);
+const sharedChannelId = sharedParams.get("c");
+const sharedDateParam = sharedParams.get("d");
+let pendingSharedDate =
+  sharedDateParam && /^\\d{4}-\\d{2}-\\d{2}$/.test(sharedDateParam) ? sharedDateParam : null;
+if (sharedChannelId) {
+  const idx = CHANNELS.findIndex((c) => c.id === sharedChannelId);
+  if (idx !== -1) order = [idx, ...order.filter((i) => i !== idx)];
+  else pendingSharedDate = null; // canale sconosciuto: home normale su oggi, niente giorno da applicare
+}
+
+/* ---------- toast pill (già in VISUAL_SPECS §1.4, mai usato finora) ---------- */
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+}
+
+/* Copia l'indirizzo del giorno mostrato in cima. Se la clipboard non è
+   disponibile o rifiuta (contesto non sicuro, permesso negato) non lancia:
+   mostra l'indirizzo in chiaro nel toast perché l'utente possa selezionarlo
+   a mano — mai un errore non gestito in console. */
+async function shareLink() {
+  const chId = CHANNELS[order[0]].id;
+  const date = previewDate ?? TODAY;
+  const link = ORIGIN + "/?c=" + chId + "&d=" + date;
+  try {
+    if (!navigator.clipboard) throw new Error("clipboard non disponibile");
+    await navigator.clipboard.writeText(link);
+    toast("link copiato");
+  } catch {
+    toast(link);
+  }
+}
+dayshareEl.addEventListener("click", shareLink);
 
 /* ---------- costruzione card ---------- */
 function cardHTML(ch) {
@@ -586,14 +634,27 @@ function renderJourney(chId) {
   // frecce, niente tasto play, solo un avviso — evita comandi inutili.
   const hasJourney = !!dates && dates.length >= 2;
   daynavEl.hidden = !hasJourney;
+  dayshareEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
   if (!hasJourney) {
     jmsgEl.textContent = "il viaggio inizia oggi ✨";
     dcapEl.hidden = true;
+    pendingSharedDate = null;
     return;
   }
   updateDayNav(chId);
+  // Link condiviso con una data valida e presente nell'archivio: si mostra
+  // subito quella scena, ferma — chi arriva da un link vede ciò che gli è
+  // stato condiviso, non un'animazione che glielo porta via. Si applica una
+  // sola volta (all'avvio), non ad ogni cambio di canale successivo.
+  if (pendingSharedDate && dates.includes(pendingSharedDate)) {
+    const d = pendingSharedDate;
+    pendingSharedDate = null;
+    previewDay(chId, d, d === TODAY);
+    return;
+  }
+  pendingSharedDate = null;
   // Anteprima "stile GIF": il timelapse parte da solo (salvo motion ridotto).
   if (!playing && !prefersStill) startPlayback();
 }
