@@ -87,6 +87,21 @@ Stato attuale: foglio di stile autonomo, parzialmente disallineato dal sito
   stato dei canali è disponibile (assente in caso di errore di lettura — la pagina resta identica
   a prima, mai un contenitore vuoto).
 
+### 2.1 Pagina `/archivi` (sorgente: backend/src/archivi.js)
+
+Adozione integrale dei token e del layout piatto di §2: stesso `--bg #0a0b10`, `--text #f2f3f8`,
+`--dim #9aa3b8`, link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`. Nessun colore
+o componente nuovo.
+- Componente distintivo: elenco piatto di card (una per canale storico), bordo
+  `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `14px` — stesso trattamento
+  visivo delle voci `<details>` di §2, senza l'accordion (qui non c'è contenuto da comprimere).
+  Riga superiore: id canale in `#f2f3f8` a sinistra, conteggio giorni in `#9aa3b8` a destra. Riga
+  inferiore: intervallo date in `#9aa3b8`, link "Riapri l'ultimo giorno →" in `#8fd3ff`.
+- Nessun `<script>`, nessuna `fetch(` nell'HTML servito: la lista arriva già pronta dal server
+  (contratto CLAUDE.md — scansione KV solo su richiesta esplicita, mai nel giro di produzione).
+- Lista vuota o scansione fallita: messaggio umano in `#9aa3b8` al posto dell'elenco, mai un
+  contenitore vuoto o una pagina rotta.
+
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 
 Tool interno desktop-first: densità alta è una scelta, non un difetto.

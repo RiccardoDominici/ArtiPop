@@ -451,6 +451,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   <footer>
     ArtiPop v3 — generato ogni notte da FLUX.2 su Cloudflare Workers AI ·
     <a href="/aiuto">Aiuto</a> ·
+    <a href="/archivi">Archivi</a> ·
     <a href="/api/channels">API</a> · <a href="https://github.com/RiccardoDominici/ArtiPop">GitHub</a>
   </footer>
 </main>
