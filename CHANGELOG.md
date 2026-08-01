@@ -899,3 +899,19 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   l'ultima src richiesta: se l'utente cambia giorno prima che una risposta tardiva arrivi, quella
   risposta non sovrascrive più lo stato corrente.
 - Nuovo `backend/tests/unit/home-immagine-non-caricata.test.js`.
+
+## 2026-08-01 — feat-l-archivio-non-finisce-a-trenta-giorni
+- Il viaggio in home caricava l'archivio con `?limit=30`: chi sfogliava a ritroso trovava il muro
+  dei trenta giorni anche se il backend conserva tutto l'archivio permanente su KV, con
+  paginazione già pronta fino a 400 giorni (`index.js`, `Math.min(..., 400)`). Elenco archi,
+  arco precedente/successivo, frecce giorno e "N di M" già lavoravano su liste di lunghezza
+  arbitraria — mancava solo alzare quel tetto.
+- Cambiata l'unica fetch dell'archivio in `page.js` da `?limit=30` a `?limit=400`, il massimo
+  consentito dalla rotta `/api/archive`. Nessun'altra modifica di logica: niente caricamento
+  incrementale, niente stati nuovi, niente UI nuova.
+- Nessun impatto visivo: il payload resta JSON di date e didascalie, le immagini si caricano
+  comunque una alla volta durante lo sfoglio, con la stessa cache lunga già in essere.
+- Nuovo `backend/tests/unit/home-archivio-piu-profondo.test.js`. Aggiornati i due test esistenti
+  che citavano incidentalmente `limit=30` come stringa di riferimento (`home-racconto-del-giorno`,
+  `home-arco-precedente`): l'assunto reale che verificano — un'unica fetch, nessuna richiesta
+  nuova — resta identico, solo il numero nel valore atteso cambia.

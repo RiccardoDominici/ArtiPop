@@ -488,7 +488,7 @@ const toastEl = document.getElementById("toast");
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
 let previewDate = null;                 // data in preview nel mockup (null = oggi)
 const archiveCache = {};                // channelId → [date, ...] finestra sfogliabile mostrata ora
-const fullArchiveCache = {};            // channelId → [date, ...] intero archivio scaricato (?limit=30), non tagliato
+const fullArchiveCache = {};            // channelId → [date, ...] intero archivio scaricato (?limit=400), non tagliato
 const arcsCache = {};                   // channelId → [[date, ...], ...] archi contigui per conceptNome, dal più recente al più vecchio
 const arcIndexCache = {};               // channelId → indice (in arcsCache) dell'arco attualmente mostrato in archiveCache
 const capCache = {};                    // channelId → { date → {conceptNome, elementNome, tappa, testoTappa, giornoNellArco} }
@@ -770,7 +770,7 @@ async function loadArchive(chId) {
   arcPrevEl.hidden = true;
   try {
     if (!archiveCache[chId]) {
-      const res = await fetch(\`/api/archive/\${chId}?limit=30\`);
+      const res = await fetch(\`/api/archive/\${chId}?limit=400\`);
       const body = await res.json();
       let dates = body.dates || [];
       // Didascalia ("il viaggio racconta il giorno"): stessa risposta di sopra,
