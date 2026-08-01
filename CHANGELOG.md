@@ -16,6 +16,26 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-cron-ritenta-una-volta-il-flusso-fallito
+- `backend/src/handlers.js`, `fanOutAll`: estratta la passata singola in `unaPassata(env, canali, {
+  force })`; `fanOutAll` ora fa una seconda e ULTIMA passata, solo sui canali falliti al primo colpo
+  (reject o `status !== 200`) e sempre senza `force` — `/aiuto` promette il recupero "la notte
+  successiva" (help.js:88), ma un errore transitorio (AI/KV, 500) lascia oggi l'utente reale sulla
+  lock screen con lo sfondo di ieri per 24 ore. `runChannel` resta idempotente su `lastDate`
+  (handlers.js:165-168), quindi il ritentativo non può mai produrre una seconda immagine per un
+  giorno già riuscito. I canali riusciti al primo colpo restano identici a oggi, senza campo nuovo;
+  quelli ritentati portano `ritentato: true`. Log onesto (`console.log`) prima della seconda
+  passata con l'elenco dei canali ritentati, mai stack né variabili d'ambiente.
+- `backend/tests/helpers/fakeEnv.js`, `stubSelf`: accetta ora una `fetchImpl` opzionale per simulare
+  le risposte di `/run/<canale>` nei test di ritentativo, con lo stesso default "lancia se invocato"
+  per tutti i test esistenti — nessuna firma cambiata.
+- Nuovo `backend/tests/integration/orchestrazione-ritenta.test.js`: copre successo al primo colpo
+  (nessun ritentativo), fallimento poi successo (`ritentato: true`, altri canali chiamati una sola
+  volta), doppio fallimento (nessun falso successo, 2 chiamate esatte), reject al primo colpo
+  (ritentato comunque, `fanOutAll` non lancia mai), e `force=1` presente solo nella prima passata.
+- `GUIDA.md`: descritto il ritentativo nel diagramma del cron, nella nota "se un passaggio fallisce"
+  e nella riga di `/run-all`.
+
 ## 2026-08-01 — s-element-canoa-fuori-dalla-pesca-finche-non-e-tarato
 - `backend/src/config.js`: nuova `ELEMENT_SOSPESI = ["canoa"]`, stesso meccanismo di
   `FAMIGLIE_SOSPESE` ma a granularità ELEMENT — la sessione M10 ha misurato che `canoa` non passa
