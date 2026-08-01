@@ -91,10 +91,14 @@ async function fetchNote() {
   return AP.store.dati.note;
 }
 
-async function fetchTuning() {
+async function fetchTuning(opzioni = {}) {
   try {
+    // catturato PRIMA di sovrascrivere AP.store.dati.tuning: è il "server di prima"
+    // che serve a rebuildEdit per capire se AP.store.edit divergeva già dal server
+    // (modifica manuale dell'utente) oppure no (semplice copia mai toccata).
+    const precedenti = AP.store.dati.tuning?.concepts;
     AP.store.dati.tuning = await api("/tuning");
-    rebuildEdit();
+    rebuildEdit(precedenti, opzioni);
     AP.store.emit("tuning", AP.store.dati.tuning); // solo sul successo, stesso motivo di fetchCanali
   } catch (e) {
     AP.store.emit("errore", { sezione: "tuning", errore: e });
@@ -102,13 +106,19 @@ async function fetchTuning() {
   return AP.store.dati.tuning;
 }
 
-/* EDIT riparte SEMPRE dai valori EFFETTIVI (default + eventuale override in KV),
-   esattamente come il vecchio reload(): è la copia di lavoro che Range modifica
-   e che Lab può proporre di sovrascrivere (proponiRange). Si RIASSEGNA (non si
-   svuota in place): ogni consumatore legge AP.store.edit al momento dell'uso,
-   mai una copia tenuta in una variabile locale a lungo termine. */
-function rebuildEdit() {
+/* EDIT riparte dai valori EFFETTIVI del server (default + eventuale override in
+   KV) come il vecchio reload(), ma SENZA buttare via una taratura fatta a mano
+   e non ancora lanciata: per ogni concept che AP.store.edit aveva già E che
+   divergeva dal server PRECEDENTE a questa ricarica (AP.util.diffProfilo), si
+   ripristina il valore di lavoro invece di quello appena arrivato. Un concept
+   non toccato dall'utente prende comunque il valore fresco del server (una
+   taratura arrivata da un'altra sessione deve poter comparire), e un concept
+   sparito dalla risposta nuova non viene reintrodotto. `scartaModifiche: true`
+   (solo dal bottone "Ripristina i default", vedi tab-range.js) salta del tutto
+   questo ripristino: è l'unico caso in cui conservare sarebbe il bug opposto. */
+function rebuildEdit(precedentiServer, { scartaModifiche } = {}) {
   const tuning = AP.store.dati.tuning;
+  const editPrecedente = AP.store.edit;
   const edit = {};
   if (tuning && tuning.concepts) {
     for (const [id, p] of Object.entries(tuning.concepts)) {
@@ -116,6 +126,11 @@ function rebuildEdit() {
         estensione: [...p.estensione], intensita: [...p.intensita], compattezza: [...p.compattezza],
         monotona: p.monotona, maxDeriva: p.maxDeriva, maxDegrado: p.maxDegrado,
       };
+      if (!scartaModifiche && editPrecedente && editPrecedente[id] && precedentiServer && precedentiServer[id]) {
+        if (AP.util.diffProfilo(editPrecedente[id], precedentiServer[id]).modificato) {
+          edit[id] = editPrecedente[id];
+        }
+      }
     }
   }
   AP.store.edit = edit;
@@ -128,11 +143,15 @@ function rebuildEdit() {
    parallelo con Promise.all (mai un await dentro un for, a differenza del vecchio
    loadAllArchives). Il rendering progressivo lo fa chi ascolta "archivio:<id>":
    ogni canale appare appena la SUA risposta arriva, senza aspettare gli altri. */
+// opzioni.scartaModifiche: true → rebuildEdit riallinea AP.store.edit al server
+// SENZA conservare le tarature non ancora lanciate (vedi rebuildEdit sopra).
+// Default false: la ricarica normale (bottoni "Aggiorna", auto-reload dopo un
+// lancio, salvataggio credenziali, ecc.) conserva il lavoro non lanciato.
 AP.store.carica = async function carica(opzioni = {}) {
   const canaliPromise = fetchCanali();
   const catalogoPromise = fetchCatalogo();
   const notePromise = fetchNote();
-  const tuningPromise = fetchTuning();
+  const tuningPromise = fetchTuning(opzioni);
 
   const canali = await canaliPromise;
   const archiviPromise = Promise.all(canali.map((ch) => fetchArchivio(ch.id)));
