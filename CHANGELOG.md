@@ -458,3 +458,23 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   dal server sopravvive a una seconda `carica()`; un profilo non toccato prende il valore nuovo del
   server; `carica({ scartaModifiche: true })` riallinea tutto; un concept sparito dalla risposta non
   riappare; a grep, solo `tab-range.js`/`$("reset")` passa `scartaModifiche: true`.
+
+## 2026-08-01 — s-il-catalogo-dice-quali-element-sono-sospesi
+- `backend/src/index.js`, `GET /catalogo`: ogni voce di `concepts` e `elements` (built-in e custom)
+  porta ora un campo booleano `sospeso` (`FAMIGLIE_SOSPESE`/`ELEMENT_SOSPESI`, `config.js`). Prima il
+  tuning tool mostrava `canoa` identica a qualsiasi altro element, col badge verde "pubblicato su
+  citta", mentre il backend la esclude già da ogni pool pescabile (`poolForWith`, `catalog.js`): unico
+  strumento di chi lavora sul catalogo, mentiva sull'unica cosa che gli serve sapere per capire perché
+  quell'element non esce mai. Un element risulta sospeso anche quando è la sua `famigliaNativa` a
+  essere sospesa, non solo per id diretto — stesso doppio filtro già applicato in produzione.
+- `tuning/js/tab-catalogo.js`: badge testuale "sospeso" nella lista (Element e Concept) per le voci
+  con `sospeso === true`, assente quando il campo manca del tutto (compatibilità con un Worker più
+  vecchio); il form della voce selezionata mostra in più una riga che spiega la condizione d'uscita
+  (un arco già aperto o il lab per id restano comunque utilizzabili).
+- `tuning/tool.css`: `.badge.sospeso` accanto a `.badge.custom`/`.badge.pub`, colore `var(--warn)`
+  già in uso altrove nel tool.
+- Nuovo `backend/tests/integration/catalogo-sospesi.test.js`: `canoa` ha `sospeso:true`, un altro
+  built-in ha `sospeso:false`, il campo è booleano su ogni voce; con `FAMIGLIE_SOSPESE` mockata un
+  element custom risulta sospeso via `famigliaNativa`, non via id cablato.
+- Nuovo `backend/tests/unit/tuning-catalogo-sospesi.test.js`: il badge compare solo sulla riga con
+  `sospeso:true` e non compare quando il campo è assente, sia in lista Element sia in lista Concept.
