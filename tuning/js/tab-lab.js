@@ -143,8 +143,21 @@ function renderRunList() {
 
 /* lancia /lab/arc e registra il run nello storico persistente — usata sia dal
    bottone principale sia da "↻ rigenera" su una card esistente, così le due
-   strade restano IDENTICHE (stesso oggetto salvato, stesso ridisegno). */
+   strade restano IDENTICHE (stesso oggetto salvato, stesso ridisegno).
+   Fuori da preview (produzione o ambiente sconosciuto) chiede conferma esplicita
+   PRIMA della chiamata: /lab/arc è l'unica chiamata del tool che consuma neuroni
+   AI, dallo stesso budget del cron giornaliero — un clic distratto sulla base
+   sbagliata non deve poterlo intaccare in silenzio. Ritorna `null` se l'utente
+   annulla: nessuna richiesta parte, nessun run entra nello storico. */
 async function eseguiRun(concept, element, days, gate) {
+  const destinazione = base();
+  if (AP.ambiente.classifica(destinazione) !== "preview") {
+    const ok = confirm(
+      `Questa base NON è preview (${AP.ambiente.etichetta(AP.ambiente.classifica(destinazione))}: ${destinazione}).\n` +
+      `Generare comunque un arco di ${days} giorni? Consuma neuroni AI dal budget condiviso col cron di produzione.`
+    );
+    if (!ok) return null;
+  }
   const res = await api(`/lab/arc?concept=${encodeURIComponent(concept)}&element=${encodeURIComponent(element)}&days=${encodeURIComponent(days)}&gate=${gate ? 1 : 0}`, { method: "POST" });
   const run = {
     id: res.runId,
@@ -173,6 +186,7 @@ $("labRun").onclick = async () => {
   $("labStatus").innerHTML = `<span class="spinner"></span> genero ${esc(c)} × ${esc(el)}${nat !== c ? ' (combinazione libera)' : ''}…`;
   try {
     const run = await eseguiRun(c, el, days, gate);
+    if (!run) { setStatus($("labStatus"), ""); toast("annullato", "ok"); return; }
     setStatus($("labStatus"), `fatto: ${run.giorni.length} giorni${run.virtuale ? ' · combinazione libera (tappe generiche)' : ''}`);
     toast(`arco di prova generato: ${run.giorni.length} giorni`, "ok");
   } catch (e) {
@@ -190,7 +204,8 @@ async function rigeneraRun(run, btn) {
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span> rigenero…`;
   try {
-    await eseguiRun(run.concept, run.element, run.days, run.gate);
+    const nuovo = await eseguiRun(run.concept, run.element, run.days, run.gate);
+    if (!nuovo) { toast("annullato", "ok"); btn.disabled = false; btn.innerHTML = originaleHTML; return; }
     toast(`rigenerato: nuovo run di "${AP.comp.conceptNomeById(run.concept)} × ${AP.comp.elementNomeById(run.element)}" in cima allo storico`, "ok");
     // sul successo renderRunList() ha già ricostruito tutta la lista: il nodo
     // `btn` non esiste più, niente da ripristinare.
