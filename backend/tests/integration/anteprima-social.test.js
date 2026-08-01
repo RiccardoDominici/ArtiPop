@@ -95,3 +95,54 @@ describe("anteprima social (Open Graph / Twitter Card) su /", () => {
     expect(estraiMeta(html, "og:description")).toBe(description);
   });
 });
+
+// feat-l-anteprima-del-link-condiviso-mostra-quel-giorno: il link per-giorno
+// (?c=<canale>&d=<data>, ciclo 48) esisteva già lato client — qui si copre la
+// rotta intera, con la validazione che riporta al comportamento di oggi
+// appena un parametro non torna.
+describe("anteprima social con link per-giorno condiviso (/?c=&d=)", () => {
+  it("GET /?c=citta&d=<data valida passata> mostra l'anteprima di quel giorno", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/?c=citta&d=2026-07-28");
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/citta?date=2026-07-28`);
+    expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/?c=citta&d=2026-07-28`);
+  });
+
+  it("GET /?c=inesistente&d=2026-07-28 ricade sui tag di oggi, mai un 4xx/5xx", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/?c=inesistente&d=2026-07-28");
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    const oggi = todayKey();
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/natura?v=${oggi}`);
+    expect(estraiMeta(html, "og:url")).toBe(ORIGIN);
+    expect(html).not.toContain("inesistente");
+  });
+
+  it("GET /?c=citta&d=non-una-data ricade sui tag di oggi", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/?c=citta&d=non-una-data");
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    const oggi = todayKey();
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/natura?v=${oggi}`);
+    expect(html).not.toContain("non-una-data");
+  });
+
+  it("GET /?c=citta&d=<data futura> ricade sui tag di oggi", async () => {
+    const env = makeEnv();
+    const futura = "2999-01-01";
+    const res = await callWorker(env, `/?c=citta&d=${futura}`);
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    const oggi = todayKey();
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/natura?v=${oggi}`);
+    expect(html).not.toContain(futura);
+  });
+});

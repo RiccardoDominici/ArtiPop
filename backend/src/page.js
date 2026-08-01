@@ -28,8 +28,12 @@ import { FAVICON_TAG, metaAnteprima } from "./head.js";
 /**
  * Renderizza la pagina. `metas` è una mappa channelId → meta (da storage.getMeta),
  * `origin` è l'origine pubblica del worker, `dateKey` la data di oggi (YYYY-MM-DD).
+ * `condiviso` (opzionale) = `{ canale, data }`, già validato da chi chiama
+ * (rotta `/` in index.js): fa seguire l'anteprima Open Graph al giorno e
+ * canale del link condiviso invece del wallpaper di oggi. Non tocca il
+ * `<body>`: il markup visibile resta identico in entrambi i casi.
  */
-export function renderPage(metas, origin, dateKey) {
+export function renderPage(metas, origin, dateKey, condiviso = null) {
   // Dati pubblici passati al JS client (niente campi interni).
   const channelData = ACTIVE_CHANNELS.map((c) => ({
     id: c.id,
@@ -66,7 +70,7 @@ export function renderPage(metas, origin, dateKey) {
 <meta name="description" content="${pageDescription}" />
 <meta name="theme-color" content="#0a0b10" />
 ${FAVICON_TAG}
-${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
+${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
 <style>
   :root {
     --bg: #0a0b10;

@@ -17,19 +17,40 @@ const FAVICON_SVG =
 
 export const FAVICON_TAG = `<link rel="icon" href="data:image/svg+xml,${FAVICON_SVG}" />`;
 
+// Data YYYY-MM-DD → "28 luglio 2026". Mezzogiorno UTC fisso per non far
+// scivolare il giorno per via del fuso (vedi CONFIG.TIMEZONE altrove): qui
+// la data è già una chiave calendario, non un istante da localizzare.
+function dataEstesaItaliana(dataKey) {
+  return new Intl.DateTimeFormat("it-IT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${dataKey}T12:00:00Z`));
+}
+
 /**
  * Tag Open Graph / Twitter Card per l'anteprima quando il link viene
  * condiviso (iMessage/WhatsApp/Telegram). Titolo e descrizione vanno
  * riusati alla lettera da chi chiama, non reinventati qui.
+ *
+ * `condiviso` (opzionale) = `{ canale, data }`: quando presente e già
+ * validato da chi chiama (rotta `/`, vedi index.js), l'anteprima segue il
+ * giorno e il canale condivisi invece del wallpaper di oggi di natura —
+ * altrimenti chi riceve un link per-giorno vede sempre e solo l'oggi
+ * (feat-l-anteprima-del-link-condiviso-mostra-quel-giorno).
  */
-export function metaAnteprima(origin, todayKey, title, description) {
-  const url = origin;
-  // Immagine del giorno: si riusa /w/natura?v=<oggi>, la variante cacheabile
-  // un'ora del ciclo 7 — mai un asset nuovo da mantenere.
-  const image = `${origin}/w/natura?v=${todayKey}`;
+export function metaAnteprima(origin, todayKey, title, description, condiviso = null) {
+  const image = condiviso
+    ? `${origin}/w/${condiviso.canale}?date=${condiviso.data}`
+    : `${origin}/w/natura?v=${todayKey}`;
+  const url = condiviso ? `${origin}/?c=${condiviso.canale}&d=${condiviso.data}` : origin;
+  const titoloOg = condiviso
+    ? `ArtiPop — ${condiviso.canale}, ${dataEstesaItaliana(condiviso.data)}`
+    : title;
   return `<meta property="og:type" content="website" />
 <meta property="og:site_name" content="ArtiPop" />
-<meta property="og:title" content="${title}" />
+<meta property="og:title" content="${titoloOg}" />
 <meta property="og:description" content="${description}" />
 <meta property="og:url" content="${url}" />
 <meta property="og:image" content="${image}" />
