@@ -276,7 +276,7 @@ $("push").onclick = async () => {
 $("reset").onclick = async () => {
   if (!key()) return setStatus($("rangeStatus"), "serve la chiave admin");
   if (!confirm("Cancellare l'override e tornare ai default del codice?")) return;
-  try { await api("/tuning", { method: "DELETE" }); setStatus($("rangeStatus"), "ripristinati i default"); AP.store.carica(); }
+  try { await api("/tuning", { method: "DELETE" }); setStatus($("rangeStatus"), "ripristinati i default"); AP.store.carica({ scartaModifiche: true }); }
   catch (e) { setStatus($("rangeStatus"), "errore: " + e.message); }
 };
 
