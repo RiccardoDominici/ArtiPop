@@ -210,10 +210,10 @@ npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
 
 | Voglio… | Come |
 |---|---|
-| Rigenerare tutti i canali | `curl "…/run-all?force=1&key=<ADMIN_KEY>"` |
-| Rigenerare un canale | `…/run/natura?force=1&key=<ADMIN_KEY>` |
-| Rigenerare **un solo giorno** venuto male | `…/regen-day?ch=natura&date=2026-07-20&key=…` |
-| Ricostruire una settimana di storia | `…/backfill?ch=natura&days=7&key=…` (azzera lo stato del canale; 7 = un ciclo intero) |
+| Rigenerare tutti i canali | `curl -H "x-artipop-key: <ADMIN_KEY>" "…/run-all?force=1"` |
+| Rigenerare un canale | `curl -H "x-artipop-key: <ADMIN_KEY>" "…/run/natura?force=1"` |
+| Rigenerare **un solo giorno** venuto male | `curl -H "x-artipop-key: …" "…/regen-day?ch=natura&date=2026-07-20"` |
+| Ricostruire una settimana di storia | `curl -H "x-artipop-key: …" "…/backfill?ch=natura&days=7"` (azzera lo stato del canale; 7 = un ciclo intero) |
 | Attivare/disattivare un canale | `active: true/false` in `channels.js` + deploy. L'archivio resta in KV |
 | Aggiungere un soggetto alla libreria | riga in `concepts.js` (rideploy), **oppure** `PUT /catalogo/element` a caldo, senza rideploy |
 | Aggiungere un canale | nuova voce in `channels.js` con `famiglie` **disgiunte** da quelle degli altri canali |
@@ -234,9 +234,11 @@ npx wrangler secret put ADMIN_KEY  # (ri)genera la chiave admin
 
 ### Endpoint, in breve
 
-Tutte le scritture e le generazioni vogliono `?key=<ADMIN_KEY>` (o l'header
-`x-artipop-key`); quelle marcate *pubblico* no — sono le stesse GET che usano
-il sito e lo strumento di tuning in sola lettura.
+Tutte le scritture e le generazioni vogliono l'header `x-artipop-key:
+<ADMIN_KEY>` (mai `?key=` in query: finirebbe nei log e nella cronologia del
+browser — unica eccezione `GET /lab/img`, caricata da un `<img src>` che non
+può portare header); quelle marcate *pubblico* no — sono le stesse GET che
+usano il sito e lo strumento di tuning in sola lettura.
 
 | Endpoint | Cosa fa |
 |---|---|
@@ -386,13 +388,13 @@ l'immagine del giorno prima, **zero addebiti**.
 | Sintomo | Prima cosa da guardare | Rimedio |
 |---|---|---|
 | Oggi nessuna immagine nuova | `npx wrangler tail` durante `…/run/<ch>?force=1` | se è il modello, riprova: klein non è deterministico |
-| Un giorno è venuto brutto | — | `…/regen-day?ch=X&date=Y&key=…` |
+| Un giorno è venuto brutto | — | `curl -H "x-artipop-key: …" "…/regen-day?ch=X&date=Y"` |
 | Il canale ripete ieri identico | le tappe sono quantificate? | vedi [2.10](#210-lezioni-imparate-non-regredire), punto 5 |
 | Il progetto completo compare al giorno 1 | la tappa 1 nomina il risultato finale? | vedi [2.10](#210-lezioni-imparate-non-regredire), punto 1 |
 | `/backfill` si ferma a metà | è sincrono di proposito | resta connesso, rilancia se cade |
 | Il DNS non risolve workers.dev | — | `curl --resolve "artipop.riccardo-dominici.workers.dev:443:172.67.176.123" …` |
 | Le Shortcut degli utenti non funzionano in automazione | `python3 shortcut/verify_shortcuts.py` | rigenera e ricarica in KV |
-| Lo sfondo è un gradiente scuro senza disegno | `/health` (canale mai generato o `?date=` inesistente) | `…/run/<ch>?force=1&key=…` |
+| Lo sfondo è un gradiente scuro senza disegno | `/health` (canale mai generato o `?date=` inesistente) | `curl -H "x-artipop-key: …" "…/run/<ch>?force=1"` |
 | Una pagina dice «errore temporaneo» | rete di sicurezza globale del worker (`index.js`) | `npx wrangler tail` |
 
 ## 2.10 Lezioni imparate (non regredire)

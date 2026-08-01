@@ -92,7 +92,11 @@ npx wrangler secret put ADMIN_KEY   # chiave per gli endpoint admin
 npx wrangler tail                   # log in tempo reale
 ```
 
-### Endpoint admin (richiedono `?key=<ADMIN_KEY>` o header `x-artipop-key`)
+### Endpoint admin (richiedono l'header `x-artipop-key: <ADMIN_KEY>`)
+
+`?key=<ADMIN_KEY>` non è più accettato: finirebbe nei log di Cloudflare e
+nella cronologia del browser. Unica eccezione: `GET /lab/img`, caricata da un
+`<img src>` che non può portare header custom.
 
 | Endpoint | Uso |
 |---|---|
@@ -119,7 +123,8 @@ viene fuso sopra i default (`profiles.js`).
   genera un arco USA-E-GETTA (non tocca la produzione, immagini con TTL 1h) e
   restituisce le sei misure giorno per giorno — serve a tarare i range con dati
   alla mano e a provare combinazioni libere (`timelapse`×`girasole`, ecc.)
-- `GET /lab/img?run=<id>&n=<n>` (chiave) → serve un'immagine di prova
+- `GET /lab/img?run=<id>&n=<n>&key=<ADMIN_KEY>` (unica rotta che ammette la
+  chiave in query, non solo in header) → serve un'immagine di prova
 
 Lo **strumento visuale** è in [`../tuning/`](../tuning/README.md), dentro il
 repo: si apre da `file://` senza build, edita i range per concept, prova le

@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { makeEnv, callWorker } from "../helpers/fakeEnv.js";
 
-const ROTTE_PROTETTE = [
+export const ROTTE_PROTETTE = [
   ["PUT", "/tuning"],
   ["DELETE", "/tuning"],
   ["PUT", "/catalogo/concept"],
@@ -47,10 +47,11 @@ describe("GET/PUT /tuning: caso felice autorizzato", () => {
     expect(Array.isArray(body.elements)).toBe(true);
   });
 
-  it("PUT /tuning con body valido e chiave corretta → 200", async () => {
+  it("PUT /tuning con body valido e chiave corretta nell'header → 200", async () => {
     const env = makeEnv();
-    const res = await callWorker(env, `/tuning?key=${env.ADMIN_KEY}`, {
+    const res = await callWorker(env, "/tuning", {
       method: "PUT",
+      headers: { "x-artipop-key": env.ADMIN_KEY },
       body: JSON.stringify({ profili: { crescita: { estensione: [10, 50] } } }),
     });
     expect(res.status).toBe(200);

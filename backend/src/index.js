@@ -55,12 +55,36 @@ import {
   runChannel, backfillChannel, fanOutAll, regenDay, archivioCanale, buildFreschezzaState,
 } from "./handlers.js";
 
-/** Confronto della chiave admin (query ?key= oppure header x-artipop-key). */
-function isAuthorized(request, env) {
+/**
+ * Confronto della chiave admin. Di norma solo l'header `x-artipop-key`: la
+ * query string finisce nei log di Cloudflare, nella cronologia del browser e
+ * nei proxy, quindi non è un trasporto sicuro per una credenziale che spende
+ * neuroni AI e scrive nel KV di produzione. L'unica eccezione ammessa è
+ * `chiaveNellUrl: true`, usata dal solo `GET /lab/img`: è caricata da un
+ * `<img src>`, che non può portare header custom.
+ */
+function isAuthorized(request, env, { chiaveNellUrl = false } = {}) {
   if (!env.ADMIN_KEY) return false; // senza secret configurato, gli admin sono chiusi
   const url = new URL(request.url);
-  const provided = request.headers.get("x-artipop-key") || url.searchParams.get("key") || "";
+  const inUrl = chiaveNellUrl ? url.searchParams.get("key") : null;
+  const provided = request.headers.get("x-artipop-key") || inUrl || "";
   return provided === env.ADMIN_KEY;
+}
+
+/**
+ * 403 dedicato al caso in cui la chiave arriva SOLO da `?key=` su una rotta
+ * che non lo ammette: spiega dove va messa senza mai stampare il valore.
+ */
+function nonAutorizzato(request, env, opzioni, respond) {
+  if (isAuthorized(request, env, opzioni)) return null;
+  const url = new URL(request.url);
+  if (!opzioni?.chiaveNellUrl && url.searchParams.get("key")) {
+    return respond(
+      { error: "non autorizzato: la chiave va passata nell'header x-artipop-key, non in ?key=" },
+      403
+    );
+  }
+  return respond({ error: "non autorizzato" }, 403);
 }
 
 /** Risposta JSON con status. */
@@ -197,7 +221,10 @@ export default {
         });
       }
       if (request.method === "PUT" || request.method === "POST") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ error: "JSON non valido nel corpo della richiesta" }, 400); }
@@ -208,7 +235,10 @@ export default {
         });
       }
       if (request.method === "DELETE") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         return scritturaProtetta("DELETE /tuning", async () => {
           await clearTuning(env);
           return jsonCors({ ok: true, cleared: true });
@@ -279,7 +309,10 @@ export default {
 
     if (path === "/catalogo/concept") {
       if (request.method === "PUT" || request.method === "POST") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
@@ -289,7 +322,10 @@ export default {
         });
       }
       if (request.method === "DELETE") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         return scritturaProtetta("DELETE /catalogo/concept", async () => {
           const res = await removeConcept(env, url.searchParams.get("id") || "");
           return jsonCors(res, res.ok ? 200 : 400);
@@ -300,7 +336,10 @@ export default {
 
     if (path === "/catalogo/element") {
       if (request.method === "PUT" || request.method === "POST") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
@@ -310,7 +349,10 @@ export default {
         });
       }
       if (request.method === "DELETE") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         return scritturaProtetta("DELETE /catalogo/element", async () => {
           const res = await removeElement(env, url.searchParams.get("id") || "");
           return jsonCors(res, res.ok ? 200 : 400);
@@ -331,7 +373,10 @@ export default {
 
     if (path === "/note/giorno") {
       if (request.method !== "PUT" && request.method !== "POST") return jsonCors({ error: "metodo non ammesso" }, 405);
-      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+        if (rifiuto) return rifiuto;
+      }
       let body;
       try { body = await request.json(); }
       catch { return jsonCors({ ok: false, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
@@ -343,7 +388,10 @@ export default {
 
     if (path === "/note/assetto") {
       if (request.method === "PUT" || request.method === "POST") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         let body;
         try { body = await request.json(); }
         catch { return jsonCors({ ok: false, id: null, errori: ["JSON non valido nel corpo della richiesta"] }, 400); }
@@ -353,7 +401,10 @@ export default {
         });
       }
       if (request.method === "DELETE") {
-        if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+        {
+          const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+          if (rifiuto) return rifiuto;
+        }
         return scritturaProtetta("DELETE /note/assetto", async () => {
           const res = await removeAssetto(env, url.searchParams.get("id") || "");
           return jsonCors(res, res.ok ? 200 : 400);
@@ -370,7 +421,10 @@ export default {
     // ---- Lab: genera un arco di prova (protetto) ----
     // GET/POST /lab/arc?concept=<schema>&element=<soggetto>&days=7&gate=0
     if (path === "/lab/arc") {
-      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+        if (rifiuto) return rifiuto;
+      }
       const familyId = url.searchParams.get("concept") || "";
       const elementId = url.searchParams.get("element") || "";
       const days = Number(url.searchParams.get("days")) || 7;
@@ -391,7 +445,8 @@ export default {
     // ---- Lab: serve un'immagine di prova ----
     const labImgMatch = path === "/lab/img";
     if (labImgMatch) {
-      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+      const rifiuto = nonAutorizzato(request, env, { chiaveNellUrl: true }, jsonCors);
+      if (rifiuto) return rifiuto;
       const runId = url.searchParams.get("run") || "";
       const n = Number(url.searchParams.get("n"));
       const img = await getLabImage(env, runId, n);
@@ -592,7 +647,10 @@ export default {
     // ---- Generazione manuale/interna di un flusso: /run/<flusso>?[force=1] ----
     const runMatch = path.match(/^\/run\/([a-z]+)$/);
     if (runMatch) {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, json);
+        if (rifiuto) return rifiuto;
+      }
       try {
         const result = await runChannel(env, runMatch[1], {
           force: url.searchParams.get("force") === "1",
@@ -606,7 +664,10 @@ export default {
 
     // ---- Backfill storico (admin): /backfill?ch=<flusso>&days=7[&gate=0] ----
     if (path === "/backfill") {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, json);
+        if (rifiuto) return rifiuto;
+      }
       const ch = url.searchParams.get("ch") || "";
       const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 7, 2), 7);
       const conGate = url.searchParams.get("gate") !== "0";
@@ -628,7 +689,10 @@ export default {
     // handlers.regenDay: qui si estraggono solo i query param e si traduce
     // l'esito (o l'ErroreDominio) in una Response.
     if (path === "/regen-day") {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, json);
+        if (rifiuto) return rifiuto;
+      }
       const ch = url.searchParams.get("ch") || "";
       const date = url.searchParams.get("date") || "";
       try {
@@ -645,7 +709,10 @@ export default {
 
     // ---- Generazione manuale di tutti i flussi: /run-all?[force=1] ----
     if (path === "/run-all") {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, json);
+        if (rifiuto) return rifiuto;
+      }
       const results = await fanOutAll(env, { force: url.searchParams.get("force") === "1" });
       return json(results);
     }
@@ -654,7 +721,10 @@ export default {
     if (path === "/test-metrics") {
       // jsonCors e non json: lo strumento di tuning chiama questa sonda dalla sua
       // tab Archivio per misurare due giorni gia' pubblicati, e gira da file://.
-      if (!isAuthorized(request, env)) return jsonCors({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+        if (rifiuto) return rifiuto;
+      }
       const ch = url.searchParams.get("ch") || "natura";
       const a = url.searchParams.get("a");
       const b = url.searchParams.get("b");
@@ -686,7 +756,10 @@ export default {
 
     // ---- Probe risoluzione (admin): /test-size?w=1152&h=2496 ----
     if (path === "/test-size") {
-      if (!isAuthorized(request, env)) return json({ error: "non autorizzato" }, 403);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, json);
+        if (rifiuto) return rifiuto;
+      }
       const w = Number(url.searchParams.get("w"));
       const h = Number(url.searchParams.get("h"));
       if (!w || !h) return json({ error: "servono ?w= e ?h=" }, 400);
