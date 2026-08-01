@@ -75,20 +75,46 @@ AP.util.esc = esc;
 AP.util.strictNumber = strictNumber;
 
 /* ---------- chiamate al Worker ---------- */
+// Tre modi distinti in cui una chiamata può fallire, e cosa vede l'utente in
+// ciascuno:
+// 1. la `fetch` viene RIFIUTATA (host irraggiungibile, DNS, offline, CORS): il
+//    browser lancia un TypeError generico ("Failed to fetch"/"Load failed",
+//    testo diverso per browser e mai in italiano) — qui lo si intercetta e si
+//    rilancia un errore umano che nomina l'indirizzo (`err.rete = true`, niente
+//    `err.status`: la richiesta non è mai arrivata a destinazione).
+// 2. la risposta arriva ma `!res.ok` (4xx/5xx): comportamento invariato, vedi
+//    sotto — `err.status`/`err.payload`/`errori[]` per chi chiama.
+// 3. la risposta è `ok` ma il corpo non è JSON valido (es. l'indirizzo punta a
+//    un sito qualsiasi, non a un Worker ArtiPop): niente più ripiego silenzioso
+//    `{ raw: txt }` spacciato per dato buono — si rigetta con un errore umano.
 async function api(path, opts = {}) {
   const headers = Object.assign({}, opts.headers || {});
   if (opts.body) headers["content-type"] = "application/json";
   if (key()) headers["x-artipop-key"] = key();
-  const res = await fetch(base() + path, { ...opts, headers });
+  let res;
+  try {
+    res = await fetch(base() + path, { ...opts, headers });
+  } catch {
+    const err = new Error(`Worker non raggiungibile a ${base()}: controlla l'indirizzo in alto o la connessione`);
+    err.rete = true;
+    throw err;
+  }
   const txt = await res.text();
-  let json; try { json = JSON.parse(txt); } catch { json = { raw: txt }; }
   if (!res.ok) {
+    let json; try { json = JSON.parse(txt); } catch { json = { raw: txt }; }
     // il Worker risponde 400 con { ok:false, errori:[...] }: non perdere quei
     // dettagli dietro un generico "HTTP 400" — attacca il corpo completo
     // all'errore così chi chiama può mostrarli per campo.
     const msg = json.error || (Array.isArray(json.errori) && json.errori.length ? json.errori.join("; ") : `HTTP ${res.status}`);
     const err = new Error(msg);
     err.payload = json;
+    err.status = res.status;
+    throw err;
+  }
+  let json;
+  try { json = JSON.parse(txt); }
+  catch {
+    const err = new Error(`risposta non in formato JSON da ${base()}: l'indirizzo non sembra un Worker ArtiPop`);
     err.status = res.status;
     throw err;
   }

@@ -31,6 +31,19 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Nuovo `backend/tests/unit/tuning-ambiente.test.js`: copre `classifica()` su preview/produzione/
   input non validi e verifica a grep il cablaggio (ordine script, controllo prima della chiamata).
 
+## 2026-08-01 — s-il-tool-dice-la-verita-quando-il-worker-non-risponde
+- `tuning/js/util.js`, `api()`: la `fetch` ora è avvolta in try/catch. Se il browser la rigetta
+  (Worker spento, DNS, offline, CORS) non lascia più passare nudo il "Failed to fetch" inglese fino
+  al toast: rilancia un errore in italiano che nomina l'indirizzo interrogato (`err.rete = true`,
+  mai la chiave admin nel messaggio).
+- Stesso `api()`: una risposta `ok` il cui corpo non è JSON valido (l'indirizzo non punta a un
+  Worker ArtiPop) non risolve più in silenzio con il ripiego `{ raw: txt }` — rigetta con un
+  messaggio umano e `err.status`. Il ripiego `{ raw: txt }` resta solo per costruire il messaggio
+  degli errori HTTP (`!res.ok`), comportamento invariato.
+- Nuovo `backend/tests/unit/tuning-api-errori.test.js`: copre i tre modi in cui la chiamata può
+  fallire (rete rifiutata, HTTP non ok, corpo non JSON) e le non-regressioni sul contratto esistente
+  (`err.status`, `err.payload`, `errori[]` via `errFromCatch`).
+
 ## 2026-08-01 — s-uno-stato-illeggibile-non-blocca-un-flusso-per-sempre
 - `backend/src/storage.js`, `getState`/`getMeta`: erano le uniche letture KV del progetto senza
   rete, fuori dal try/catch di `fetch()` (ciclo `s-rete-di-sicurezza-globale-sul-worker`, che protegge
