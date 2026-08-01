@@ -687,3 +687,17 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   l'id esiste ancora in `CHANNELS` — il link condiviso vince sempre sulla memoria locale.
 - Nuovo `backend/tests/unit/home-ricorda-canale.test.js`; nessuna baseline visiva da aggiornare
   (cambia solo quale card è in cima, stato già previsto dal componente deck).
+
+## 2026-08-01 — feat-salva-il-wallpaper-con-un-nome-che-si-capisce
+- `GET /w/<flusso>?dl=1` aggiunge `content-disposition: attachment; filename="artipop-<flusso>-<data>.<png|jpg>"`:
+  chi salvava un wallpaper dall'archivio si ritrovava un file chiamato "natura", senza estensione
+  né data, che su desktop non si apre a doppio clic. Emesso solo quando esiste davvero
+  un'immagine — un segnaposto non si scarica con il nome di un wallpaper che non c'è — e l'id del
+  flusso è sanificato (`[a-z0-9-]`) prima di finire nell'header.
+- La chiamata della Shortcut (nessuna query) e la richiesta senza `?dl=1` restano invariate byte
+  per byte e per header: nessuna regressione sulla rotta esistente.
+- Nuova ancora `#daysave` ("salva l'immagine", `btn ghost`) accanto a `#dayopen` nella sezione «Il
+  viaggio finora»: stessa visibilità (`hasJourney` in `renderJourney()`), `href` agganciato in
+  `updateDayNav()` allo stesso `srcFor()` di `#dayopen` più `&dl=1`. Nessuna nuova regola CSS.
+- Nuovi `backend/tests/integration/w-download.test.js` e `backend/tests/unit/home-salva-immagine.test.js`;
+  baseline visive `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo bottone.
