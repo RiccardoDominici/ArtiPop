@@ -39,12 +39,18 @@ function dataEstesaItaliana(dataKey) {
  * giorno e il canale condivisi invece del wallpaper di oggi di natura —
  * altrimenti chi riceve un link per-giorno vede sempre e solo l'oggi
  * (feat-l-anteprima-del-link-condiviso-mostra-quel-giorno).
+ *
+ * `percorso` (opzionale, usato solo nel ramo senza `condiviso`) = il path
+ * della pagina che sta condividendo il link (es. "/aiuto"). Un `og:url` che
+ * punta sempre alla home mentre si sta condividendo un'altra pagina è
+ * peggio dell'assenza del tag: chi apre il link finirebbe salvato/aperto
+ * sull'URL sbagliato. Omesso, il comportamento resta identico a oggi.
  */
-export function metaAnteprima(origin, todayKey, title, description, condiviso = null) {
+export function metaAnteprima(origin, todayKey, title, description, condiviso = null, percorso = "") {
   const image = condiviso
     ? `${origin}/w/${condiviso.canale}?date=${condiviso.data}`
     : `${origin}/w/natura?v=${todayKey}`;
-  const url = condiviso ? `${origin}/?c=${condiviso.canale}&d=${condiviso.data}` : origin;
+  const url = condiviso ? `${origin}/?c=${condiviso.canale}&d=${condiviso.data}` : `${origin}${percorso}`;
   const titoloOg = condiviso
     ? `ArtiPop — ${condiviso.canale}, ${dataEstesaItaliana(condiviso.data)}`
     : title;

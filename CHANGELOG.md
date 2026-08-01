@@ -16,6 +16,23 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-condividere-aiuto-e-archivi-mostra-l-anteprima
+- Chi mandava in chat il link di `/aiuto` o di `/archivi` — i due modi in cui ArtiPop si passa fra
+  persone, "ti spiego come si installa" e "guarda i canali vecchi" — vedeva arrivare un link nudo:
+  solo la home aveva i tag Open Graph/Twitter Card, quindi chi riceveva il link non capiva cosa
+  stava per aprire.
+- `head.js`, `metaAnteprima`: nuovo parametro opzionale `percorso`, usato solo nel ramo senza
+  `condiviso` per comporre `og:url` come `${origin}${percorso}` invece della sola origin — un
+  `og:url` che punta sempre alla home mentre si condivide un'altra pagina è peggio dell'assenza
+  del tag. Omesso, la home non cambia di una virgola.
+- `archivi.js`/`help.js`, `renderArchiviPage`/`renderHelpPage`: nuovi parametri opzionali `origin`
+  e `dataOggi` che, se entrambi presenti, aggiungono `metaAnteprima(...)` nel `<head>` riusando
+  alla lettera `<title>` e `<meta name="description">` già presenti nella pagina. Le pagine
+  d'errore (`renderPaginaNonTrovata`, `renderErroreTemporaneo`, `renderShortcutMancante`) restano
+  senza tag `og:`: non si condividono, un'anteprima lì sarebbe grasso.
+- `index.js`: le rotte `/aiuto` e `/archivi` passano `url.origin` e `todayKey()` (già disponibili
+  nello scope) alle due funzioni di rendering.
+
 ## 2026-08-01 — feat-la-home-si-vede-anche-senza-javascript
 - Chi apre ArtiPop col JavaScript bloccato (content blocker, Lockdown Mode, proxy aziendali)
   vedeva un riquadro vuoto: il deck dei canali è costruito interamente lato client

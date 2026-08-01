@@ -905,7 +905,7 @@ export default {
         console.error(`[aiuto] stato canali non disponibile: ${err.message}`);
         stato = null;
       }
-      return new Response(renderHelpPage(stato), {
+      return new Response(renderHelpPage(stato, url.origin, todayKey()), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
@@ -948,7 +948,7 @@ export default {
           console.error(`[archivi] soggetto non disponibile: ${err.message}`);
         }
       }
-      return new Response(renderArchiviPage(storici), {
+      return new Response(renderArchiviPage(storici, url.origin, todayKey()), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
