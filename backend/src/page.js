@@ -234,6 +234,20 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .dayinfo .dpos { font-size: .74rem; color: var(--dim); }
   .dcap { color: var(--dim); font-size: .78rem; line-height: 1.5; margin: .8rem auto 0; max-width: 26rem; }
   .dcap strong { color: var(--text); font-weight: 650; }
+  /* feat-leggi-la-storia-dell-arco: elenco delle tappe dell'arco visualizzato,
+     nascosto finché non lo si apre da #storytoggle. Nessun colore nuovo: --dim
+     per il testo secondario, il testo pieno per la tappa corrente — stessa
+     coppia già usata da .stale per la nota di freschezza. */
+  .arcstory { margin: .8rem auto 0; max-width: 26rem; text-align: left; display: grid; gap: .2rem; }
+  .arcrow {
+    display: block; width: 100%; min-height: 44px; padding: .5rem .2rem;
+    border: 0; border-top: 1px solid var(--card-border); background: none;
+    color: var(--dim); font: inherit; text-align: left; cursor: pointer;
+  }
+  .arcrow:first-child { border-top: 0; }
+  .arcrow .arcdate { display: block; font-size: .74rem; font-weight: 650; text-transform: capitalize; }
+  .arcrow .arctext { display: block; font-size: .8rem; line-height: 1.4; }
+  .arcrow.on { color: var(--text); }
 
   /* ---------- setup ---------- */
   section.setup { margin-top: 3.4rem; }
@@ -353,6 +367,11 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            con un nome parlante invece del blob "natura" senza estensione. -->
       <a class="btn ghost" id="daysave" hidden>salva l'immagine</a>
       <p class="dcap" id="dcap" hidden></p>
+      <!-- feat-leggi-la-storia-dell-arco: chiuso di default (la home non deve
+           allungarsi per chi non lo apre); comando e blocco compaiono solo
+           quando renderArcStory trova almeno una tappa con testoTappa. -->
+      <button class="btn ghost" id="storytoggle" hidden>leggi la storia</button>
+      <div class="arcstory" id="arcstory" hidden></div>
     </section>
   </div>
 
@@ -431,6 +450,8 @@ const dayNextEl = document.getElementById("daynext");
 const arcPrevEl = document.getElementById("arcprev");
 const arcNextEl = document.getElementById("arcnext");
 const dcapEl = document.getElementById("dcap");
+const storytoggleEl = document.getElementById("storytoggle");
+const arcstoryEl = document.getElementById("arcstory");
 const dayshareEl = document.getElementById("dayshare");
 const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
@@ -744,9 +765,12 @@ function renderJourney(chId) {
   if (!hasJourney) {
     jmsgEl.textContent = "il viaggio inizia oggi ✨";
     dcapEl.hidden = true;
+    storytoggleEl.hidden = true;
+    arcstoryEl.hidden = true;
     pendingSharedDate = null;
     return;
   }
+  renderArcStory(chId);
   updateDayNav(chId);
   // Link condiviso con una data valida e presente nell'archivio: si mostra
   // subito quella scena, ferma — chi arriva da un link vede ciò che gli è
@@ -769,9 +793,7 @@ function updateDayNav(chId) {
   const dates = archiveCache[chId] || [];
   const date = previewDate ?? TODAY;
   const idx = dates.indexOf(date); // 0 = oggi (più recente) ... length-1 = il giorno più vecchio
-  ddateEl.textContent = date === TODAY
-    ? "oggi"
-    : new Date(date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" });
+  ddateEl.textContent = formatDayLabel(date);
   // Posizione letta come progresso del viaggio: 1 = il giorno più vecchio, M = oggi.
   dposEl.textContent = dates.length ? \`\${idx === -1 ? "?" : dates.length - idx} di \${dates.length}\` : "";
   dayPrevEl.disabled = idx === -1 || idx >= dates.length - 1;
@@ -779,6 +801,15 @@ function updateDayNav(chId) {
   dayopenEl.href = srcFor(chId, date, date === TODAY);
   daysaveEl.href = srcFor(chId, date, date === TODAY) + "&dl=1";
   updateDayCaption(chId, date);
+  updateArcStoryHighlight(date);
+}
+
+// Etichetta breve di una data: stesso formato usato da #ddate, riusato anche
+// dalle righe della storia dell'arco (feat-leggi-la-storia-dell-arco).
+function formatDayLabel(date) {
+  return date === TODAY
+    ? "oggi"
+    : new Date(date + "T00:00:00").toLocaleDateString("it-IT", { day: "numeric", month: "short" });
 }
 
 /* Didascalia sotto la posizione: soggetto del giorno + testo della tappa.
@@ -802,6 +833,61 @@ function updateDayCaption(chId, date) {
     dcapEl.appendChild(document.createTextNode(g.testoTappa));
   }
   dcapEl.hidden = false;
+}
+
+/* feat-leggi-la-storia-dell-arco: ricostruisce l'elenco delle tappe
+   dell'arco attualmente mostrato — le date dell'arco (arcsCache, fallback
+   archiveCache se gli arc non sono disponibili) lette dal più vecchio al
+   più recente su una COPIA (mai .reverse() sull'array in cache, ci
+   scorrono anche goToPreviousArc/goToNextArc). Righe costruite con
+   createElement/textContent, mai innerHTML con testo del catalogo — stessa
+   disciplina di updateDayCaption. I giorni senza testoTappa (giorno
+   ricostruito, origine "assente") vengono omessi: mai una riga
+   "undefined", mai un comando che apre un blocco vuoto. */
+function renderArcStory(chId) {
+  arcstoryEl.innerHTML = "";
+  const arcs = arcsCache[chId] || [];
+  const idx = arcIndexCache[chId] ?? 0;
+  const arc = arcs[idx] || archiveCache[chId] || [];
+  const dates = arc.slice().reverse(); // dal più vecchio al più recente
+  const cap = capCache[chId] || {};
+  for (const d of dates) {
+    const g = cap[d];
+    if (!g || !g.testoTappa) continue;
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "arcrow";
+    row.dataset.date = d;
+    const label = document.createElement("span");
+    label.className = "arcdate";
+    label.textContent = formatDayLabel(d);
+    const text = document.createElement("span");
+    text.className = "arctext";
+    text.textContent = g.testoTappa;
+    row.appendChild(label);
+    row.appendChild(text);
+    row.addEventListener("click", () => {
+      stopPlayback();
+      previewDay(chId, d, d === TODAY);
+    });
+    arcstoryEl.appendChild(row);
+  }
+  const hasRows = arcstoryEl.children.length > 0;
+  storytoggleEl.hidden = !hasRows;
+  if (!hasRows) arcstoryEl.hidden = true;
+  updateArcStoryHighlight(previewDate ?? TODAY);
+}
+storytoggleEl.addEventListener("click", () => {
+  arcstoryEl.hidden = !arcstoryEl.hidden;
+});
+
+/* Evidenzia la riga della data mostrata senza ricostruire il DOM — chiamata
+   da updateDayNav ad ogni cambio di giorno, sia da click sull'elenco sia
+   dalle frecce ‹ ›. */
+function updateArcStoryHighlight(date) {
+  for (const row of arcstoryEl.children) {
+    row.classList.toggle("on", row.dataset.date === date);
+  }
 }
 
 /* Un passo avanti/indietro nell'archivio: dir=-1 giorno precedente (più
@@ -842,6 +928,7 @@ function goToPreviousArc() {
   arcIndexCache[chId] = idx + 1;
   archiveCache[chId] = arcs[idx + 1];
   updateArcNav(chId);
+  renderArcStory(chId);
   const d = archiveCache[chId][0];
   previewDay(chId, d, d === TODAY);
 }
@@ -860,6 +947,7 @@ function goToNextArc() {
   arcIndexCache[chId] = idx - 1;
   archiveCache[chId] = arcs[idx - 1];
   updateArcNav(chId);
+  renderArcStory(chId);
   const d = archiveCache[chId][0];
   previewDay(chId, d, d === TODAY);
 }
