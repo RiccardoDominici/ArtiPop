@@ -321,21 +321,48 @@ export async function backfillChannel(env, channelId, days, { conGate = true } =
   return results;
 }
 
-/** Fan-out: una richiesta interna per flusso (parallela) tramite il binding SELF. */
-export async function fanOutAll(env, { force = false } = {}) {
+/**
+ * Una passata di fan-out: una richiesta interna per canale (parallela) tramite
+ * il binding SELF. Ritorna, per ogni canale, `{ channel, status, body }` in
+ * caso di risposta oppure `{ channel, error }` in caso di reject.
+ */
+async function unaPassata(env, canali, { force } = {}) {
   const results = await Promise.allSettled(
-    ACTIVE_CHANNELS.map((ch) =>
+    canali.map((ch) =>
       env.SELF.fetch(`https://artipop.internal/run/${ch.id}${force ? "?force=1" : ""}`, {
         headers: { "x-artipop-key": env.ADMIN_KEY || "" },
       }).then(async (r) => ({ status: r.status, body: await r.json() }))
     )
   );
-  return ACTIVE_CHANNELS.map((ch, i) => {
+  return canali.map((ch, i) => {
     const r = results[i];
     return r.status === "fulfilled"
       ? { channel: ch.id, ...r.value }
       : { channel: ch.id, error: String(r.reason) };
   });
+}
+
+/**
+ * Fan-out: una richiesta interna per flusso (parallela) tramite il binding SELF.
+ * I canali falliti al primo colpo (reject oppure `status !== 200`) vengono
+ * ritentati UNA sola volta, sempre senza `force`: `runChannel` è idempotente
+ * (salta se `lastDate` è già oggi, vedi riga ~165), quindi il ritentativo non
+ * può mai produrre una seconda immagine per un giorno già riuscito.
+ */
+export async function fanOutAll(env, { force = false } = {}) {
+  const prima = await unaPassata(env, ACTIVE_CHANNELS, { force });
+
+  const falliti = ACTIVE_CHANNELS.filter((ch, i) => {
+    const r = prima[i];
+    return Boolean(r.error) || r.status !== 200;
+  });
+  if (falliti.length === 0) return prima;
+
+  console.log(`[fan-out] ritento ${falliti.length} canale/i falliti: ${falliti.map((ch) => ch.id).join(", ")}`);
+  const ritentativo = await unaPassata(env, falliti, { force: false });
+  const perCanale = new Map(ritentativo.map((r) => [r.channel, r]));
+
+  return prima.map((r) => (perCanale.has(r.channel) ? { ...perCanale.get(r.channel), ritentato: true } : r));
 }
 
 /**

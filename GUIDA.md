@@ -151,7 +151,8 @@ Un solo **Cloudflare Worker** sul piano gratuito fa tutto:
 ```
 cron 03:00 UTC
       │
-      ├─► fan-out: una richiesta interna per canale (binding SELF)
+      ├─► fan-out: una richiesta interna per canale (binding SELF),
+      │            i canali falliti al primo colpo vengono ritentati una volta
       │        │
       │        ├─ story.js    la storia avanza di un giorno
       │        ├─ generate.js FLUX.2 klein genera l'immagine (960x2048)
@@ -173,8 +174,11 @@ Dettagli tecnici: [`backend/README.md`](backend/README.md).
 4. L'immagine finisce in KV: `img:<ch>:latest`, `archive:<ch>:<data>`, `meta:<ch>`.
 5. **Al tramonto** la Shortcut dell'utente scarica `/w/<canale>` e lo imposta.
 
-> Se un passaggio fallisce, resta l'immagine del giorno prima: la Shortcut degli
-> utenti non si rompe mai.
+> Se un passaggio fallisce (errore transitorio di AI/KV, 500 interno), il
+> fan-out ritenta quel canale una volta, sempre senza `force` — recupera la
+> classe di guasti più comune senza rischiare doppie generazioni (`runChannel`
+> è idempotente su `lastDate`). Se anche il ritentativo fallisce, resta
+> l'immagine del giorno prima: la Shortcut degli utenti non si rompe mai.
 
 ## 2.3 Mappa del repo
 
@@ -237,7 +241,7 @@ il sito e lo strumento di tuning in sola lettura.
 | Endpoint | Cosa fa |
 |---|---|
 | `/run/<flusso>?force=1` | genera l'immagine di oggi (idempotente senza `force`; accetta alias storici) |
-| `/run-all?force=1` | genera tutti i canali attivi |
+| `/run-all?force=1` | genera tutti i canali attivi; i canali falliti al primo colpo vengono ritentati una volta, sempre senza `force` |
 | `/backfill?ch=<flusso>&days=N[&gate=0]` | ricostruisce N giorni di storia, stato azzerato |
 | `/regen-day?ch=<flusso>&date=YYYY-MM-DD` | rigenera un solo giorno già passato |
 | `/test-size?w=&h=` | verifica se il modello accetta una risoluzione |
