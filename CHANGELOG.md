@@ -915,3 +915,18 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   che citavano incidentalmente `limit=30` come stringa di riferimento (`home-racconto-del-giorno`,
   `home-arco-precedente`): l'assunto reale che verificano — un'unica fetch, nessuna richiesta
   nuova — resta identico, solo il numero nel valore atteso cambia.
+
+## 2026-08-01 — feat-sfoglia-il-viaggio-con-la-tastiera
+- Il listener `keydown` globale su `window` (`page.js:705-708`) mandava sempre ArrowLeft/ArrowRight
+  al mazzo dei canali (`advance()`), anche con il fuoco dentro "Il viaggio finora": chi aveva
+  appena cliccato ‹ ›  e continuava a sfogliare da tastiera perdeva il canale mostrato invece di
+  muovere il giorno.
+- Nuovo listener `keydown` su `journeyEl` (la sezione `.journey`) che intercetta ArrowLeft/ArrowRight
+  prima che risalgano a `window`: chiama `stepDay(-1)`/`stepDay(1)` — lo stesso verso dei bottoni
+  `#dayprev`/`#daynext` già presenti — e ferma la propagazione con `stopPropagation()`. Ignora
+  l'evento con meta/ctrl/alt (scorciatoie di cronologia del browser) e quando `#daynav` è nascosto
+  (nessun archivio sfogliabile). Il listener globale resta invariato: fuori dal viaggio le frecce
+  continuano a sfogliare i canali come prima.
+- Nessun elemento, `tabindex` o stile nuovo: il fuoco raggiunge già la sezione tramite i bottoni
+  esistenti, nessun impatto su `VISUAL_SPECS.md`.
+- Nuovo `backend/tests/unit/home-tastiera-viaggio.test.js`.

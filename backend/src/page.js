@@ -484,6 +484,7 @@ const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
 const dayTodayEl = document.getElementById("daytoday");
 const toastEl = document.getElementById("toast");
+const journeyEl = document.querySelector(".journey");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
 let previewDate = null;                 // data in preview nel mockup (null = oggi)
@@ -1022,6 +1023,21 @@ function stepDay(dir) {
 }
 dayPrevEl.addEventListener("click", () => stepDay(-1));
 dayNextEl.addEventListener("click", () => stepDay(1));
+
+/* Il listener globale su window (riga 705) manda ArrowLeft/ArrowRight al
+   mazzo dei canali: chi ha appena mosso il fuoco dentro "Il viaggio finora"
+   (es. cliccando ‹ ›) e continua a freccia perde il canale invece di
+   sfogliare il giorno. Qui intercettiamo l'evento prima che risalga a
+   window e lo dirottiamo su stepDay, lasciando invariato il comportamento
+   fuori dal viaggio. */
+journeyEl.addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return; // scorciatoie di cronologia del browser
+  if (daynavEl.hidden) return; // nessun archivio sfogliabile
+  e.preventDefault();
+  e.stopPropagation();
+  stepDay(e.key === "ArrowLeft" ? -1 : 1);
+});
 
 // Governa insieme "arco precedente" e "arco successivo": arcprev visibile
 // solo se esiste un arco più vecchio non ancora raggiunto, arcnext visibile
