@@ -1115,6 +1115,10 @@ function goToToday() {
 }
 dayTodayEl.addEventListener("click", goToToday);
 
+/* Traccia l'ultima src richiesta a previewDay, per scartare risposte tardive
+   (onload/onerror) di richieste ormai superate da un cambio giorno successivo. */
+let pendingPreviewSrc = null;
+
 /* Mostra un giorno nel mockup della card in cima (crossfade). */
 function previewDay(chId, date, isToday) {
   const top = deckEl.querySelector(".card.top .wall");
@@ -1122,8 +1126,24 @@ function previewDay(chId, date, isToday) {
   previewDate = isToday ? null : date;
   top.style.opacity = 0;
   const src = srcFor(chId, date, isToday);
+  pendingPreviewSrc = src;
   const pre = new Image();
-  pre.onload = () => { top.src = src; top.style.opacity = 1; };
+  pre.onload = () => {
+    if (pendingPreviewSrc !== src) return; // l'utente ha già cambiato giorno: non sovrascrivere
+    top.src = src;
+    top.style.opacity = 1;
+  };
+  // feat-il-viaggio-non-resta-mai-a-schermo-nero: senza onerror, una rete che
+  // cade lascia la card nera per sempre (opacity resta 0 e top.src non viene
+  // mai assegnato) — tipicamente da mobile, fuori casa. Ripristiniamo l'immagine
+  // precedente invece di mostrare il buco nero, e fermiamo il timelapse per non
+  // ciclare a vuoto su frame che non arrivano.
+  pre.onerror = () => {
+    if (pendingPreviewSrc !== src) return; // guardia: l'utente ha già cambiato giorno
+    top.style.opacity = 1;
+    stopPlayback();
+    toast("questo giorno non si carica — controlla la connessione");
+  };
   pre.src = src;
   updateDayNav(chId);
 }

@@ -882,3 +882,20 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   conteggio e zero baseline visive da rigenerare.
 - Nuovo `backend/tests/unit/aiuto-viaggio.test.js` verifica il contenuto arricchito e la stabilità
   di conteggio/id.
+
+## 2026-08-01 — feat-il-viaggio-non-resta-mai-a-schermo-nero
+- `previewDay` portava `top.style.opacity = 0` e la ripristinava SOLO dentro `pre.onload`: senza
+  `onerror`, una rete che cade — il caso tipico di chi sfoglia il viaggio dal telefono, fuori
+  casa — lasciava la card nera per sempre, senza spiegazione né modo di recuperare se non
+  ricaricando la pagina, con il timelapse che continuava a ciclare a vuoto (principio 1,
+  utilizzabilità reale su un percorso già rotto).
+- Nuovo `pre.onerror`: ripristina `opacity = 1` (torna visibile l'immagine precedente, mai una
+  card vuota), NON assegna `top.src`, chiama `stopPlayback()` per non far proseguire il timelapse
+  su frame che non arrivano, e mostra il toast canonico già usato da `shareLink`/`copyChannelUrl`
+  con un messaggio umano. Nessun componente, colore o dimensione nuovi: nessuna modifica a
+  `VISUAL_SPECS.md`, nessuna baseline da rigenerare (il ripiego compare solo sul percorso
+  d'errore, che il visual-check non attraversa).
+- I due rami (`onload`/`onerror`) sono resi idempotenti tramite `pendingPreviewSrc`, che traccia
+  l'ultima src richiesta: se l'utente cambia giorno prima che una risposta tardiva arrivi, quella
+  risposta non sovrascrive più lo stato corrente.
+- Nuovo `backend/tests/unit/home-immagine-non-caricata.test.js`.
