@@ -360,3 +360,18 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   range del nuovo concept), la purga chirurgica (l'override di un concept built-in sopravvive alla
   cancellazione di un altro), la tenuta a un guasto di scrittura su `tuning:profili` (resta 200), e
   il caso senza override da rimuovere (documento invariato).
+
+## 2026-08-01 — s-le-rotte-di-generazione-non-restituiscono-piu-stack
+- Nuovo `erroreInterno(etichetta, err, rispondi, frase, extra)` in `backend/src/index.js`, gemello
+  di `scritturaProtetta`: logga `err.message`/stack SOLO in `console.error` e risponde 500 con una
+  frase umana costante, mai il messaggio originale né lo stack nel corpo. `/lab/arc`, `/run/<flusso>`,
+  `/backfill` e `/test-size` erano le ultime quattro rotte che rispondevano ancora con `err.message`
+  e `String(err.stack)` grezzi nel corpo HTTP — esattamente le rotte che chiamano il binding AI e KV,
+  dove il messaggio di un fetch verso l'upstream è il posto da cui un token o un URL firmato
+  finirebbero in una risposta.
+- `/regen-day` resta invariata (i suoi messaggi sono `ErroreDominio`, testo di dominio scritto da
+  noi, non un errore di sistema); aggiornato solo il commento che ne spiegava la differenza dagli
+  altri due, ora non più vera.
+- Nuovo `backend/tests/integration/errori-admin-senza-stack.test.js`: per ciascuna delle 4 rotte
+  forza un fallimento con un messaggio-sentinella e verifica 500, corpo `{ ok:false, error:<frase> }`
+  senza sentinella né campo `stack`, più la non-regressione su `/regen-day` (400 invariato).

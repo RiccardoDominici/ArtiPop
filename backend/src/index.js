@@ -164,6 +164,16 @@ export default {
       }
     };
 
+    // Gemello di `scritturaProtetta` per le rotte admin che chiamano il
+    // binding AI/KV fuori da una scrittura (lab/arc, run, backfill, test-size):
+    // stesso divieto, `err.message`/stack/env restano SOLO nel log del
+    // Worker, mai nel corpo HTTP — è lì che un token o un URL firmato
+    // dell'upstream finirebbero altrimenti dritti nella risposta.
+    const erroreInterno = (etichetta, err, rispondi, frase, extra = {}) => {
+      console.error(`[${etichetta}] fallito: ${err.message}`, err.stack);
+      return rispondi({ ok: false, error: frase, ...extra }, 500);
+    };
+
     // Sceglie il corpo di emergenza in base alla rotta, quando un'eccezione
     // imprevista sfugge da tutto il routing sottostante (rete di sicurezza
     // globale, vedi il try/catch che segue): mai un corpo JSON o l'errore
@@ -447,8 +457,8 @@ export default {
         const res = await runLabArc(env, { familyId, elementId, days, gate, runId, catalog });
         return jsonCors(res);
       } catch (err) {
-        console.error(`[lab] ${familyId}+${elementId} fallito: ${err.message}`);
-        return jsonCors({ error: err.message, stack: String(err.stack).slice(0, 600) }, 500);
+        return erroreInterno(`lab ${familyId}+${elementId}`, err, jsonCors,
+          "generazione di prova non riuscita, controlla i log del worker");
       }
     }
 
@@ -667,8 +677,8 @@ export default {
         });
         return json(result);
       } catch (err) {
-        console.error(`[run] ${runMatch[1]} fallito: ${err.message}`);
-        return json({ error: err.message, stack: String(err.stack).slice(0, 800) }, 500);
+        return erroreInterno(`run ${runMatch[1]}`, err, json,
+          "generazione non riuscita, controlla i log del worker");
       }
     }
 
@@ -688,8 +698,8 @@ export default {
         const results = await backfillChannel(env, ch, days, { conGate });
         return json({ channel: ch, days, conGate, results });
       } catch (err) {
-        console.error(`[backfill] ${ch} fallito: ${err.message}`);
-        return json({ error: err.message, stack: String(err.stack).slice(0, 800) }, 500);
+        return erroreInterno(`backfill ${ch}`, err, json,
+          "generazione non riuscita, controlla i log del worker");
       }
     }
 
@@ -711,8 +721,9 @@ export default {
       } catch (err) {
         // ErroreDominio porta il proprio status (400 per input/stato non
         // valido); un fallimento di generazione resta un Error "semplice" e
-        // cade sul 500 di default — senza stack, a differenza di /run e
-        // /backfill: qui l'errore è quasi sempre di input, non di sistema.
+        // cade sul 500 di default. `err.message` qui è sempre un testo di
+        // dominio scritto da noi (mai un errore d'upstream), a differenza
+        // di /run e /backfill: resta nel corpo, invariato.
         return json({ error: err.message }, err.status ?? 500);
       }
     }
@@ -778,7 +789,8 @@ export default {
         const img = await tryKleinSize(env, "a simple gradient test", { width: w, height: h });
         return json({ ok: true, size: `${w}x${h}`, bytes: img.bytes.length });
       } catch (err) {
-        return json({ ok: false, size: `${w}x${h}`, error: err.message });
+        return erroreInterno(`test-size ${w}x${h}`, err, json,
+          "prova di risoluzione non riuscita, controlla i log del worker", { size: `${w}x${h}` });
       }
     }
 
