@@ -109,7 +109,12 @@ const FAQ = [
       fosse un'app: su iPhone/iPad, da Safari, tocca <strong>Condividi</strong> e poi
       <strong>«Aggiungi a schermata Home»</strong>; su Android, da Chrome, apri il menu
       <strong>⋮</strong> e scegli <strong>«Aggiungi a schermata Home»</strong> (a volte indicato
-      come «Installa app»).`,
+      come «Installa app»).
+      <br><br>
+      Aggiunta alla schermata Home, ArtiPop si riapre anche <strong>senza rete</strong>: rivedi
+      l'ultimo giorno che avevi già aperto, così com'era. Le pagine mai aperte prima non ci sono
+      ancora — servono una connessione per arrivare la prima volta. Appena la rete torna,
+      l'immagine nuova del giorno arriva normalmente.`,
   },
   {
     q: "Come funziona la storia degli sfondi?",

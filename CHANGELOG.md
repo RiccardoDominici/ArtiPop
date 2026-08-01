@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-l-aiuto-spiega-cosa-funziona-senza-rete
+- I cicli 104-109 hanno costruito il comportamento «app installata senza rete» (manifest,
+  service worker network-first, riga di stato sulla home), ma /aiuto non ne parlava: chi tocca
+  l'icona in metropolitana non sapeva se avrebbe visto l'ultima copia, un errore o nulla.
+- Estesa la FAQ esistente «Quanto costa?» (`backend/src/help.js`) con un capoverso finale:
+  aggiunta alla schermata Home, ArtiPop riapre senza rete l'ultimo giorno già visto; le pagine
+  mai aperte prima non ci sono; l'immagine nuova arriva al ritorno della connessione. Nessuna
+  voce nuova, nessun componente: solo testo dentro un `<details>` già presente, aspetto della
+  pagina invariato.
+
 ## 2026-08-01 — feat-la-home-dice-quando-sei-senza-rete
 - Chi apre l'app installata senza rete vedeva la copia in cache identica all'originale ma con
   l'archivio muto (`/api/*` esclusa dalla cache del ciclo 108): ora una riga `.hint` sotto
