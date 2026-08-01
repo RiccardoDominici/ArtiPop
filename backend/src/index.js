@@ -525,6 +525,7 @@ export default {
       const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : null;
       const vParam = url.searchParams.get("v");
       const v = vParam && /^\d{4}-\d{2}-\d{2}$/.test(vParam) ? vParam : null;
+      const dl = url.searchParams.get("dl") === "1";
 
       // Con ?date= si legge l'archivio dell'id RICHIESTO: la storia dei vecchi
       // canali resta consultabile per sempre sotto il suo nome. Senza data si
@@ -570,14 +571,30 @@ export default {
           ? "public, max-age=3600"
           : "no-store, must-revalidate";
 
-      return new Response(img.stream, {
-        headers: {
-          "content-type": img.meta.contentType || "image/png",
-          "cache-control": cacheControl,
-          "x-artipop-date": img.meta.date || "",
-          "x-artipop-model": img.meta.model || "",
-        },
-      });
+      const headers = {
+        "content-type": img.meta.contentType || "image/png",
+        "cache-control": cacheControl,
+        "x-artipop-date": img.meta.date || "",
+        "x-artipop-model": img.meta.model || "",
+      };
+
+      // ?dl=1: consegna il file con un nome parlante invece del blob "natura"
+      // senza estensione che il browser userebbe di default (principio 1).
+      // Solo quando esiste davvero un'immagine: un segnaposto non si scarica
+      // con il nome di un wallpaper che non c'è.
+      if (dl) {
+        const idPulito = channel.id.replace(/[^a-z0-9-]/g, "");
+        const dataFile = img.meta.date || date;
+        const est = img.meta.contentType === "image/jpeg" ? "jpg" : "png";
+        if (idPulito) {
+          const nome = dataFile
+            ? `artipop-${idPulito}-${dataFile}.${est}`
+            : `artipop-${idPulito}.${est}`;
+          headers["content-disposition"] = `attachment; filename="${nome}"`;
+        }
+      }
+
+      return new Response(img.stream, { headers });
     }
 
     // ---- Download della Shortcut firmata: /s/<flusso>[-base].shortcut ----
