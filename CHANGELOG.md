@@ -320,3 +320,25 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - `backend/tests/integration/anteprima-social.test.js`: icona + soli colori ammessi, tag og:
   completi e assoluti, `og:image`/`twitter:card` esatti, coerenza carattere-per-carattere con
   title/description, e le tre pagine di servizio senza tag og:.
+
+## 2026-08-01 — s-la-chiave-admin-non-viaggia-piu-nell-indirizzo
+- `backend/src/index.js`: `isAuthorized` ora legge `?key=` in query solo se chiamata con
+  `{ chiaveNellUrl: true }` — di default accetta SOLO l'header `x-artipop-key`. La query string
+  finisce nei log di Cloudflare, nella cronologia del browser e nei proxy: è il trasporto sbagliato
+  per l'unica credenziale che spende neuroni AI e scrive nel KV di produzione. Unica eccezione
+  ammessa: `GET /lab/img`, caricata da un `<img src>` che non può portare header custom.
+- Nuovo helper `nonAutorizzato`: quando la chiave corretta arriva solo da `?key=` su una rotta che
+  non lo ammette, il 403 lo dice esplicitamente («va passata nell'header x-artipop-key»), senza mai
+  interpolare il valore della chiave nel messaggio o nei log.
+- Migrati al trasporto in header i casi felici esistenti in `router-auth.test.js`,
+  `admin-robuste.test.js` e `router-errori.test.js` che usavano `?key=`; l'unico `?key=` rimasto è
+  quello di `admin-robuste.test.js:156` (`/lab/img`), l'eccezione ammessa.
+- Nuovo `backend/tests/integration/chiave-solo-in-header.test.js`: enumera `ROTTE_PROTETTE`
+  (importata da `router-auth.test.js`, non riscritta a memoria) e verifica che la chiave corretta
+  in query venga rifiutata ovunque tranne `/lab/img`, che l'header continui a funzionare su rotte
+  rappresentative, e che il corpo del 403 non contenga mai il valore della chiave.
+- Tradeoff: chi lanciava una rotta admin incollando `?key=…` nella barra del browser deve passare
+  a `curl -H`. Costo piccolo e circoscritto, compensato dal fatto che proprio le rotte più costose
+  (`/run`, `/backfill`, `/run-all`) non restano più in chiaro nella cronologia.
+- `backend/README.md` e `GUIDA.md`: aggiornati gli esempi `curl` e la descrizione degli endpoint
+  admin — header obbligatorio, `?key=` ammesso solo su `GET /lab/img`.

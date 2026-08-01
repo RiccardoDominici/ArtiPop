@@ -39,8 +39,9 @@ describe("body malformato su scritture admin → 400", () => {
   for (const { path, corpoIllegibile, corpoIncompleto } of CASI) {
     it(`PUT ${path} con JSON illeggibile → 400 con messaggio d'errore`, async () => {
       const env = makeEnv();
-      const res = await callWorker(env, `${path}?key=${env.ADMIN_KEY}`, {
+      const res = await callWorker(env, path, {
         method: "PUT",
+        headers: { "x-artipop-key": env.ADMIN_KEY },
         body: corpoIllegibile,
       });
       expect(res.status).toBe(400);
@@ -51,8 +52,9 @@ describe("body malformato su scritture admin → 400", () => {
 
     it(`PUT ${path} con campi mancanti (JSON valido, forma incompleta) → 400 con messaggio d'errore`, async () => {
       const env = makeEnv();
-      const res = await callWorker(env, `${path}?key=${env.ADMIN_KEY}`, {
+      const res = await callWorker(env, path, {
         method: "PUT",
+        headers: { "x-artipop-key": env.ADMIN_KEY },
         body: corpoIncompleto,
       });
       expect(res.status).toBe(400);

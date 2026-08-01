@@ -50,20 +50,20 @@ const ASSETTO_VALIDO = {
 };
 
 async function seedConcept(env) {
-  const res = await callWorker(env, `/catalogo/concept?key=${env.ADMIN_KEY}`, {
-    method: "PUT", body: JSON.stringify(CONCEPT_VALIDO),
+  const res = await callWorker(env, "/catalogo/concept", {
+    method: "PUT", headers: { "x-artipop-key": env.ADMIN_KEY }, body: JSON.stringify(CONCEPT_VALIDO),
   });
   if (res.status !== 200) throw new Error(`seed concept fallito: ${res.status}`);
 }
 async function seedElement(env) {
-  const res = await callWorker(env, `/catalogo/element?key=${env.ADMIN_KEY}`, {
-    method: "PUT", body: JSON.stringify(ELEMENT_VALIDO),
+  const res = await callWorker(env, "/catalogo/element", {
+    method: "PUT", headers: { "x-artipop-key": env.ADMIN_KEY }, body: JSON.stringify(ELEMENT_VALIDO),
   });
   if (res.status !== 200) throw new Error(`seed element fallito: ${res.status}`);
 }
 async function seedAssetto(env) {
-  const res = await callWorker(env, `/note/assetto?key=${env.ADMIN_KEY}`, {
-    method: "PUT", body: JSON.stringify(ASSETTO_VALIDO),
+  const res = await callWorker(env, "/note/assetto", {
+    method: "PUT", headers: { "x-artipop-key": env.ADMIN_KEY }, body: JSON.stringify(ASSETTO_VALIDO),
   });
   if (res.status !== 200) throw new Error(`seed assetto fallito: ${res.status}`);
 }
@@ -93,11 +93,13 @@ describe("scritture admin: KV che perde le scritture → 500 uniforme", () => {
       if (seed) await seed(envSano);
       const envGuasto = makeEnv({ KV: kvChePerdeLeScritture(kv), ADMIN_KEY: envSano.ADMIN_KEY });
 
-      const separatore = path.includes("?") ? "&" : "?";
-      const url = `${path}${separatore}key=${envGuasto.ADMIN_KEY}`;
-      const init = { method, ...(body ? { body: JSON.stringify(body) } : {}) };
+      const init = {
+        method,
+        headers: { "x-artipop-key": envGuasto.ADMIN_KEY },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      };
 
-      const res = await callWorker(envGuasto, url, init);
+      const res = await callWorker(envGuasto, path, init);
 
       expect(res.status).toBe(500);
       expect(res.headers.get("content-type")).toContain("application/json");
@@ -114,8 +116,8 @@ describe("scritture admin: KV che perde le scritture → 500 uniforme", () => {
 describe("non-regressione: KV sano → il wrap non cambia il caso felice", () => {
   it("PUT /tuning con KV sano → 200 ok:true", async () => {
     const env = makeEnv();
-    const res = await callWorker(env, `/tuning?key=${env.ADMIN_KEY}`, {
-      method: "PUT", body: JSON.stringify(TUNING_VALIDO),
+    const res = await callWorker(env, "/tuning", {
+      method: "PUT", headers: { "x-artipop-key": env.ADMIN_KEY }, body: JSON.stringify(TUNING_VALIDO),
     });
     expect(res.status).toBe(200);
     expect((await res.json()).ok).toBe(true);
@@ -123,8 +125,8 @@ describe("non-regressione: KV sano → il wrap non cambia il caso felice", () =>
 
   it("PUT /catalogo/concept con KV sano → 200 ok:true", async () => {
     const env = makeEnv();
-    const res = await callWorker(env, `/catalogo/concept?key=${env.ADMIN_KEY}`, {
-      method: "PUT", body: JSON.stringify(CONCEPT_VALIDO),
+    const res = await callWorker(env, "/catalogo/concept", {
+      method: "PUT", headers: { "x-artipop-key": env.ADMIN_KEY }, body: JSON.stringify(CONCEPT_VALIDO),
     });
     expect(res.status).toBe(200);
     expect((await res.json()).ok).toBe(true);
@@ -132,8 +134,8 @@ describe("non-regressione: KV sano → il wrap non cambia il caso felice", () =>
 
   it("PUT /note/giorno con KV sano → 200 ok:true", async () => {
     const env = makeEnv();
-    const res = await callWorker(env, `/note/giorno?key=${env.ADMIN_KEY}`, {
-      method: "PUT", body: JSON.stringify(NOTA_GIORNO_VALIDA),
+    const res = await callWorker(env, "/note/giorno", {
+      method: "PUT", headers: { "x-artipop-key": env.ADMIN_KEY }, body: JSON.stringify(NOTA_GIORNO_VALIDA),
     });
     expect(res.status).toBe(200);
     expect((await res.json()).ok).toBe(true);
