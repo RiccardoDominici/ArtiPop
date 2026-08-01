@@ -16,6 +16,19 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-i-link-dell-aiuto-si-toccano-anche-col-pollice
+- `backend/src/help.js`: `.permalink` (il `#` di ogni voce di `/aiuto`) era un glifo `.74rem` senza
+  padding, ~12×19 px — sotto il minimo di 44×44 px di VISUAL_SPECS §5.5. Ora è centrato in flex con
+  `min-width`/`min-height: 44px`, compensato con `margin-right: -8px` così resta otticamente dov'era;
+  il `summary` è già alto ~57 px quindi la riga non cresce.
+- `.back` («← torna ad ArtiPop») e i link del footer nelle quattro pagine servite dallo stesso
+  modulo (`/aiuto` e le tre pagine di servizio: Shortcut non disponibile, errore temporaneo, pagina
+  non trovata) erano alti ~24 px e ~22 px. Ora `.back` è `inline-flex` con `min-height: 44px` e i
+  link del footer hanno `padding: 12px 6px` (~46 px effettivi), senza toccare colori, tipografia o
+  design piatto (VISUAL_SPECS §2).
+- Nuovo `backend/tests/unit/aiuto-tocco.test.js`: aree di tocco ≥44px sulle quattro pagine, più
+  regressione sui token visivi e sui permalink esistenti (`aiuto-ancore.test.js` invariato).
+
 ## 2026-08-01 — s-ogni-voce-dell-aiuto-ha-un-indirizzo-suo
 - `backend/src/help.js`: ogni voce di `/aiuto` (15 fra problemi e FAQ) ha ora un `id` stabile
   (`p-<slug>`/`d-<slug>`, derivato dal testo con `slugVoce()`) e un link permanente `#` discreto

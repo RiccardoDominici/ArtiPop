@@ -219,7 +219,10 @@ ${FAVICON_TAG}
   main { max-width: 720px; margin: 0 auto; }
   a { color: #8fd3ff; }
   header { padding: 48px 0 24px; }
-  .back { display: inline-block; margin-bottom: 20px; font-size: .92rem; text-decoration: none; opacity: .8; }
+  .back {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px;
+    margin-left: -6px; margin-bottom: 10px; font-size: .92rem; text-decoration: none; opacity: .8;
+  }
   .back:hover { opacity: 1; }
   h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
   .sub { margin: 0; color: #9aa3b8; }
@@ -231,6 +234,7 @@ ${FAVICON_TAG}
   }
   ul.flussi a { display: block; padding: 16px 18px; font-weight: 600; text-decoration: none; }
   footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
+  footer a { display: inline-block; padding: 12px 6px; }
 </style>
 </head>
 <body>
@@ -283,6 +287,7 @@ ${FAVICON_TAG}
   h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
   .sub { margin: 0; color: #9aa3b8; }
   footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
+  footer a { display: inline-block; padding: 12px 6px; }
 </style>
 </head>
 <body>
@@ -330,6 +335,7 @@ ${FAVICON_TAG}
   h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
   .sub { margin: 0; color: #9aa3b8; }
   footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
+  footer a { display: inline-block; padding: 12px 6px; }
 </style>
 </head>
 <body>
@@ -397,7 +403,10 @@ ${FAVICON_TAG}
   main { max-width: 720px; margin: 0 auto; }
   a { color: #8fd3ff; }
   header { padding: 48px 0 24px; }
-  .back { display: inline-block; margin-bottom: 20px; font-size: .92rem; text-decoration: none; opacity: .8; }
+  .back {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px;
+    margin-left: -6px; margin-bottom: 10px; font-size: .92rem; text-decoration: none; opacity: .8;
+  }
   .back:hover { opacity: 1; }
   h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
   /* M6: sottotitolo come testo secondario sul token --dim del sito, non più opacity sul primario */
@@ -418,7 +427,9 @@ ${FAVICON_TAG}
   .item[open] summary { border-bottom: 1px solid rgba(255,255,255,.08); }
   /* M8: link permanente per-voce, stessi token della spec (§2) — nessun colore/dimensione nuova */
   .permalink {
-    margin-left: auto; color: #8fd3ff; font-size: .74rem; text-decoration: none;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; margin-left: auto; margin-right: -8px;
+    color: #8fd3ff; font-size: .74rem; text-decoration: none;
     opacity: .45; flex-shrink: 0;
   }
   .permalink:hover, .permalink:focus { opacity: 1; }
@@ -434,6 +445,7 @@ ${FAVICON_TAG}
   }
   /* M6: footer come testo secondario sul token --dim del sito, non più opacity sul primario */
   footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
+  footer a { display: inline-block; padding: 12px 6px; }
 </style>
 </head>
 <body>
