@@ -1,6 +1,6 @@
 // feat-rivedi-l-arco-precedente: dalla home si deve poter tornare a vedere
 // l'arco (settimana/concept) precedente, riusando le date già scaricate da
-// /api/archive/<canale>?limit=30 — nessuna fetch nuova. Test puro su
+// /api/archive/<canale>?limit=400 — nessuna fetch nuova. Test puro su
 // renderPage() — nessun binding, nessuna rete. La logica di raggruppamento
 // (computeArcs) è pura e viene anche eseguita davvero, estraendola dallo
 // script renderizzato, per verificarne il comportamento e non solo la forma.
@@ -30,7 +30,7 @@ describe("home — comando 'arco precedente'", () => {
   it("nessuna fetch nuova: computeArcs e la navigazione tra archi lavorano solo su dati già scaricati", () => {
     const fetches = html.match(/fetch\(/g) || [];
     expect(fetches.length).toBe(1);
-    expect(html).toContain("/api/archive/${chId}?limit=30");
+    expect(html).toContain("/api/archive/${chId}?limit=400");
   });
 
   describe("computeArcs — raggruppamento per conceptNome", () => {

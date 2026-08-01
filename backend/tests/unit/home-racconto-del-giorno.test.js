@@ -39,9 +39,9 @@ describe("home — didascalia narrativa del giorno nel viaggio", () => {
     expect(rule).not.toMatch(/#[0-9a-fA-F]{3,6}/);
   });
 
-  it("nessuna richiesta HTTP nuova: l'unico fetch dell'archivio resta /api/archive/<canale>?limit=30", () => {
+  it("nessuna richiesta HTTP nuova: l'unico fetch dell'archivio resta /api/archive/<canale>?limit=400", () => {
     const fetches = html.match(/fetch\(/g) || [];
     expect(fetches.length).toBe(1);
-    expect(html).toContain("/api/archive/${chId}?limit=30");
+    expect(html).toContain("/api/archive/${chId}?limit=400");
   });
 });
