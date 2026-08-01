@@ -31,6 +31,24 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Nessuna modifica visiva: la home apre semplicemente un'altra card in cima, nessuna baseline
   toccata.
 
+## 2026-08-01 — feat-il-titolo-della-scheda-dice-cosa-guardi
+- Il titolo della scheda del browser (`<title>`) era una costante scritta una volta in `page.js` e
+  mai toccata dal JS client: chi apriva due canali in due schede vedeva due etichette identiche, un
+  segnalibro su un giorno condiviso non diceva né canale né data, e la cronologia era una colonna di
+  righe uguali. È anche l'unico segnale che gli screen reader annunciano quando la vista cambia senza
+  cambiare pagina.
+- `page.js`: nuova `aggiornaTitolo()`, che legge `TITOLO_BASE` da `document.title` all'avvio (mai
+  duplicata a mano, così non si disallinea dal `<title>` server-side) e compone canale in cima al
+  deck + giorno guardato (via `fmtDataEstesa`, quando `previewDate` è valorizzato) o solo canale
+  (giorno corrente); ripiego esplicito a `TITOLO_BASE` se il canale non è determinabile.
+  L'assegnazione è dentro un try/catch: un errore sul titolo non può mai interrompere il resto
+  dell'aggiornamento della vista.
+- Chiamata da `updateChrome()` (cambio canale) e `updateDayNav()` (cambio giorno): tutti i percorsi
+  che cambiano cosa si sta guardando (deck, frecce, dots, drag, tastiera, salto d'arco, "torna a
+  oggi", riproduzione, giorno condiviso) convergono lì.
+- Nessuna modifica visiva: `document.title` non è renderizzato nel viewport, nessuna baseline
+  toccata.
+
 ## 2026-08-01 — feat-cerca-il-tuo-problema-nell-aiuto
 - `/aiuto` ha 14 voci tutte chiuse per default e il sottotitolo promette «Cerca il tuo sintomo
   qui sotto», ma finora nessuno strumento manteneva quella promessa: bisognava aprire le

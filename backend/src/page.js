@@ -599,6 +599,30 @@ function fmtDataEstesa(dateStr) {
     month: "long",
   });
 }
+
+// feat-il-titolo-della-scheda-dice-cosa-guardi: il <title> server-side è letto
+// una sola volta all'avvio (mai riscritto a mano) così non può disallinearsi
+// dalla stringa vista dal server/anteprima social.
+const TITOLO_BASE = document.title;
+// Titolo della scheda del browser: segue il canale in cima al deck e, quando
+// si sta sfogliando un giorno diverso da oggi, anche quella data. È l'unico
+// segnale che cronologia, segnalibri e screen reader hanno di cosa cambia
+// senza cambiare pagina — non deve mai poter interrompere il resto
+// dell'aggiornamento della vista (principio 3), quindi protetto.
+function aggiornaTitolo() {
+  try {
+    const ch = CHANNELS[order[0]];
+    if (!ch) {
+      document.title = TITOLO_BASE;
+      return;
+    }
+    document.title = previewDate
+      ? \`\${ch.name} — \${fmtDataEstesa(previewDate)} · ArtiPop\`
+      : \`\${ch.name} · ArtiPop\`;
+  } catch {
+    document.title = TITOLO_BASE;
+  }
+}
 function cardHTML(ch) {
   return \`
     <div class="phone" aria-hidden="true">
@@ -659,6 +683,7 @@ function updateChrome() {
   previewDate = null;
   loadArchive(ch.id);
   ricordaCanale(ch.id); // memorizza il canale in cima: alla prossima visita si riapre da qui
+  aggiornaTitolo();
 }
 
 /* ---------- drag stile Tinder ---------- */
@@ -880,6 +905,7 @@ function updateDayNav(chId) {
   dayTodayEl.hidden = previewDate === null && (arcIndexCache[chId] ?? 0) === 0;
   updateDayCaption(chId, date);
   updateArcStoryHighlight(date);
+  aggiornaTitolo();
 }
 
 // Etichetta breve di una data: stesso formato usato da #ddate, riusato anche
