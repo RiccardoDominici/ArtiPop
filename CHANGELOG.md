@@ -16,6 +16,27 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-rivedi-l-arco-precedente
+- `loadArchive` scaricava `?limit=30` da `/api/archive/<canale>` ma teneva solo la finestra
+  dell'arco in corso (`dates.slice(0, ch.giorno)`, ciclo 47): chi aveva seguito l'arco della
+  settimana scorsa non aveva più alcun modo dal sito di rivederlo, anche se i dati erano già
+  scaricati e mai usati — un caso di materia prima in pagina ma irraggiungibile.
+- Nuova `computeArcs(dates, cap)`, pura: raggruppa le date (dal più recente al più vecchio) in
+  blocchi contigui per `conceptNome`; un giorno senza dati narrativi (giorno ricostruito) non apre
+  un blocco nuovo — resta in quello in cui si trova, così un buco del cron non spezza in due la
+  stessa storia. `loadArchive` la applica sull'intero archivio scaricato (`fullArchiveCache`,
+  `arcsCache`) prima di restringere la finestra iniziale, comportamento invariato al primo carico.
+- Nuovo bottone `#arcprev` (`.btn.ghost`, già canonica in VISUAL_SPECS §1.4) sotto il day-nav:
+  visibile solo quando esiste un arco più vecchio oltre l'indice mostrato (`updateArcPrev`). Al
+  click (`goToPreviousArc`) la finestra sfogliabile diventa esattamente le date dell'arco
+  precedente — mai unita a quella corrente, la regola "un arco alla volta" del ciclo 47 resta
+  intatta — e si posiziona sul giorno più recente del nuovo arco.
+- Nessuna fetch nuova, nessuna rotta nuova: la feature lavora solo sui dati già in
+  `archiveCache`/`capCache` popolati dall'unica chiamata a `/api/archive/`.
+- Nuovo `backend/tests/unit/home-arco-precedente.test.js`: raggruppamento (due archi, un solo
+  arco, giorno senza dati in mezzo o prima di un cambio concept) verificato eseguendo davvero
+  `computeArcs` estratta dallo script, più i controlli sul markup e sul cablaggio del comando.
+
 ## 2026-08-01 — feat-apri-il-wallpaper-del-giorno-a-schermo-intero
 - Nuova ancora `#dayopen` (`btn ghost`, `target="_blank"`, `rel="noopener"`) accanto a `#dayshare`
   nella sezione «Il viaggio finora»: apre il file vero del giorno mostrato nel mockup, alla sua
