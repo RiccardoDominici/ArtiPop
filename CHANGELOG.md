@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-la-home-dice-se-il-canale-e-in-ritardo
+- `renderPage` calcola `inRitardo` per ogni canale confrontando `metas[c.id]?.date` con `dateKey`:
+  vero solo se esiste un meta con una data reale precedente a oggi (un canale senza meta ricade su
+  `dateKey` e resta false, per non sommarsi al ripiego "in preparazione…").
+- La card mostra, quando `inRitardo` è vero, una nota `.stale` (`.8rem`, `var(--dim)`, dentro
+  `.cinfo` dopo `.scene`) con la data reale dell'ultima immagine, e l'`alt` del wallpaper non dice
+  più "di oggi" in quel caso: prima il sito affermava sempre che l'immagine era odierna anche
+  quando il cron di un canale saltava e in archivio restava solo un giorno vecchio.
+- Nessuna nuova fetch/binding: il dato (`ch.date`) era già in memoria e già passato al client.
+
 ## 2026-08-01 — s-il-preview-non-puo-mai-scrivere-sul-kv-di-produzione
 - Nuovo `backend/tests/unit/config-preview-isolato.test.js`: legge `backend/wrangler.jsonc` dal
   filesystem (nessuna copia inline) e verifica gli invarianti di isolamento fra `env.preview` e
