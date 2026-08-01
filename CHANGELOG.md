@@ -413,3 +413,27 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   fra due derive diverse), soglia negativa (nessun contributo negativo, niente cancellazione fra
   contributi), soglia non numerica (ricade su `CONFIG`, guardia attiva), non regressione sul caso
   normale. `backend/tests/unit/metrics.test.js` non toccato.
+
+## 2026-08-01 — s-ricaricare-non-butta-via-le-tarature-non-lanciate
+- `tuning/js/store.js`, `fetchTuning()`/`rebuildEdit()`: QUALUNQUE ricarica (bottoni "↻ Aggiorna" e
+  "↻ Carica dal Worker", `catReload`/`archReload`, il salvataggio delle credenziali, l'auto-`carica()`
+  dopo un lancio riuscito) riassegnava `AP.store.edit` dai valori freschi del server, cancellando in
+  silenzio una taratura fatta a mano in Range e non ancora lanciata — un'incoerenza già riconosciuta
+  dal codice stesso: tab-lab.js chiede conferma prima di sovrascrivere esattamente quelle modifiche
+  ("Sovrascrivere le modifiche non lanciate di …?"), la ricarica no. `fetchTuning()` ora cattura i
+  concept del server PRIMA di sovrascriverli e li passa a `rebuildEdit(precedentiServer, opzioni)`:
+  per ogni concept presente sia nel vecchio `AP.store.edit` sia nella nuova risposta, il valore di
+  lavoro precedente sopravvive SOLO se divergeva già dal server di prima (`AP.util.diffProfilo`) —
+  un concept non toccato dall'utente prende comunque il valore fresco (una taratura arrivata da
+  un'altra sessione deve poter comparire), e un concept sparito dalla risposta non viene reintrodotto.
+- `AP.store.carica(opzioni)` ora inoltra `opzioni` a `fetchTuning` (prima le ignorava).
+  `opzioni.scartaModifiche: true` salta il ripristino: è il comportamento del bottone
+  "Ripristina default" (`tuning/js/tab-range.js`, `$("reset")`), l'unico punto in cui l'utente chiede
+  ESPLICITAMENTE di buttare i valori locali — lì conservarli sarebbe il bug opposto. Tutti gli altri
+  call site restano invariati.
+- `tuning/index.html`: una riga di aiuto nella sezione Range spiega che la ricarica conserva le
+  tarature non ancora lanciate, e solo "Ripristina default" le scarta.
+- Nuovo `backend/tests/unit/tuning-modifiche-non-perse.test.js`: un profilo modificato e divergente
+  dal server sopravvive a una seconda `carica()`; un profilo non toccato prende il valore nuovo del
+  server; `carica({ scartaModifiche: true })` riallinea tutto; un concept sparito dalla risposta non
+  riappare; a grep, solo `tab-range.js`/`$("reset")` passa `scartaModifiche: true`.
