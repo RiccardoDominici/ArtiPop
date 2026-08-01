@@ -16,6 +16,19 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-i-ripieghi-del-generatore-sono-sotto-test
+- Nuovo `backend/tests/unit/daygen-ripieghi.test.js`: `generateDay` (`backend/src/daygen.js`) è
+  l'anello che decide se cron, backfill e lab producono o no l'immagine del giorno, ma nessun test
+  lo chiamava mai direttamente — la strada felice di `orchestrazione.test.js` lo tocca solo di
+  striscio. Ora sono coperti i quattro ripieghi che oggi nessun test esegue: keyframe senza
+  riferimento a se stesso, riallineamento del keyframe accettato e scartato (misure fuori soglia),
+  giorno normale senza riferimenti recuperabili (sia "nessuno dei due" sia "solo ieri manca" →
+  prompt cumulativo dall'àncora), più l'invariante che lega `state.seed`/`state.dayInArc` al seme
+  passato a `generateWithGate`. Zero generazioni AI reali: stub locali di `env.AI`/`env.IMAGES` che
+  ricostruiscono il multipart per leggere prompt/seed/riferimenti senza mockare `generate.js`.
+  Nessun difetto trovato in `daygen.js`: la suite (396 test, prima 390) è verde senza modifiche al
+  modulo.
+
 ## 2026-08-01 — s-i-link-dell-aiuto-si-toccano-anche-col-pollice
 - `backend/src/help.js`: `.permalink` (il `#` di ogni voce di `/aiuto`) era un glifo `.74rem` senza
   padding, ~12×19 px — sotto il minimo di 44×44 px di VISUAL_SPECS §5.5. Ora è centrato in flex con
