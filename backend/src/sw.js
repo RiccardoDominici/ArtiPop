@@ -21,18 +21,45 @@ export function inCache(pathname) {
 const CACHE_NAME = "artipop-v1";
 
 /**
+ * feat-l-aiuto-resta-leggibile-anche-se-non-l-hai-mai-aperto: le sole
+ * superfici statiche da conservare già all'installazione, prima ancora che
+ * l'utente le apra. Solo /aiuto: è la pagina che serve quando qualcosa non
+ * va (spesso la rete stessa). `/` e i wallpaper restano fuori — contenuto
+ * del giorno, dinamico, non ha senso "congelarlo" all'installazione.
+ */
+export const PRECACHE = ["/aiuto"];
+
+/**
  * Sorgente del service worker: network-first sulle sole GET di stesso-
  * origine che passano `inCache`. Online l'utente vede sempre il giorno vero
  * (mai una copia in cache); solo se la rete fallisce si risponde dalla
- * cache. Nessun precaching (la home è dinamica) e nessuna pagina "sei
- * offline" inventata: se la rete fallisce e non c'è copia in cache, il
- * `fetch` non intercetta e il browser mostra il suo errore come oggi.
+ * cache. Nessuna pagina "sei offline" inventata: se la rete fallisce e non
+ * c'è copia in cache, il `fetch` non intercetta e il browser mostra il suo
+ * errore come oggi.
  */
 export function serviceWorkerJs() {
   return `const CACHE_NAME = ${JSON.stringify(CACHE_NAME)};
+const PRECACHE = ${JSON.stringify(PRECACHE)};
 const inCache = ${String(inCache)};
 
 self.addEventListener("install", (event) => {
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await Promise.all(
+        PRECACHE.map(async (percorso) => {
+          try {
+            const risposta = await fetch(percorso);
+            if (risposta && risposta.status === 200) {
+              await cache.put(percorso, risposta);
+            }
+          } catch (err) {
+            // rete assente durante l'installazione: nessuna conservazione, nessun errore
+          }
+        })
+      );
+    })()
+  );
   self.skipWaiting();
 });
 

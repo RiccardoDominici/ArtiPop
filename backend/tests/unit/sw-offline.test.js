@@ -2,7 +2,7 @@
 // `inCache`/`serviceWorkerJs()` — la rotta end-to-end (/sw.js) è in
 // sw-rotta.test.js.
 import { describe, it, expect } from "vitest";
-import { inCache, serviceWorkerJs } from "../../src/sw.js";
+import { inCache, serviceWorkerJs, PRECACHE } from "../../src/sw.js";
 
 describe("inCache", () => {
   it("è vero per le superfici pubbliche di lettura", () => {
@@ -63,6 +63,60 @@ describe("serviceWorkerJs", () => {
     expect(msgBody).toContain("inCache(url.pathname)");
     expect(msgBody).toContain("risposta.status === 200");
     expect(msgBody).toContain("cache.put(url, risposta)");
+  });
+
+  it("feat-l-aiuto-resta-leggibile-anche-se-non-l-hai-mai-aperto: ogni voce di PRECACHE è accettata da inCache", () => {
+    for (const percorso of PRECACHE) {
+      expect(inCache(percorso)).toBe(true);
+    }
+  });
+
+  it("feat-l-aiuto-resta-leggibile-anche-se-non-l-hai-mai-aperto: PRECACHE contiene /aiuto e non /", () => {
+    expect(PRECACHE).toContain("/aiuto");
+    expect(PRECACHE).not.toContain("/");
+  });
+
+  it("feat-l-aiuto-resta-leggibile-anche-se-non-l-hai-mai-aperto: l'ascoltatore install apre CACHE_NAME dentro waitUntil, per-voce e senza cache.addAll", () => {
+    const src = serviceWorkerJs();
+    const installBody = src.match(/self\.addEventListener\("install", \(event\) => \{[\s\S]*?\n\}\);/)[0];
+    expect(installBody).toContain("event.waitUntil");
+    expect(installBody).toContain("caches.open(CACHE_NAME)");
+    expect(installBody).toContain("PRECACHE.map");
+    expect(installBody).toContain("try {");
+    expect(installBody).not.toContain("cache.addAll");
+    expect(installBody).toContain("self.skipWaiting()");
+  });
+
+  it("feat-l-aiuto-resta-leggibile-anche-se-non-l-hai-mai-aperto: una voce di PRECACHE che fallisce non impedisce l'installazione né le altre", () => {
+    const src = serviceWorkerJs();
+
+    let installHandler;
+    const globalObj = {
+      addEventListener: (tipo, handler) => {
+        if (tipo === "install") installHandler = handler;
+      },
+      skipWaiting: () => {},
+    };
+    const cachePutCalls = [];
+    const caches = {
+      open: async () => ({
+        put: async (percorso, risposta) => cachePutCalls.push([percorso, risposta]),
+      }),
+    };
+    const fetch = async (percorso) => {
+      if (percorso === "/aiuto") throw new Error("rete assente");
+      return { status: 200 };
+    };
+    const fn = new Function("self", "caches", "fetch", `${src}\nreturn self;`);
+    fn(globalObj, caches, fetch);
+
+    expect(typeof installHandler).toBe("function");
+    let waited = [];
+    expect(() =>
+      installHandler({ waitUntil: (p) => waited.push(p) })
+    ).not.toThrow();
+    expect(waited.length).toBe(1);
+    return expect(waited[0]).resolves.toBeUndefined();
   });
 
   it("feat-i-preferiti-si-rivedono-anche-senza-rete: un URL non ammesso da inCache non viene conservato", () => {
