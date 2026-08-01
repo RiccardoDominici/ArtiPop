@@ -56,11 +56,12 @@ AP.store.on("errore", (info) => {
 /* ---------- avvio ----------
    La tab arriva dall'hash (vuoto → "archivio", la home secondo DESIGN.md). Il
    caricamento dello STORE parte SEMPRE, con o senza un base URL salvato: le GET
-   pubbliche (/api/channels, /api/archive, /catalogo, /note, /tuning) non
-   richiedono la chiave admin, quindi non c'è più motivo di aspettare una scelta
-   esplicita dell'utente prima di provarci (a differenza del vecchio index.html:
-   vedi "Difetto 3" nella storia del progetto, superato ora che /catalogo è
-   stabilmente in produzione). */
+   pubbliche (/api/channels, /api/archive, /catalogo, /tuning) non richiedono la
+   chiave admin, quindi non c'è più motivo di aspettare una scelta esplicita
+   dell'utente prima di provarci (a differenza del vecchio index.html: vedi
+   "Difetto 3" nella storia del progetto, superato ora che /catalogo è
+   stabilmente in produzione). /note è admin come la scrittura: fetchNote fallisce
+   da solo in 403 e tab-range.js lo spiega nella sua sezione. */
 const rottaIniziale = AP.util.route.leggi();
 attivaTab(rottaIniziale.tab, rottaIniziale.params);
 AP.store.carica();

@@ -16,6 +16,27 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-le-note-private-non-sono-piu-leggibili-da-chiunque
+- `backend/src/index.js`, `GET /note`: ora richiede la chiave admin come tutte le altre rotte
+  `/note*`. Prima chiunque conoscesse l'indirizzo del Worker leggeva l'intero documento
+  `note:marcature` — giudizi buono/scarto con note libere fino a 500 caratteri sui giorni
+  d'archivio, più tutti gli assetti di taratura salvati — un'asimmetria rimasta indietro rispetto
+  alle scritture (`PUT /note/giorno`, `PUT`/`DELETE /note/assetto`), già admin-only.
+- `tuning/js/tab-range.js`: in caso di 403 su `/note` il messaggio ora nomina la chiave admin
+  mancante invece di suggerire un Worker vecchio che "non espone ancora /note" — il tool manda già
+  `x-artipop-key` su ogni chiamata quando il campo chiave è compilato, quindi basta inserirla in
+  alto per tornare a vedere giorni e assetti.
+- `tuning/js/app.js`, `GUIDA.md`: tolta `/note` dall'elenco delle rotte GET pubbliche.
+- Impatto sul tool: senza chiave admin inserita in alto, la tab "Range" non mostra più marcature
+  né assetti salvati (comportamento voluto, non un difetto).
+- Nuovo `backend/tests/integration/note-lettura-protetta.test.js`: copre 403 senza chiave, 403 con
+  chiave solo in `?key=`, 403 senza `ADMIN_KEY` configurato, 200 con documento vuoto e 200 con un
+  documento seminato (la nota privata è visibile solo con la chiave corretta), più `OPTIONS /note`
+  invariato (204, nessuna autenticazione richiesta per il preflight).
+- `backend/tests/integration/router-auth.test.js`: aggiunta `["GET", "/note"]` a `ROTTE_PROTETTE`
+  (16 → 17 rotte); commento in testa corretto per contare le chiamate a `nonAutorizzato` (non
+  `isAuthorized`, che è invocata una sola volta al suo interno) verificate a grep.
+
 ## 2026-08-01 — s-il-lab-non-brucia-neuroni-di-produzione-per-sbaglio
 - Nuovo `tuning/js/ambiente.js` (`AP.ambiente.classifica`): riconosce se la base a cui il tool
   parla è preview, produzione o sconosciuta, confrontando l'hostname con `artipop-preview.` e con

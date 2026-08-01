@@ -382,12 +382,16 @@ export default {
     }
 
     // ---- Note: marcature dei giorni e assetti di tuning salvati (vedi note.js) ----
-    // GET    /note              → pubblico: l'intero documento note:marcature
+    // GET    /note              → admin: come la scrittura, sono note libere e assetti privati dell'autore
     // PUT    /note/giorno       → segna (o smarca) un giorno buono/scarto (admin)
     // PUT    /note/assetto      → salva un assetto di range con un nome (admin)
     // DELETE /note/assetto?id=X → lo rimuove (admin)
     if (path === "/note") {
       if (request.method !== "GET") return jsonCors({ error: "metodo non ammesso" }, 405);
+      {
+        const rifiuto = nonAutorizzato(request, env, {}, jsonCors);
+        if (rifiuto) return rifiuto;
+      }
       return jsonCors(await loadNote(env));
     }
 
