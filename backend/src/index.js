@@ -49,6 +49,17 @@ import { renderPage } from "./page.js";
 import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
 import { renderArchiviPage } from "./archivi.js";
 import { renderManifest, iconaSvg } from "./manifest.js";
+import { SW_REGISTER_TAG } from "./head.js";
+import { serviceWorkerJs } from "./sw.js";
+
+// feat-l-app-installata-si-apre-anche-senza-rete: inserisce il tag di
+// registrazione del service worker prima di `</head>` nella risposta HTTP
+// finale — mai nelle funzioni pure di rendering (page.js/help.js/
+// archivi.js), che restano script-free per chi le chiama direttamente
+// (es. renderArchiviPage: la sua suite impone zero <script> nell'HTML).
+function conServiceWorker(html) {
+  return html.replace("</head>", `${SW_REGISTER_TAG}</head>`);
+}
 import { renderFeed } from "./feed.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
@@ -907,7 +918,7 @@ export default {
         console.error(`[aiuto] stato canali non disponibile: ${err.message}`);
         stato = null;
       }
-      return new Response(renderHelpPage(stato, url.origin, todayKey()), {
+      return new Response(conServiceWorker(renderHelpPage(stato, url.origin, todayKey())), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
@@ -933,6 +944,19 @@ export default {
       return new Response(iconaSvg(), {
         headers: {
           "content-type": "image/svg+xml; charset=utf-8",
+          "cache-control": "public, max-age=3600",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
+
+    // feat-l-app-installata-si-apre-anche-senza-rete: rotta pubblica di sola
+    // lettura come le due sopra — il service worker deve stare alla radice
+    // perché il suo scope non può risalire sopra il proprio percorso.
+    if (path === "/sw.js" && request.method === "GET") {
+      return new Response(serviceWorkerJs(), {
+        headers: {
+          "content-type": "text/javascript; charset=utf-8",
           "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
         },
@@ -1084,7 +1108,7 @@ export default {
           console.error(`[archivi] soggetto non disponibile: ${err.message}`);
         }
       }
-      return new Response(renderArchiviPage(storici, url.origin, todayKey()), {
+      return new Response(conServiceWorker(renderArchiviPage(storici, url.origin, todayKey())), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
@@ -1110,7 +1134,7 @@ export default {
       // feat-segui-il-canale-dal-lettore-di-feed: il feed del canale reso
       // lato server (quello del link condiviso, o il primo flusso attivo).
       const feedUrl = `${url.origin}/feed/${condiviso?.canale ?? ACTIVE_CHANNELS[0].id}.xml`;
-      return new Response(renderPage(metas, url.origin, oggi, condiviso, feedUrl), {
+      return new Response(conServiceWorker(renderPage(metas, url.origin, oggi, condiviso, feedUrl)), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300",
           ...SECURITY_HEADERS,

@@ -38,6 +38,20 @@ export const INSTALL_TAGS = `${FAVICON_TAG}
 <meta name="apple-mobile-web-app-title" content="ArtiPop" />`;
 
 /**
+ * Registrazione del service worker (backend/src/sw.js, rotta /sw.js): tag
+ * inline in try/catch e dietro un controllo di supporto, così con JavaScript
+ * disattivato o service worker non supportati non cambia nulla. NON fa parte
+ * di `INSTALL_TAGS`: quel testo è condiviso anche da `renderArchiviPage`
+ * (archivi.js), la cui suite impone "nessuno <script> nell'HTML" come
+ * garanzia di funzionamento senza JS — la funzione pura deve restare
+ * script-free. La rotta le inserisce direttamente nella risposta finale
+ * (vedi index.js), dove può scegliere in quali pagine iniettarlo senza
+ * toccare quell'invariante.
+ */
+export const SW_REGISTER_TAG =
+  `<script>if("serviceWorker" in navigator){try{navigator.serviceWorker.register("/sw.js")}catch(e){}}</script>`;
+
+/**
  * `<link rel="alternate">` verso il feed RSS di un canale
  * (feat-segui-il-canale-dal-lettore-di-feed): assente se `feedUrl` non è
  * passato, così `/aiuto` e `/archivi` (che non lo passano) restano invariati.
