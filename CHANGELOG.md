@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-il-feed-racconta-il-giorno
+- L'`<item>` del feed RSS (`/feed/<flusso>.xml` e `/feed.xml`) portava solo un `<img>` muto: il
+  racconto del giorno e la posizione nell'arco, che la home sa già mostrare, non arrivavano a chi
+  segue ArtiPop da un lettore di feed.
+- `feed.js`: la `description` aggiunge ora, quando la carta d'identità della voce li porta, un
+  paragrafo col racconto della tappa (`testoTappa`) e uno con la posizione nell'arco (`arco` +
+  `giornoNellArco`, in forma «arco N, giorno M»). Ogni pezzo è opzionale e indipendente: un giorno
+  ricostruito di canale storico (dove questi campi sono `null` per contratto) produce la stessa
+  description di sempre, solo `<img>`. `escXml` sul testo interpolato neutralizza anche `]]>`
+  (ogni `>` diventa `&gt;`), che altrimenti chiuderebbe il CDATA in anticipo.
+
 ## 2026-08-01 — feat-l-aiuto-spiega-il-feed-del-canale
 - `/aiuto` non nominava mai la rotta `/feed/<canale>.xml` pubblicata nel ciclo precedente: chi non
   usa la Shortcut non aveva modo di scoprire dal sito che può seguire il canale da un lettore RSS.

@@ -93,3 +93,71 @@ describe("renderFeed — voci con canale proprio (feed aggregato)", () => {
     expect(xml).toContain("<link>https://artipop.test/</link>");
   });
 });
+
+// feat-il-feed-racconta-il-giorno: la description dell'item porta anche il
+// racconto della tappa e la posizione nell'arco, quando la carta d'identità
+// li ha (criteri 1-4 del piano).
+describe("renderFeed — il giorno racconta la tappa e l'arco", () => {
+  it("voce con testoTappa + arco + giornoNellArco: la description contiene racconto e posizione, oltre all'img", () => {
+    const voci = [{
+      data: "2026-08-01", conceptNome: "Crescita", elementNome: "Felce",
+      testoTappa: "la felce apre la prima fronda", arco: 1, giornoNellArco: 3,
+    }];
+    const xml = renderFeed({ canale: CANALE, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    const item = xml.match(/<item>[\s\S]*?<\/item>/)[0];
+    const description = item.match(/<description>([\s\S]*?)<\/description>/)[1];
+    expect(description).toContain('<img src="https://artipop.test/w/natura?date=2026-08-01"');
+    expect(description).toContain("la felce apre la prima fronda");
+    expect(description).toContain("arco 2, giorno 3");
+  });
+
+  it("voce senza testoTappa/arco/giornoNellArco (giorno ricostruito): description identica a oggi, solo <img>", () => {
+    const voci = [{
+      data: "2026-07-30", conceptNome: "Costruzione", elementNome: "Isola",
+      testoTappa: null, arco: null, giornoNellArco: null,
+    }];
+    const xml = renderFeed({ canale: CANALE, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    const item = xml.match(/<item>[\s\S]*?<\/item>/)[0];
+    const description = item.match(/<description>([\s\S]*?)<\/description>/)[1];
+    expect(description).toBe(
+      '<![CDATA[<img src="https://artipop.test/w/natura?date=2026-07-30" alt="2026-07-30 — Costruzione · Isola" />]]>'
+    );
+    expect(description).not.toMatch(/null|undefined/);
+  });
+
+  it("testoTappa con ]]> non chiude il CDATA in anticipo: XML ben formato con un solo <description>", () => {
+    const voci = [{
+      data: "2026-08-01", conceptNome: "Crescita", elementNome: "Felce",
+      testoTappa: "prima ]]> poi ancora", arco: 0, giornoNellArco: 1,
+    }];
+    const xml = renderFeed({ canale: CANALE, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml).not.toContain("]]> poi ancora]]>");
+    const items = xml.match(/<item>[\s\S]*?<\/item>/g);
+    expect(items).toHaveLength(1);
+    const description = items[0].match(/<description>([\s\S]*?)<\/description>/)[1];
+    expect(description).toContain("prima ]]&gt; poi ancora");
+    expect(description.match(/<!\[CDATA\[/g)).toHaveLength(1);
+    expect(description.match(/]]>/g)).toHaveLength(1);
+  });
+
+  it("regressione: title/link/guid/pubDate/enclosure invariati per una voce con racconto, sia canale singolo che aggregato", () => {
+    const vocaSingola = {
+      data: "2026-08-01", conceptNome: "Crescita", elementNome: "Felce",
+      testoTappa: "racconto del giorno", arco: 0, giornoNellArco: 2,
+    };
+    const vocaAggregata = { ...vocaSingola, canaleNome: "Natura", canaleId: "natura" };
+    const AGGREGATO = { id: "", name: "tutti i canali", tagline: "Tutti i canali di ArtiPop in un solo feed." };
+
+    for (const [canale, voci, titoloAtteso] of [
+      [CANALE, [vocaSingola], "2026-08-01 — Crescita · Felce"],
+      [AGGREGATO, [vocaAggregata], "Natura — 2026-08-01 — Crescita · Felce"],
+    ]) {
+      const xml = renderFeed({ canale, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+      expect(xml).toContain(`<title>${titoloAtteso}</title>`);
+      expect(xml).toContain("<link>https://artipop.test/?c=natura&amp;d=2026-08-01</link>");
+      expect(xml).toContain('<guid isPermaLink="false">https://artipop.test/?c=natura&amp;d=2026-08-01</guid>');
+      expect(xml).toMatch(/<pubDate>\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} GMT<\/pubDate>/);
+      expect(xml).toContain('<enclosure url="https://artipop.test/w/natura?date=2026-08-01" type="image/png" />');
+    }
+  });
+});
