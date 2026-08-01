@@ -1402,3 +1402,20 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Esteso `backend/tests/unit/manifest-app.test.js`: `shortcuts` è un array di due voci nell'ordine
   dichiarato, ciascuna con `name`/`short_name` non vuoti e `url` dentro `scope`; test di
   regressione che i campi preesistenti del manifest restano identici a prima del ciclo.
+
+## 2026-08-01 — feat-l-app-installata-si-apre-anche-senza-rete
+- Chi ha installato ArtiPop sulla schermata Home apriva l'icona anche dove la rete manca (metro,
+  aereo, cantina) e trovava la pagina d'errore del browser: aggiunto un service worker minimo
+  (`backend/src/sw.js`, rotta pubblica `GET /sw.js`) che fa da rete di sicurezza — network-first
+  su home, `/aiuto`, `/archivi` e le immagini `/w/<flusso>`, così l'ultimo giorno già visto si
+  riapre invece dell'errore. Online l'utente vede sempre la rete (mai una copia stantia): la
+  cache interviene solo quando il `fetch` fallisce, e resta fuori da ogni rotta amministrativa o
+  API (`inCache`, testato in `backend/tests/unit/sw-offline.test.js`).
+- La registrazione (`SW_REGISTER_TAG`, `backend/src/head.js`) resta FUORI da `INSTALL_TAGS`
+  condiviso, perché quella costante alimenta anche `renderArchiviPage` (archivi.js), la cui suite
+  impone "zero `<script>`" come garanzia che la pagina resti leggibile senza JavaScript: la
+  funzione pura di rendering resta invariata, ed è invece `index.js` (`conServiceWorker`) a
+  iniettare il tag nella risposta HTTP finale delle tre pagine — nessuna rottura dell'invariante
+  esistente, nessuna modifica a `archivi.js`/`page.js`/`help.js`.
+- Nessun elemento visibile aggiunto: `node scripts/visual-check.mjs` invariato, nessuna baseline
+  da toccare.
