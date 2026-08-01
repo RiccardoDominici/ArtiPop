@@ -393,6 +393,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
     </div>
     <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
     <p class="hint" id="nextdrop">Il wallpaper cambia da solo ogni notte.</p>
+    <p class="hint" id="netstate" hidden>Sei senza rete: questa è l'ultima copia salvata. L'archivio torna sfogliabile quando la rete ritorna.</p>
 
     <section class="journey">
       <div class="jhead">
@@ -964,6 +965,25 @@ try {
 } catch {
   // Nodo lasciato com'è: conserva il testo servito dal server (nessuna
   // frase monca, nessun "verso le undefined").
+}
+
+// feat-la-home-dice-quando-sei-senza-rete: chi apre l'app installata senza
+// rete vede la copia in cache (feat-l-app-installata-si-apre-anche-senza-rete)
+// ma /api/* resta esclusa dalla cache, quindi l'archivio non si sfoglia e i
+// comandi restano muti senza spiegazione. Nessun fetch di sondaggio: solo
+// l'evento del browser (navigator.onLine può mancare — allora la riga resta
+// nascosta, comportamento identico a oggi).
+function aggiornaStatoRete() {
+  const el = document.getElementById("netstate");
+  if (!el) return;
+  el.hidden = navigator.onLine !== false;
+}
+try {
+  aggiornaStatoRete();
+  window.addEventListener("online", aggiornaStatoRete);
+  window.addEventListener("offline", aggiornaStatoRete);
+} catch {
+  // Riga lasciata nascosta: nessuna eccezione visibile all'utente.
 }
 
 // feat-la-home-mostra-il-giorno-nuovo-quando-torni: pura, confronta per data
