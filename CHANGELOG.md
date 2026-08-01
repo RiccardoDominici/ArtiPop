@@ -621,3 +621,16 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Estratta `stripJsonc`/`leggiWrangler` in `backend/tests/helpers/jsonc.js`, prima duplicata
   identica in `config-preview-isolato.test.js` e `config-deploy-coerente.test.js`; entrambi ora la
   importano, stesse asserzioni di prima.
+
+## 2026-08-01 — feat-il-viaggio-racconta-il-giorno
+- La home dice finalmente COSA succede nel giorno mostrato da "Il viaggio finora": sotto data e
+  "N di M" compare una didascalia (soggetto del giorno + testo della tappa), aggiornata a ogni
+  passo delle frecce ‹ › e a ogni fotogramma del timelapse. Prima il sito scaricava già
+  `giorni[]` da `/api/archive/<canale>` (soggetto, testo della tappa) e li buttava via tenendo
+  solo le date — zero richieste nuove, solo una cache in più (`capCache`) sullo stesso payload.
+- Se per il giorno mostrato mancano i dati narrativi (giorno ricostruito, `origine: "assente"`),
+  la didascalia resta nascosta invece di mostrare "null"/"undefined" o un blocco vuoto.
+- Nuovo `backend/tests/unit/home-racconto-del-giorno.test.js`; baseline visive
+  `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate contro il dev server locale (la
+  nuova sezione non è ancora in produzione, quindi il confronto va fatto contro il codice del
+  ciclo, non contro il sito live).
