@@ -334,6 +334,10 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
            di #dayshare — porta al file vero del giorno mostrato, alla sua
            risoluzione piena (srcFor(), la stessa URL del crossfade). -->
       <a class="btn ghost" id="dayopen" target="_blank" rel="noopener" hidden>apri l'immagine</a>
+      <!-- feat-salva-il-wallpaper-con-un-nome-che-si-capisce: stesso hasJourney
+           di #dayopen — stesso file, ma con ?dl=1 per farlo arrivare sul disco
+           con un nome parlante invece del blob "natura" senza estensione. -->
+      <a class="btn ghost" id="daysave" hidden>salva l'immagine</a>
       <p class="dcap" id="dcap" hidden></p>
     </section>
   </div>
@@ -413,6 +417,7 @@ const dayNextEl = document.getElementById("daynext");
 const dcapEl = document.getElementById("dcap");
 const dayshareEl = document.getElementById("dayshare");
 const dayopenEl = document.getElementById("dayopen");
+const daysaveEl = document.getElementById("daysave");
 const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
@@ -684,6 +689,7 @@ function renderJourney(chId) {
   daynavEl.hidden = !hasJourney;
   dayshareEl.hidden = !hasJourney;
   dayopenEl.hidden = !hasJourney;
+  daysaveEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
   if (!hasJourney) {
@@ -722,6 +728,7 @@ function updateDayNav(chId) {
   dayPrevEl.disabled = idx === -1 || idx >= dates.length - 1;
   dayNextEl.disabled = idx <= 0;
   dayopenEl.href = srcFor(chId, date, date === TODAY);
+  daysaveEl.href = srcFor(chId, date, date === TODAY) + "&dl=1";
   updateDayCaption(chId, date);
 }
 
