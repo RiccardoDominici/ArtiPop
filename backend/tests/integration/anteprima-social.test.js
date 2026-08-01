@@ -145,4 +145,17 @@ describe("anteprima social con link per-giorno condiviso (/?c=&d=)", () => {
     expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/natura?v=${oggi}`);
     expect(html).not.toContain(futura);
   });
+
+  // feat-i-vecchi-indirizzi-aprono-il-canale-erede: un alias storico (island →
+  // natura) deve produrre l'anteprima come un canale attivo, ma l'og:image
+  // continua a leggere l'archivio dell'id RICHIESTO (island), non dell'erede.
+  it("GET /?c=island&d=<data valida passata> mostra l'anteprima dell'archivio storico di island", async () => {
+    const env = makeEnv();
+    const res = await callWorker(env, "/?c=island&d=2026-07-28");
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/island?date=2026-07-28`);
+    expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/?c=island&d=2026-07-28`);
+  });
 });

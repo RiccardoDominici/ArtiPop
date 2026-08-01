@@ -90,19 +90,24 @@ function nonAutorizzato(request, env, opzioni, respond) {
 
 /**
  * Legge `?c=<canale>&d=<data>` sulla rotta `/` (feat-condividi-il-giorno-
- * che-stai-guardando, ciclo 48) e li valida per l'anteprima social. Criterio
- * restrittivo: il canale deve essere un flusso ATTIVO per id esatto (lo
- * stesso insieme che il deck lato client riconosce, vedi page.js — un alias
- * storico non aprirebbe comunque il giorno nel deck), la data deve avere
- * formato YYYY-MM-DD, essere una data di calendario reale (non "2026-02-30")
- * e non futura rispetto a oggi. Una condizione qualsiasi che cade → `null`,
- * mai un `og:image` verso una rotta che non esiste.
+ * che-stai-guardando, ciclo 48; esteso agli alias storici in feat-i-vecchi-
+ * indirizzi-aprono-il-canale-erede) e li valida per l'anteprima social.
+ * `canale` accetta sia un id di flusso ATTIVO sia un alias storico (island,
+ * bloom, studio, …, vedi LEGACY_ALIASES): deve risolversi in un flusso attivo
+ * — lo stesso che il deck lato client riconosce in page.js. L'id restituito è
+ * però quello RICHIESTO, non quello del flusso erede: l'og:image legge
+ * l'archivio storico di quell'id (vedi channels.js:59-62), non quello del
+ * flusso che ne ha raccolto l'eredità. La data deve avere formato
+ * YYYY-MM-DD, essere una data di calendario reale (non "2026-02-30") e non
+ * futura rispetto a oggi. Una condizione qualsiasi che cade → `null`, mai un
+ * `og:image` verso una rotta che non esiste.
  */
 function risolviCondiviso(url, oggi) {
   const canale = url.searchParams.get("c");
   const data = url.searchParams.get("d");
   if (!canale || !data) return null;
-  if (!ACTIVE_CHANNELS.some((c) => c.id === canale)) return null;
+  const { channel } = resolveChannel(canale);
+  if (!channel || !channel.active) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
   const [anno, mese, giorno] = data.split("-").map(Number);
   const parsed = new Date(Date.UTC(anno, mese - 1, giorno));
