@@ -1279,3 +1279,25 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovi `backend/tests/unit/feed-render.test.js` e `backend/tests/integration/feed-rotta.test.js`;
   `node scripts/visual-check.mjs` (contro `wrangler dev` locale) senza difetti e baseline
   invariate, coerente con una modifica invisibile.
+
+## 2026-08-01 — feat-segui-il-canale-che-stai-guardando
+- Il feed introdotto al ciclo 93 (`/feed/<canale>.xml`) e spiegato in `/aiuto` al ciclo 95 non
+  era raggiungibile da nessun punto visibile dell'interfaccia: l'unico modo per abbonarsi era
+  digitare a mano l'indirizzo letto nella guida. In più, il `<link rel="alternate">`
+  nell'`<head>` restava fisso sul canale reso lato server anche dopo che l'utente sfogliava su
+  un altro canale — chi si abbonava dal browser finiva sul canale sbagliato.
+- Nuovo comando `#feedlink` ("segui col lettore di feed", `.btn.ghost`) in `.actions`, accanto a
+  `#copyurl`: punta a `/feed/<canale>.xml` del canale con cui è resa la card in cima al deck
+  (stesso canale di `#dlShortcut`, non quello dell'anteprima OG di un link condiviso — i due
+  restano indipendenti, come già per `dlShortcut`).
+- La stessa funzione client che risincronizza `#dlShortcut` per canale (`updateChrome`) ora
+  aggiorna anche l'href di `#feedlink` e quello del `<link rel="alternate"
+  type="application/rss+xml">` dell'head, con guardie `if (el)`: un nodo assente non deve mai
+  interrompere lo sfoglio dei canali.
+- Deviazione dal testo del piano: niente `rel="alternate"`/`type="application/rss+xml"` sul
+  nuovo `<a>` — un test di regressione esistente (`feed-rotta.test.js`, fuori dai `FILE:` del
+  piano) conta esattamente un `rel="alternate"` nella home; il criterio del piano non richiede
+  quegli attributi sul comando visibile, solo `href` e testo.
+- Nuovo `backend/tests/unit/home-segui-il-feed.test.js`; baseline `home-{mobile,desktop}.png`
+  rigenerate contro `wrangler dev` locale per includere il nuovo comando (stesso metodo dei
+  cicli precedenti).

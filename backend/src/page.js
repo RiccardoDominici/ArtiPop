@@ -107,6 +107,11 @@ export function renderPage(metas, origin, dateKey, condiviso = null, feedUrl = n
     inRitardo: !!(metas[c.id]?.date && metas[c.id].date < dateKey),
   }));
 
+  // Stesso canale con cui è resa la card in cima al deck (es. dlShortcut
+  // sopra): il canale condiviso tocca solo l'anteprima OG, non il deck
+  // visibile, quindi non deve toccare nemmeno questo comando.
+  const feedChannelId = ACTIVE_CHANNELS[0].id;
+
   const pageTitle = "ArtiPop — un wallpaper nuovo ogni giorno, che evolve";
   const pageDescription =
     "Wallpaper AI gratuiti per iPhone che evolvono giorno per giorno. Nessuna app: solo una Shortcut.";
@@ -385,6 +390,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
       <a class="btn primary" id="dlShortcut" href="/s/natura.shortcut">⬇️ Scarica la Shortcut</a>
       <a class="btn ghost" href="#setup">Come si attiva</a>
       <button class="btn ghost" id="copyurl">copia l'indirizzo del canale</button>
+      <a class="btn ghost" id="feedlink" href="/feed/${esc(feedChannelId)}.xml">segui col lettore di feed</a>
     </div>
     <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
     <p class="hint" id="nextdrop">Il wallpaper cambia da solo ogni notte.</p>
@@ -758,6 +764,14 @@ function updateChrome() {
   document.documentElement.style.setProperty("--a2", ch.accent[1]);
   // Il bottone di download segue sempre il canale della card in cima.
   document.getElementById("dlShortcut").href = \`/s/\${ch.id}.shortcut\`;
+  // Il comando "segui col lettore di feed" e il link di autodiscovery
+  // nell'head devono seguire lo stesso canale, non restare fissi su quello
+  // reso lato server (guardie if: un nodo assente non deve mai interrompere
+  // lo sfoglio dei canali).
+  const feedlinkEl = document.getElementById("feedlink");
+  if (feedlinkEl) feedlinkEl.href = \`/feed/\${ch.id}.xml\`;
+  const feedAutodiscoveryEl = document.querySelector('link[type="application/rss+xml"]');
+  if (feedAutodiscoveryEl) feedAutodiscoveryEl.href = \`/feed/\${ch.id}.xml\`;
   dotsEl.innerHTML = CHANNELS.map((c) =>
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
   previewDate = null;
