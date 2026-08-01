@@ -48,6 +48,32 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("message", (event) => {
+  try {
+    const dati = event.data;
+    if (!dati || dati.tipo !== "conserva" || typeof dati.url !== "string") return;
+    const url = new URL(dati.url, self.location.origin);
+    if (url.origin !== self.location.origin) return;
+    if (!inCache(url.pathname)) return;
+
+    event.waitUntil(
+      (async () => {
+        try {
+          const risposta = await fetch(url);
+          if (risposta && risposta.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(url, risposta);
+          }
+        } catch (err) {
+          // rete assente o richiesta fallita: nessuna conservazione, nessun errore esposto
+        }
+      })()
+    );
+  } catch (err) {
+    // messaggio malformato: ignorato in silenzio
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
