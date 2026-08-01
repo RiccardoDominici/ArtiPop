@@ -47,6 +47,10 @@ export function renderPage(metas, origin, dateKey) {
     // l'etichetta qui sotto invece di sfogliare concept passati.
     giorno: Number.isInteger(metas[c.id]?.dayInArc) ? metas[c.id].dayInArc + 1 : null,
     date: metas[c.id]?.date || dateKey,
+    // Vero solo se esiste un meta con una data reale precedente a oggi: un
+    // canale senza meta ricade su dateKey sopra e resta false, per non
+    // sommarsi a "in preparazione…" (vedi MOTIVAZIONE ciclo 49).
+    inRitardo: !!(metas[c.id]?.date && metas[c.id].date < dateKey),
   }));
 
   const pageTitle = "ArtiPop — un wallpaper nuovo ogni giorno, che evolve";
@@ -165,6 +169,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription)}
   .cinfo .scene { font-size: .8rem; color: var(--dim); font-style: italic; line-height: 1.45;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .cinfo .scene b { color: var(--text); font-weight: 600; font-style: normal; }
+  .cinfo .stale { font-size: .8rem; color: var(--dim); line-height: 1.45; }
 
   /* ---------- controlli deck ---------- */
   .controls { display: flex; align-items: center; gap: 1rem; }
@@ -454,6 +459,14 @@ async function shareLink() {
 dayshareEl.addEventListener("click", shareLink);
 
 /* ---------- costruzione card ---------- */
+// Data leggibile in italiano per la nota di freschezza (stesso approccio di tickClock).
+function fmtDataEstesa(dateStr) {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("it-IT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
 function cardHTML(ch) {
   const url = ORIGIN + "/w/" + ch.id;
   return \`
@@ -468,12 +481,13 @@ function cardHTML(ch) {
            usa per distinguere questa richiesta (il sito, cacheabile un'ora)
            da quella della Shortcut sullo stesso indirizzo senza query
            (sempre no-store, deve ricevere il file fresco). -->
-      <img class="wall" src="/w/\${ch.id}?v=\${ch.date}" alt="\${ch.name} — wallpaper di oggi" draggable="false" />
+      <img class="wall" src="/w/\${ch.id}?v=\${ch.date}" alt="\${ch.name} — wallpaper \${ch.inRitardo ? "del " + fmtDataEstesa(ch.date) : "di oggi"}" draggable="false" />
     </div>
     <div class="cinfo">
       <h2>\${ch.emoji} \${ch.name}</h2>
       <div class="tag">\${ch.tagline}</div>
       <div class="scene">\${ch.concept ? "<b>Questa settimana:</b> " + ch.concept + (ch.giorno ? " — giorno " + ch.giorno + " di 7" : "") + "<br>" : ""}\${ch.scene ? ch.scene : "in preparazione…"}</div>
+      \${ch.inRitardo ? '<p class="stale">Il wallpaper di oggi non è ancora arrivato: questa è l\\'ultima immagine disponibile, del ' + fmtDataEstesa(ch.date) + ".</p>" : ""}
     </div>\`;
 }
 
