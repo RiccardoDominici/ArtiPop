@@ -47,6 +47,7 @@ import {
 import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
+import { renderArchiviPage } from "./archivi.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
@@ -223,6 +224,7 @@ export default {
       const rottaHtml =
         percorso === "/" || percorso === "/index.html" ||
         percorso === "/aiuto" || percorso === "/aiuto.html" || percorso === "/help" ||
+        percorso === "/archivi" ||
         percorso.match(/^\/s\/([a-z]+(?:-base)?)\.shortcut$/);
       if (rottaHtml) {
         return new Response(renderErroreTemporaneo(), {
@@ -903,6 +905,33 @@ export default {
         stato = null;
       }
       return new Response(renderHelpPage(stato), {
+        headers: {
+          "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
+
+    // ---- Pagina archivi storici ----
+    if (path === "/archivi") {
+      // feat-gli-archivi-storici-si-riaprono-dal-sito: scansione KV SOLO su
+      // richiesta esplicita di questa pagina, mai nel giro di produzione
+      // (contratto di listChannelsWithArchive, storage.js). Una scansione
+      // fallita non deve mai rompere la pagina: null → messaggio umano,
+      // stesso trattamento di /aiuto per lo stato canali.
+      let storici = null;
+      try {
+        const attivi = new Set(ACTIVE_CHANNELS.map((c) => c.id));
+        const mappa = await listChannelsWithArchive(env);
+        storici = [...mappa]
+          .filter(([id]) => !attivi.has(id))
+          .map(([id, info]) => ({ id, ...info }))
+          .sort((a, b) => (a.ultima < b.ultima ? 1 : a.ultima > b.ultima ? -1 : 0));
+      } catch (err) {
+        console.error(`[archivi] scansione KV non disponibile: ${err.message}`);
+        storici = null;
+      }
+      return new Response(renderArchiviPage(storici), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
