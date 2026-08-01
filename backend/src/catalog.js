@@ -449,7 +449,25 @@ export function poolForWith(channel, catalog) {
     .filter((el) => el.pubblicato === true && el.canale === channel.id)
     .map((el) => resolveConcept(el.id, catalog))
     .filter(Boolean);
-  return [...builtins, ...customi]
+  const unito = [...builtins, ...customi];
+  const filtrato = unito
     .filter((c) => !FAMIGLIE_SOSPESE.includes(c.famiglia.id))
     .filter((c) => !ELEMENT_SOSPESI.includes(c.id));
+
+  // Ripiego di ultima istanza: la sospensione è una preferenza di TARATURA,
+  // non una guardia di sicurezza (stessa scelta già fatta dal cancello in
+  // generate.js:8-13) — uno sfondo fuori range vale più di nessuno sfondo,
+  // e il rischio di range resta comunque contenuto dal cancello di collaudo.
+  // Se il pool unito non era vuoto di suo ma le sospensioni lo svuotano,
+  // meglio pescare non filtrato che far morire il flusso ogni giorno.
+  if (unito.length > 0 && filtrato.length === 0) {
+    const famiglieMorse = [...new Set(unito.map((c) => c.famiglia.id).filter((id) => FAMIGLIE_SOSPESE.includes(id)))];
+    const elementMorsi = [...new Set(unito.map((c) => c.id).filter((id) => ELEMENT_SOSPESI.includes(id)))];
+    console.error(
+      `poolForWith: flusso '${channel.id}' svuotato dalle sospensioni (famiglie: ${famiglieMorse.join(", ") || "—"}; element: ${elementMorsi.join(", ") || "—"}) — ripiego sul pool non filtrato`,
+    );
+    return unito;
+  }
+
+  return filtrato;
 }
