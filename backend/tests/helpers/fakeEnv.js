@@ -97,8 +97,11 @@ function stubAI() {
 function stubImages() {
   return { input() { throw new Error("IMAGES.input non doveva essere invocato in questo test"); } };
 }
-function stubSelf() {
-  return { fetch() { throw new Error("SELF.fetch non doveva essere invocato in questo test"); } };
+// `fetchImpl`, se passata, sostituisce il fetch finto (es. per simulare le
+// risposte di /run/<canale> nei test di orchestrazione del ritentativo).
+// Default INVARIATO per tutti i test esistenti: lancia se invocato.
+export function stubSelf(fetchImpl) {
+  return { fetch: fetchImpl ?? (() => { throw new Error("SELF.fetch non doveva essere invocato in questo test"); }) };
 }
 
 /** Ambiente fittizio completo; `overrides` sostituisce singoli campi (es. ADMIN_KEY assente). */
