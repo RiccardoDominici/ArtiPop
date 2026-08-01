@@ -342,3 +342,21 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   (`/run`, `/backfill`, `/run-all`) non restano più in chiaro nella cronologia.
 - `backend/README.md` e `GUIDA.md`: aggiornati gli esempi `curl` e la descrizione degli endpoint
   admin — header obbligatorio, `?key=` ammesso solo su `GET /lab/img`.
+
+## 2026-08-01 — s-cancellare-un-concept-non-lascia-range-fantasma
+- Nuovo `dropTuningProfilo(env, id)` in `backend/src/profiles.js`: rimuove il SOLO override di `id`
+  da `tuning:profili`, lasciando intatti gli altri. Prima non esisteva alcuna funzione che togliesse
+  il profilo di un concept singolo (solo `saveTuning`, riscrittura totale, e `clearTuning`,
+  cancellazione totale).
+- `backend/src/index.js`, `DELETE /catalogo/concept`: dopo una `removeConcept` andata a buon fine
+  chiama `dropTuningProfilo`. Perché: se un id di concept custom veniva riusato dopo la
+  cancellazione, ereditava in silenzio i range tarati per il concept vecchio — un "range fantasma"
+  mai impostato dall'utente per il nuovo soggetto, e il cancello giudicava con misure sbagliate
+  senza alcun segnale nell'interfaccia.
+- La pulizia del tuning è avvolta in un try/catch locale (solo `console.warn`, mai `err.message` nel
+  corpo della risposta): il concept è già rimosso a quel punto, un override orfano è meno grave di
+  una 500 su un'operazione riuscita. Contratto della risposta invariato (`{ ok: true, rimosso: id }`).
+- Nuovo `backend/tests/unit/tuning-orfani.test.js`: copre il caso del bug (id riusato riparte dai
+  range del nuovo concept), la purga chirurgica (l'override di un concept built-in sopravvive alla
+  cancellazione di un altro), la tenuta a un guasto di scrittura su `tuning:profili` (resta 200), e
+  il caso senza override da rimuovere (documento invariato).

@@ -32,7 +32,7 @@ import {
 import {
   fingerprintFromArchive, compare, verdict, formatMeasures, diagnose,
 } from "./metrics.js";
-import { effectiveProfiles, saveTuning, clearTuning, defaultProfiles } from "./profiles.js";
+import { effectiveProfiles, saveTuning, clearTuning, defaultProfiles, dropTuningProfilo } from "./profiles.js";
 import { runLabArc, getLabImage } from "./lab.js";
 import { ELEMENTS } from "./concepts.js";
 import { FAMILIES } from "./families.js";
@@ -328,6 +328,16 @@ export default {
         }
         return scritturaProtetta("DELETE /catalogo/concept", async () => {
           const res = await removeConcept(env, url.searchParams.get("id") || "");
+          if (res.ok === true) {
+            // Il concept è già rimosso: un override di tuning orfano è meno
+            // grave di una 500 su un'operazione riuscita, quindi non deve
+            // mai far fallire la risposta.
+            try {
+              await dropTuningProfilo(env, res.rimosso);
+            } catch (err) {
+              console.warn(`[index] pulizia tuning per concept "${res.rimosso}" fallita: ${err.message}`);
+            }
+          }
           return jsonCors(res, res.ok ? 200 : 400);
         });
       }

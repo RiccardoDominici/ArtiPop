@@ -202,3 +202,21 @@ export async function saveTuning(env, incoming, catalog = null) {
 export async function clearTuning(env) {
   await env.KV.delete(TUNING_KEY);
 }
+
+/**
+ * Rimuove il SOLO override di `id` da `tuning:profili`, senza toccare gli
+ * altri. Serve quando un concept custom viene cancellato dal catalogo: se
+ * l'id viene riusato in futuro, non deve ereditare in silenzio i range
+ * tarati per il concept vecchio (range fantasma). Ritorna `true` se c'era
+ * un override da togliere, `false` se non c'era nulla (nessuna scrittura).
+ */
+export async function dropTuningProfilo(env, id) {
+  const profili = await loadTuning(env);
+  if (!(id in profili)) return false;
+
+  const resto = { ...profili };
+  delete resto[id];
+  const doc = { version: 1, updatedAt: new Date().toISOString(), profili: resto };
+  await env.KV.put(TUNING_KEY, JSON.stringify(doc));
+  return true;
+}
