@@ -155,6 +155,40 @@ function esc(s) {
 }
 
 /**
+ * Slug kebab-case da un testo di sintomo/domanda: minuscolo, accenti e
+ * punteggiatura rimossi, spazi collassati in `-`, tagliato a lunghezza
+ * ragionevole. Dipende solo dal testo, così l'id resta lo stesso fra un
+ * deploy e l'altro finché il testo non cambia — è la base dei link
+ * permanenti (`slugVoce` + prefisso di sezione = `id` pubblico della voce).
+ */
+function slugVoce(testo) {
+  return String(testo ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+}
+
+/**
+ * Assegna a ogni voce un id `<prefisso>-<slug>` univoco, appendendo `-2`,
+ * `-3`… in ordine di dichiarazione in caso di collisione. L'id è parte del
+ * contratto pubblico della pagina (è l'indirizzo di un link condiviso): non
+ * va fatto dipendere dall'indice dell'array, solo dal testo della voce.
+ */
+function assegnaId(voci, prefisso, testoDi) {
+  const usati = new Map();
+  return voci.map((v) => {
+    const base = `${prefisso}-${slugVoce(testoDi(v))}`;
+    const n = (usati.get(base) ?? 0) + 1;
+    usati.set(base, n);
+    return { voce: v, id: n === 1 ? base : `${base}-${n}` };
+  });
+}
+
+/**
  * Pagina 404 per `/s/<flusso>.shortcut` quando il file non è (ancora) in KV —
  * stesso `<head>`, stack font e token colore di `renderHelpPage()` (M6/
  * VISUAL_SPECS §2), così non nasce una seconda spec visiva da mantenere.
@@ -316,10 +350,11 @@ ${FAVICON_TAG}
 
 /** Pagina /aiuto completa (HTML autoconsistente, nessuna risorsa esterna). */
 export function renderHelpPage() {
-  const problemi = PROBLEMI.map(
-    (p) => `
-      <details class="item${p.priority ? " hot" : ""}"${p.priority ? " open" : ""}>
-        <summary>${esc(p.sintomo)}</summary>
+  const problemi = assegnaId(PROBLEMI, "p", (p) => p.sintomo)
+    .map(
+      ({ voce: p, id }) => `
+      <details class="item${p.priority ? " hot" : ""}" id="${id}"${p.priority ? " open" : ""}>
+        <summary>${esc(p.sintomo)}<a class="permalink" href="#${id}" aria-label="Link a questa voce">#</a></summary>
         <div class="body">
           <p class="label">Perché succede</p>
           <p>${p.causa}</p>
@@ -327,15 +362,18 @@ export function renderHelpPage() {
           <p>${p.rimedio}</p>
         </div>
       </details>`
-  ).join("");
+    )
+    .join("");
 
-  const faq = FAQ.map(
-    (f) => `
-      <details class="item">
-        <summary>${esc(f.q)}</summary>
+  const faq = assegnaId(FAQ, "d", (f) => f.q)
+    .map(
+      ({ voce: f, id }) => `
+      <details class="item" id="${id}">
+        <summary>${esc(f.q)}<a class="permalink" href="#${id}" aria-label="Link a questa voce">#</a></summary>
         <div class="body"><p>${f.a}</p></div>
       </details>`
-  ).join("");
+    )
+    .join("");
 
   return `<!doctype html>
 <html lang="it">
@@ -378,6 +416,12 @@ ${FAVICON_TAG}
   summary::before { content: "＋"; opacity: .5; font-weight: 400; }
   .item[open] summary::before { content: "－"; }
   .item[open] summary { border-bottom: 1px solid rgba(255,255,255,.08); }
+  /* M8: link permanente per-voce, stessi token della spec (§2) — nessun colore/dimensione nuova */
+  .permalink {
+    margin-left: auto; color: #8fd3ff; font-size: .74rem; text-decoration: none;
+    opacity: .45; flex-shrink: 0;
+  }
+  .permalink:hover, .permalink:focus { opacity: 1; }
   .body { padding: 4px 18px 18px; }
   .body p { margin: 10px 0; opacity: .88; }
   .label {
@@ -412,6 +456,22 @@ ${FAVICON_TAG}
     <a href="/">Home</a>
   </footer>
 </main>
+<script>
+  // Apre la voce corrispondente al frammento dell'URL: un elemento "details"
+  // chiuso non si apre da solo alla navigazione per hash su tutti i browser,
+  // quindi un link condiviso porterebbe a una voce ancora chiusa senza questo.
+  function apriDaHash() {
+    var id = decodeURIComponent(location.hash.slice(1));
+    if (!id) return;
+    var voce = document.getElementById(id);
+    if (voce && voce.tagName === "DETAILS") {
+      voce.open = true;
+      voce.scrollIntoView();
+    }
+  }
+  document.addEventListener("DOMContentLoaded", apriDaHash);
+  window.addEventListener("hashchange", apriDaHash);
+</script>
 </body>
 </html>`;
 }

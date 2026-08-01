@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-ogni-voce-dell-aiuto-ha-un-indirizzo-suo
+- `backend/src/help.js`: ogni voce di `/aiuto` (15 fra problemi e FAQ) ha ora un `id` stabile
+  (`p-<slug>`/`d-<slug>`, derivato dal testo con `slugVoce()`) e un link permanente `#` discreto
+  nel `summary`. Prima nessuna voce era indirizzabile: un link condiviso riapriva la pagina
+  dall'inizio con l'accordion chiuso, senza modo di puntare alla voce giusta (principio 1).
+- Script inline minimo che apre la voce corrispondente al frammento dell'URL al caricamento e a
+  ogni `hashchange`, perché un `<details>` chiuso non si apre da solo alla navigazione per
+  frammento. Nessuna risorsa esterna, nessuna dipendenza nuova.
+- Nuovo `backend/tests/unit/aiuto-ancore.test.js`: id univoci e stabili, permalink corrispondenti,
+  nessuna regressione su contenuti/token visivi.
+
 ## 2026-08-01 — s-eliminare-dal-catalogo-dice-prima-cosa-si-perde
 - `tuning/js/tab-catalogo.js`: `deleteElement()`/`deleteConcept()` ora compongono il `confirm()` con
   `messaggioEliminaElement`/`messaggioEliminaConcept`, due funzioni pure che leggono `AP.store.usi` (già
