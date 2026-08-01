@@ -23,6 +23,11 @@ describe("renderHelpPage — spiegazione del feed del canale", () => {
     }
   });
 
+  it('la stessa voce cita anche /feed.xml come iscrizione unica a tutti i canali', () => {
+    const voce = estraiVoce(html, "Posso cambiare canale?");
+    expect(voce).toContain("/feed.xml");
+  });
+
   it("la menzione del feed sta dentro il <details> di quella voce e non altrove", () => {
     const idx = html.indexOf("Posso cambiare canale?");
     const inizioDetails = html.lastIndexOf("<details", idx);

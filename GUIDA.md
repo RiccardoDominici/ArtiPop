@@ -272,6 +272,7 @@ usano il sito e lo strumento di tuning in sola lettura.
 | `GET /s/<flusso>[-base].shortcut` *(pubblico)* | Shortcut firmata da installare (variante principale o base, vedi [2.7](#27-le-shortcut-firmate)) |
 | `GET /archivi` *(pubblico)* | pagina HTML: i canali storici (island, bloom, studio, neon, …) con giorni in archivio, intervallo date e link per riaprire l'ultimo giorno di ciascuno |
 | `GET /feed/<flusso>.xml` *(pubblico)* | feed RSS 2.0 degli ultimi 20 giorni d'archivio (accetta alias storici); un `<item>` per giorno con titolo, link, `pubDate` ed enclosure verso `/w/<flusso>?date=`; flusso inesistente → 404 con corpo XML, mai JSON |
+| `GET /feed.xml` *(pubblico)* | feed RSS 2.0 aggregato: gli ultimi giorni di tutti i canali attivi in un solo feed, ordinati dal più recente, ogni `<item>` col nome del canale nel titolo e link/enclosure verso il proprio canale |
 
 ## 2.5 Come sono fatti i canali
 
