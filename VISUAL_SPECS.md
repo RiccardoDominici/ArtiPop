@@ -76,6 +76,16 @@ altezza minima pari a quella di `.dayctrl` (`2.3rem`). Nessun colore o token nuo
 recente, giorno corrente); invisibile insieme al resto di `.daynav` quando non c'è un
 viaggio da sfogliare (meno di due giorni in archivio).
 
+Preferiti (`#dayfav`/`#favpick`/`#favlist`, feat-segna-i-giorni-che-ti-piacciono — proposta ai
+sensi di §7): comando ghost `#dayfav` nella fila dei comandi ghost del pannello, accanto a
+"salva l'immagine" — etichetta e `aria-pressed` seguono se il giorno mostrato è segnato o no.
+Comando ghost `#favpick` ("i tuoi preferiti") ed elenco `#favlist` che riusano integralmente
+`.arcstory`/`.arcrow` (stessa forma dell'elenco-tappe e dell'elenco-archi: cambia il contenuto,
+non la forma), chiuso di default. `--dim` per le righe non correnti, `.on` per quella del giorno
+mostrato — nessun colore, token o misura nuovi. `#dayfav` invisibile insieme al resto dei comandi
+del giorno quando non c'è un viaggio da sfogliare; `#favpick`/`#favlist` invisibili quando il
+canale mostrato non ha alcun giorno segnato.
+
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
 

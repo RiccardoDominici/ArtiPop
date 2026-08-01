@@ -1316,3 +1316,22 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   XML valido, mai JSON né un 500 grezzo, anche a KV completamente rotto.
 - `/aiuto` cita `/feed.xml` come iscrizione unica, nella stessa risposta che già nomina
   `/feed/<canale>.xml`; nessun accordion nuovo. `GUIDA.md` §2.4 elenca la nuova rotta.
+
+## 2026-08-01 — feat-segna-i-giorni-che-ti-piacciono
+- Ogni comando "Il viaggio finora" serviva a MUOVERSI nell'archivio (frecce, selettore di data,
+  elenco archi), ma nessuno a TORNARE su un giorno che piace: con l'archivio ormai profondo, chi
+  trova bella l'immagine di oggi non aveva modo di ritrovarla fra due mesi se non ricordandone la
+  data a memoria. Nuovo comando ghost `#dayfav` ("☆ segna preferito" / "★ preferito") accanto a
+  "salva l'immagine": segna il giorno mostrato in `localStorage` sotto `artipop:preferiti`,
+  indicizzato per canale — stesso pattern difensivo (try/catch, ripiego a oggetto vuoto) già
+  usato dalla memoria del canale (`REMEMBERED_CHANNEL_KEY`).
+- Nuovo comando ghost `#favpick` ("i tuoi preferiti") ed elenco `#favlist`, visibili solo quando
+  il canale mostrato ha almeno un giorno segnato: riusano integralmente `.arcstory`/`.arcrow`
+  (stessa forma dell'elenco-tappe e dell'elenco-archi già in pagina), nessun colore o token
+  nuovo. Il tocco su una riga riusa `goToArc` — lo stesso percorso di salto di `#dayPick` e di
+  `#arclist` — così un preferito di un arco passato apre l'arco giusto senza una seconda
+  implementazione del salto.
+- Nuovo `backend/tests/unit/home-giorni-preferiti.test.js`; `VISUAL_SPECS.md` §1.4 aggiornata
+  con il paragrafo «Preferiti» (proposta ai sensi di §7); baseline `home-{mobile,desktop}.png`
+  rigenerate contro `wrangler dev` locale, con un piccolo archivio seminato a mano nel KV locale
+  (mai remoto, mai produzione) per far comparire il nuovo comando nello screenshot.
