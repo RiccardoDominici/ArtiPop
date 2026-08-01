@@ -759,3 +759,30 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovo `backend/tests/unit/home-anteprima-giorno-condiviso.test.js`; `anteprima-social.test.js`
   esteso con la copertura end-to-end sulla rotta (valida, canale ignoto, data malformata, data
   futura).
+
+## 2026-08-01 — feat-leggi-la-storia-dell-arco
+- La home mostrava il testo narrativo (`testoTappa`) una tappa alla volta (`updateDayCaption`):
+  chi voleva capire la storia dell'arco doveva sfogliare fino a sette volte e ricordarsela a
+  memoria, pur avendo già tutti i dati scaricati in `capCache`/`arcsCache` — materia prima in
+  pagina ma irraggiungibile come racconto continuo.
+- Nuovo comando `#storytoggle` ("leggi la storia", `.btn.ghost`) sotto la didascalia del giorno,
+  chiuso di default: apre `#arcstory`, l'elenco delle tappe dell'arco visualizzato costruito da
+  `renderArcStory(chId)` — una riga per giorno (data breve + `testoTappa`), dal più vecchio al più
+  recente, letto da `arcsCache[chId][arcIndexCache[chId]]` (fallback `archiveCache[chId]`) su una
+  copia, mai un `.reverse()` sull'array in cache. Zero fetch, zero generazioni AI in più.
+- I giorni senza `testoTappa` (giorno ricostruito, origine assente) sono omessi, mai una riga
+  "undefined"; se dopo il filtro non resta alcuna riga, `#storytoggle` resta nascosto — nessun
+  comando che apre un blocco vuoto. Righe costruite con `createElement`/`textContent`, mai
+  `innerHTML` con testo del catalogo — stessa disciplina di `updateDayCaption`.
+- Il tocco su una riga (`<button>`, tap target ≥44px) chiama `stopPlayback()` poi
+  `previewDay(chId, data, ...)`: la home mostra quel giorno, esattamente come le frecce ‹ ›. La
+  riga del giorno mostrato è evidenziata da `updateArcStoryHighlight`, chiamata da `updateDayNav`
+  ad ogni cambio di giorno — quindi anche seguendo le frecce, non solo il click sull'elenco.
+- `renderArcStory` è agganciata a `renderJourney` (nuovo arco/canale) e a `goToPreviousArc`/
+  `goToNextArc` (ciclo 54-55): l'elenco mostra sempre le tappe dell'arco effettivamente
+  visualizzato, non quello iniziale.
+- VISUAL_SPECS §1.4 aggiornata con il nuovo componente `.arcstory`/`.arcrow`: nessun colore nuovo,
+  riusa `--dim` per le righe non correnti e il testo pieno per quella corrente (stessa coppia già
+  usata da `.stale`).
+- Nuovo `backend/tests/unit/home-storia-dell-arco.test.js`; baseline visive
+  `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo comando.

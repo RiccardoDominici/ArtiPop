@@ -43,6 +43,14 @@ nota di freschezza (`.stale`, testo `.8rem` colore `--dim`, dentro `.cinfo` subi
 di un giorno precedente a oggi), dice la data reale; invisibile e senza alcun nodo nel
 DOM quando il canale è aggiornato.
 
+Elenco-tappe (`.arcstory`, feat-leggi-la-storia-dell-arco): righe testuali toccabili
+dentro `.journey`, dietro il comando ghost `#storytoggle` ("leggi la storia"), chiuso di
+default. Ogni riga (`.arcrow`, `<button>`, tap target min 44px) mostra la data breve
+(`.arcdate`, `.74rem`, grassetto) e il testo della tappa (`.arctext`, `.8rem`); colore
+`--dim` per le righe non correnti, testo pieno (classe `.on`) per la tappa del giorno
+mostrato — nessun colore nuovo, stessa coppia già usata da `.stale`. Comando e blocco
+invisibili quando la journey non è attiva o nessun giorno dell'arco ha testo narrativo.
+
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
 
