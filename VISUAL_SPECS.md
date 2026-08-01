@@ -37,7 +37,11 @@ città `#4568dc→#b06ab3` · quiete `#c98d5a→#8a7fb5`.
 ### 1.4 Componenti canonici
 Deck di card trascinabili + dots · mockup iPhone (dynamic island, orologio live) ·
 bottoni pill primary (gradiente canale) e ghost (vetro, `backdrop-filter: blur(14px)`) ·
-step numerati con badge a gradiente · toast pill bottom-center · blob ambient animati.
+step numerati con badge a gradiente · toast pill bottom-center · blob ambient animati ·
+nota di freschezza (`.stale`, testo `.8rem` colore `--dim`, dentro `.cinfo` subito dopo
+`.scene`): compare solo quando il canale è in ritardo (l'ultima immagine in archivio è
+di un giorno precedente a oggi), dice la data reale; invisibile e senza alcun nodo nel
+DOM quando il canale è aggiornato.
 
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
