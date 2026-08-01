@@ -40,6 +40,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
   nel ciclo precedente. Nuovo test `aiuto-preferiti.test.js`, nessuna baseline visiva toccata
   (accordion chiuso di default).
 
+## 2026-08-01 — feat-l-aiuto-spiega-come-aggiungere-artipop-alla-home
+- Il ciclo 105 (planner opus) provava ad aggiungere una voce FAQ nuova e cadeva sullo stesso
+  conteggio blindato (15) di sei test preesistenti: revert obbligato, escalation a fable. Questa
+  versione non tocca il conteggio — riscrive la risposta della FAQ esistente «Quanto costa?»
+  (`backend/src/help.js`), che dal ciclo 104 (manifest e tag d'installazione) era rimasta
+  incoerente: affermava ancora «non c'è app da installare».
+- La risposta ora chiarisce che non serve installare nulla per usare ArtiPop, ma spiega come
+  aggiungerlo alla schermata Home su iPhone/iPad (Safari → Condividi → «Aggiungi a schermata
+  Home») e su Android (Chrome → menu ⋮ → «Aggiungi a schermata Home»). Nuovo test
+  `aiuto-installazione.test.js`, nessuna baseline visiva toccata (accordion chiuso di default).
+
 ## 2026-08-01 — feat-porta-i-tuoi-preferiti-su-un-altro-telefono
 - I giorni segnati preferiti (ciclo 98) vivevano solo nel localStorage del browser: cambiando
   telefono, o svuotando i dati di Safari, si perdevano senza preavviso e senza modo di rifarli.
