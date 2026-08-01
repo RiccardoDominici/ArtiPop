@@ -334,6 +334,12 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            finestra mostrata, esiste almeno un arco (settimana/concept) più
            vecchio scaricato da /api/archive ma non ancora raggiungibile. -->
       <button class="btn ghost" id="arcprev" hidden>‹ arco precedente</button>
+      <!-- feat-torna-all-arco-in-corso: visibile solo dopo essere scesi in un
+           arco passato con #arcprev — senza questo comando la finestra
+           sull'arco vecchio sopravvive in archiveCache anche cambiando
+           canale (loadArchive ricostruisce solo se !archiveCache[chId]),
+           e l'utente resta bloccato nel passato fino al ricaricamento. -->
+      <button class="btn ghost" id="arcnext" hidden>arco successivo ›</button>
       <!-- feat-condividi-il-giorno-che-stai-guardando: segue sempre lo stato
            di #daynav (stesso hasJourney in renderJourney) — niente da
            condividere quando non c'è navigazione fra giorni. -->
@@ -423,6 +429,7 @@ const dposEl = document.getElementById("dpos");
 const dayPrevEl = document.getElementById("dayprev");
 const dayNextEl = document.getElementById("daynext");
 const arcPrevEl = document.getElementById("arcprev");
+const arcNextEl = document.getElementById("arcnext");
 const dcapEl = document.getElementById("dcap");
 const dayshareEl = document.getElementById("dayshare");
 const dayopenEl = document.getElementById("dayopen");
@@ -733,7 +740,7 @@ function renderJourney(chId) {
   daysaveEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
-  updateArcPrev(chId);
+  updateArcNav(chId);
   if (!hasJourney) {
     jmsgEl.textContent = "il viaggio inizia oggi ✨";
     dcapEl.hidden = true;
@@ -813,12 +820,14 @@ function stepDay(dir) {
 dayPrevEl.addEventListener("click", () => stepDay(-1));
 dayNextEl.addEventListener("click", () => stepDay(1));
 
-// Mostra "arco precedente" solo se, oltre alla finestra mostrata ora, esiste
-// almeno un altro arco più vecchio già scaricato ma non ancora raggiunto.
-function updateArcPrev(chId) {
+// Governa insieme "arco precedente" e "arco successivo": arcprev visibile
+// solo se esiste un arco più vecchio non ancora raggiunto, arcnext visibile
+// solo se si è già scesi in un arco passato (idx > 0, l'arco in corso è 0).
+function updateArcNav(chId) {
   const arcs = arcsCache[chId] || [];
   const idx = arcIndexCache[chId] ?? 0;
   arcPrevEl.hidden = idx >= arcs.length - 1;
+  arcNextEl.hidden = idx <= 0;
 }
 
 // Sposta la finestra sfogliabile sull'arco precedente, mai unendola a quella
@@ -832,11 +841,29 @@ function goToPreviousArc() {
   stopPlayback();
   arcIndexCache[chId] = idx + 1;
   archiveCache[chId] = arcs[idx + 1];
-  updateArcPrev(chId);
+  updateArcNav(chId);
   const d = archiveCache[chId][0];
   previewDay(chId, d, d === TODAY);
 }
 arcPrevEl.addEventListener("click", goToPreviousArc);
+
+// feat-torna-all-arco-in-corso: speculare a goToPreviousArc — senza questo
+// comando la finestra sull'arco passato resta in archiveCache anche
+// cambiando canale (loadArchive la ricostruisce solo se assente), e chi è
+// sceso in un arco vecchio non ha modo di risalire alla settimana in corso.
+function goToNextArc() {
+  const chId = CHANNELS[order[0]].id;
+  const arcs = arcsCache[chId] || [];
+  const idx = arcIndexCache[chId] ?? 0;
+  if (idx <= 0) return;
+  stopPlayback();
+  arcIndexCache[chId] = idx - 1;
+  archiveCache[chId] = arcs[idx - 1];
+  updateArcNav(chId);
+  const d = archiveCache[chId][0];
+  previewDay(chId, d, d === TODAY);
+}
+arcNextEl.addEventListener("click", goToNextArc);
 
 /* Mostra un giorno nel mockup della card in cima (crossfade). */
 function previewDay(chId, date, isToday) {
