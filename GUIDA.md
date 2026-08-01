@@ -302,6 +302,26 @@ fuori — è lo strumento di tuning (tab **Catalogo**) a scriverci, tramite
 element "di fabbrica" e uno custom: `resolveConcept` li tratta allo stesso
 modo ovunque nel sistema.
 
+**Famiglie ed element sospesi dalla pesca.** `FAMIGLIE_SOSPESE` e
+`ELEMENT_SOSPESI` (`backend/src/config.js`) sono due liste di id esclusi
+dalla pesca di un concept **nuovo**. Il filtro agisce in un unico punto
+(`poolForWith` in `catalog.js`): un arco già in corso chiude comunque i suoi
+7 giorni e l'archivio non viene toccato — la voce sospesa resta raggiungibile
+per id dal lab in ogni momento, sparisce solo dall'estrazione casuale. Oggi
+l'unica voce sospesa è l'element `canoa` (`ELEMENT_SOSPESI`): fuori dal
+profilo di cambiamento della sua famiglia, brucia tutti i tentativi
+dell'arco e pubblica comunque il candidato migliore — uno sfondo degradato
+per l'utente reale. `FAMIGLIE_SOSPESE` è vuota dopo M10.
+
+Elenco delle voci sospese oggi:
+
+- `canoa` (element)
+
+Si toglie una sospensione rimuovendo l'id dalla lista in `config.js`, dopo
+un arco lab gated verde su preview (come già fatto per `attraversamento` in
+M10). La si vede dal tool nel tab **Catalogo** (badge «sospeso» sulla voce)
+e dall'API nel campo booleano `sospeso` di `GET /catalogo`.
+
 > **Invariante:** ogni famiglia deve avere esattamente `ARC_LENGTH_DAYS`
 > (oggi 7) tappe in `families.js`. È verificata a caricamento modulo
 > (`channels.js`): se una famiglia sgarra, lo si vede in `wrangler tail`
@@ -396,6 +416,7 @@ l'immagine del giorno prima, **zero addebiti**.
 | Le Shortcut degli utenti non funzionano in automazione | `python3 shortcut/verify_shortcuts.py` | rigenera e ricarica in KV |
 | Lo sfondo è un gradiente scuro senza disegno | `/health` (canale mai generato o `?date=` inesistente) | `curl -H "x-artipop-key: …" "…/run/<ch>?force=1"` |
 | Una pagina dice «errore temporaneo» | rete di sicurezza globale del worker (`index.js`) | `npx wrangler tail` |
+| Un element non esce mai dalla pesca | badge sospeso nel tab Catalogo / `ELEMENT_SOSPESI` in `config.js` | è voluto: vedi [2.5](#25-come-sono-fatti-i-canali) |
 
 ## 2.10 Lezioni imparate (non regredire)
 

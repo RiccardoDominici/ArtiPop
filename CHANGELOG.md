@@ -559,3 +559,16 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   non era importato da nessun test. Copre le quattro funzioni esportate (`loadNote`, `putGiornoNota`,
   `putAssetto`, `removeAssetto`) con casi felici, errori di validazione e la regressione sul
   documento sporco.
+
+## 2026-08-01 — s-la-guida-spiega-le-sospensioni-dai-pool
+- GUIDA.md §2.5 «Come sono fatti i canali» ora spiega `FAMIGLIE_SOSPESE`/`ELEMENT_SOSPESI`
+  (`backend/src/config.js`): cosa filtrano (`poolForWith` in `catalog.js`, solo la pesca di un
+  concept nuovo — arco in corso e archivio intatti), che oggi l'unica voce sospesa è l'element
+  `canoa` e perché, come si toglie una sospensione e dove si vede dal tool/API. Prima nessun
+  documento nominava le sospensioni: chi guardava un element che non usciva mai dalla pesca non
+  aveva modo di sapere che fosse voluto né dove intervenire.
+- §2.9 (runbook): una riga in più per il sintomo «un element non esce mai dalla pesca», che rimanda
+  a §2.5 invece di far pensare a un guasto.
+- Nuovo `backend/tests/unit/guida-sospensioni.test.js`: anti-drift fra le liste di sospensione in
+  `config.js` e il blocco di GUIDA.md — se domani si aggiunge una sospensione senza documentarla,
+  la suite fallisce.
