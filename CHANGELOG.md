@@ -16,6 +16,14 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-la-home-dice-quando-sei-senza-rete
+- Chi apre l'app installata senza rete vedeva la copia in cache identica all'originale ma con
+  l'archivio muto (`/api/*` esclusa dalla cache del ciclo 108): ora una riga `.hint` sotto
+  `#nextdrop` compare quando `navigator.onLine` è `false` e spiega che si guarda l'ultima copia
+  salvata — sparisce da sola al ritorno della rete, senza ricaricare la pagina.
+- Nessun `fetch` di sondaggio: solo gli eventi `online`/`offline` del browser. Online e senza JS
+  la riga resta `hidden`, quindi la home non cambia aspetto (baseline visive invariate).
+
 ## 2026-08-01 — feat-aggiungi-artipop-alla-schermata-home
 - Chi apre ArtiPop da telefono ogni giorno può ora installarlo sulla schermata Home invece di
   tenerlo in un tab del browser: nuove rotte pubbliche `GET /manifest.webmanifest` e

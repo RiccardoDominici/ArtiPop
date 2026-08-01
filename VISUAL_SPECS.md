@@ -86,6 +86,13 @@ mostrato — nessun colore, token o misura nuovi. `#dayfav` invisibile insieme a
 del giorno quando non c'è un viaggio da sfogliare; `#favpick`/`#favlist` invisibili quando il
 canale mostrato non ha alcun giorno segnato.
 
+Nota di connessione (`#netstate`, feat-la-home-dice-quando-sei-senza-rete): riga `.hint`
+dentro l'hero, subito dopo `#nextdrop` — stesso posto, stesso registro di linguaggio della
+nota di freschezza. Compare (toglie `hidden`) solo quando il browser dichiara l'assenza di
+rete (`navigator.onLine === false`), e sparisce da sola al ritorno della rete, senza
+ricaricare la pagina; nessun colore o misura nuovi oltre `.hint` (`.78rem`, colore `--dim`).
+Invisibile nell'HTML servito (`hidden`) a chi è online e a chi ha JavaScript disattivato.
+
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
 
