@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-l-aiuto-dice-dove-sono-finiti-i-canali-vecchi
+- Chi cercava un canale rinominato o sostituito (island, bloom, studio, neon, …) non trovava in
+  /aiuto nessuna traccia di dove fosse finito: la pagina /archivi che li elenca con i loro eredi
+  esisteva già ma non era collegata da nessuna parte nell'aiuto.
+- `help.js`: la voce FAQ esistente «Che fine fanno gli sfondi vecchi?» ora rimanda a
+  `<a href="/archivi">Archivi storici</a>`, spiegando che anche i canali non più attivi restano
+  sfogliabili lì. Nessuna voce nuova (il conteggio di 15 <details> è un invariante asserito da più
+  test di regressione), solo testo dentro un accordion chiuso di default: nessun impatto visivo.
+- Nuovo `aiuto-archivi.test.js`: verifica il link, il conteggio invariato e l'id/permalink
+  invariato della voce arricchita.
+
 ## 2026-08-01 — feat-la-home-mostra-il-giorno-nuovo-quando-torni
 - Chi lascia la scheda della home aperta (sera prima, telefono in tasca) al ritorno la ritrovava
   ferma al wallpaper di ieri, ancora etichettato "oggi": `TODAY` è una costante congelata dal
