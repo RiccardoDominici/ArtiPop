@@ -458,27 +458,3 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   dal server sopravvive a una seconda `carica()`; un profilo non toccato prende il valore nuovo del
   server; `carica({ scartaModifiche: true })` riallinea tutto; un concept sparito dalla risposta non
   riappare; a grep, solo `tab-range.js`/`$("reset")` passa `scartaModifiche: true`.
-
-## 2026-08-01 — s-il-catalogo-non-perde-in-silenzio-le-modifiche-al-form
-- Il form di concept/element della tab Catalogo viveva SOLO nel DOM: qualunque azione che lo
-  ridisegna (click su un'altra riga, "Nuovo", "Duplica", cambio Concept↔Element, "↻ Carica dal
-  Worker" della tab, "↻ Aggiorna" globale, salvataggio credenziali, cambio tab) buttava via senza
-  una parola tutto quello che l'utente aveva scritto — caso peggiore: mezz'ora di tappe riscritte
-  da capo.
-- `tuning/js/util.js`: nuovo `AP.util.formSporco(iniziale, corrente)`, confronto puro fra due
-  istantanee piatte del form (id→stringa); `false` se `iniziale` è null/undefined (nessun form
-  aperto o form built-in in sola lettura).
-- `tuning/js/tab-catalogo.js`: nuova `istantaneaForm()` (lettura pura dei campi `f-c-*`/`f-e-*` e
-  delle tappe attualmente renderizzate) e `formIniziale`, ribasata a ogni disegno di
-  `renderConceptForm()`/`renderElementForm()` — così un form appena caricato o appena salvato non
-  è mai "sporco". Nuova `confermaAbbandono()`, esposta su `AP.tabs.catalogo`: chiede conferma con
-  `confirm()` solo se ci sono modifiche non salvate, altrimenti procede senza chiedere nulla.
-  Anteposta alle cinque azioni che ridisegnano form/lista (click di riga in entrambe le liste,
-  "Nuovo", "Duplica", cambio tipo, "↻ Carica dal Worker" della tab).
-- `tuning/js/app.js`: `#globalReload`, `#saveCreds` e il click sulle `.tab` (quest'ultimo solo
-  quando la tab attiva è Catalogo) passano ora da `AP.tabs.catalogo?.confermaAbbandono?.()` prima
-  di procedere — `?.` obbligatorio, non deve rompersi se il modulo catalogo non è caricato.
-- Nuovo `backend/tests/unit/tuning-catalogo-modifiche.test.js`: `AP.util.formSporco` in sandbox
-  (identiche → false, un valore cambiato → true, un campo aggiunto/rimosso → true, `iniziale`
-  null/undefined → false) più il cablaggio a grep delle cinque azioni e dei tre handler di
-  `app.js`.

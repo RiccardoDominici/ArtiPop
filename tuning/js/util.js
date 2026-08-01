@@ -153,23 +153,6 @@ function diffProfilo(edit, server) {
 }
 AP.util.diffProfilo = diffProfilo;
 
-/* ---------- "il form ha modifiche non salvate?" ----------
-   Confronto puro fra due istantanee piatte (id→stringa) di uno stesso form,
-   usato dalla tab Catalogo (vedi tab-catalogo.js, istantaneaForm/
-   confermaAbbandono) per non buttare via silenziosamente quello che l'utente
-   ha scritto quando un'azione ridisegna il form. `iniziale` null/undefined
-   significa "nessun form aperto o form in sola lettura": mai "sporco" in quel
-   caso. Nessun accesso al DOM qui dentro: la parte testabile in sandbox. */
-function formSporco(iniziale, corrente) {
-  if (!iniziale) return false;
-  const chiavi = new Set([...Object.keys(iniziale), ...Object.keys(corrente || {})]);
-  for (const k of chiavi) {
-    if (iniziale[k] !== (corrente || {})[k]) return true;
-  }
-  return false;
-}
-AP.util.formSporco = formSporco;
-
 /* ---------- mini event emitter, usato da AP.store (vedi store.js) ---------- */
 // Non è un EventTarget del DOM di proposito: deve funzionare anche per dati che
 // non sono nodi (l'intero STORE), ed è più semplice da leggere per chi arriva dopo.

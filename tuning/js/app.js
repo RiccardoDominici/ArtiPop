@@ -19,27 +19,18 @@ function attivaTab(tab, params) {
   else if (tab === "lab") AP.tabs.lab?.onShow(params);
 }
 
-document.querySelectorAll(".tab").forEach((t) => t.onclick = () => {
-  // la guardia del Catalogo (form con modifiche non salvate) vale solo quando
-  // si sta LASCIANDO quella tab: cambiare fra le altre tre non la deve toccare.
-  const tabAttiva = document.querySelector(".tab.active")?.dataset.tab;
-  if (tabAttiva === "catalogo" && AP.tabs.catalogo?.confermaAbbandono?.() === false) return;
-  AP.util.route.vai(t.dataset.tab);
-});
+document.querySelectorAll(".tab").forEach((t) => t.onclick = () => AP.util.route.vai(t.dataset.tab));
 AP.util.route.on(({ tab, params }) => attivaTab(tab, params));
 
 /* ---------- credenziali + bottone "↻ Aggiorna" globale ---------- */
 AP.util.loadCreds();
 $("saveCreds").onclick = () => {
-  // `?.` obbligatorio: non deve rompersi se il modulo catalogo non è caricato.
-  if (AP.tabs.catalogo?.confermaAbbandono?.() === false) return;
   AP.util.saveCreds();
   setStatus($("connStatus"), "credenziali salvate");
   $("connStatus").className = "pill on";
   AP.store.carica();
 };
 $("globalReload").onclick = () => {
-  if (AP.tabs.catalogo?.confermaAbbandono?.() === false) return;
   $("globalReload").disabled = true;
   AP.store.carica().finally(() => { $("globalReload").disabled = false; });
 };

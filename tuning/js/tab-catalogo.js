@@ -24,36 +24,6 @@ let catalogoArrivato = false;
    selezionare direttamente il pannello giusto. */
 let catTipo = "concept";
 
-/* ---------- guardia "modifiche non salvate" ----------
-   `formIniziale` è l'istantanea del form appena disegnato (null quando non c'è
-   nessun form aperto o è in sola lettura, vedi renderConceptForm/
-   renderElementForm): il ribasamento avviene lì, ad ogni disegno. Ogni azione
-   che ridisegna form/lista deve prima passare da confermaAbbandono(). */
-let formIniziale = null;
-
-/* legge i campi del form ATTUALMENTE renderizzato (solo lettura, niente
-   validazione/classList: a differenza di readNum/readOptionalNum questa
-   funzione non deve avere effetti collaterali sul DOM). Il tipo (concept o
-   element) è quello corrente in `catTipo`. */
-function istantaneaForm() {
-  const out = {};
-  const prefisso = catTipo === "concept" ? "f-c-" : "f-e-";
-  document.querySelectorAll(`#catForm input[id^="${prefisso}"], #catForm textarea[id^="${prefisso}"], #catForm select[id^="${prefisso}"]`)
-    .forEach((el) => { out[el.id] = el.type === "checkbox" ? (el.checked ? "true" : "false") : el.value; });
-  if (catTipo === "concept") {
-    document.querySelectorAll('#catForm [data-tappa]').forEach((ta) => { out[`tappa-${ta.dataset.tappa}`] = ta.value; });
-  }
-  return out;
-}
-
-/* true se si può procedere (nulla da perdere, o l'utente ha confermato).
-   Chiamata da ogni azione che ridisegnerebbe form/lista (vedi sotto). */
-function confermaAbbandono() {
-  if (!AP.util.formSporco(formIniziale, istantaneaForm())) return true;
-  const nome = (catTipo === "concept" ? conceptForm?.nome : elementForm?.nome) || "";
-  return confirm(`Ci sono modifiche non salvate al concept/element «${nome}»: se continui vanno perse. Continuare?`);
-}
-
 function syncSegButtons() {
   document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => b.classList.toggle("active", b.dataset.tipo === catTipo));
 }
@@ -166,7 +136,7 @@ function renderConceptList() {
     row.className = "itemrow" + (c.id === conceptSel ? " active" : "");
     row.innerHTML = `<span>${esc(c.nome)}<br><code>${esc(c.id)}</code><br><span class="hint" style="font-size:11px">${usoConceptTxt(c.id)}</span></span>
       <span class="badges"><span class="badge ${c.custom ? 'custom' : ''}">${c.custom ? 'custom' : 'built-in'}</span></span>`;
-    row.onclick = () => { if (confermaAbbandono()) selectConcept(c.id); };
+    row.onclick = () => selectConcept(c.id);
     wrap.appendChild(row);
   }
   if (!items.length) wrap.innerHTML = `<div class="hint">nessun concept nel catalogo.</div>`;
@@ -214,7 +184,6 @@ function renderConceptForm() {
   if (!conceptForm) {
     box.innerHTML = `<div class="hint">Seleziona un concept dalla lista per vederne i dettagli, crea un "Nuovo" concept da zero,
       oppure seleziona un built-in e premi "Duplica" per partire da uno schema già scritto.</div>`;
-    formIniziale = null;
     return;
   }
   const f = conceptForm;
@@ -308,7 +277,6 @@ function renderConceptForm() {
     // controllo vero al prossimo tentativo di salvataggio.
     if (conceptIsNew) $("f-c-id").oninput = () => showIdFieldError($("f-c-id"), $("f-c-idErr"), "");
   }
-  formIniziale = readOnly ? null : istantaneaForm();
 }
 
 function showConceptErrors(list) {
@@ -426,7 +394,7 @@ function renderElementList() {
         <span class="badge ${e.custom ? 'custom' : ''}">${e.custom ? 'custom' : 'built-in'}</span>
         ${e.pubblicato ? `<span class="badge pub">${esc(e.canale || 'pubblicato')}</span>` : ''}
       </span>`;
-    row.onclick = () => { if (confermaAbbandono()) selectElement(e.id); };
+    row.onclick = () => selectElement(e.id);
     wrap.appendChild(row);
   }
   if (!items.length) wrap.innerHTML = `<div class="hint">nessun element nel catalogo.</div>`;
@@ -475,7 +443,6 @@ function renderElementForm() {
   if (!elementForm) {
     box.innerHTML = `<div class="hint">Seleziona un element dalla lista per vederne i dettagli, crea un "Nuovo" element da zero,
       oppure seleziona un built-in e premi "Duplica" per partire da un soggetto già scritto.</div>`;
-    formIniziale = null;
     return;
   }
   const f = elementForm;
@@ -553,7 +520,6 @@ function renderElementForm() {
     $("f-e-pub").onchange = (ev) => { $("f-e-canale").disabled = !ev.target.checked; };
     if (elementIsNew) $("f-e-id").oninput = () => showIdFieldError($("f-e-id"), $("f-e-idErr"), "");
   }
-  formIniziale = readOnly ? null : istantaneaForm();
 }
 
 function showElementErrors(list) {
@@ -652,14 +618,13 @@ function renderCatForm() { if (catTipo === "element") renderElementForm(); else 
 
 document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => {
   b.onclick = () => {
-    if (!confermaAbbandono()) return;
     catTipo = (b.dataset.tipo === "element") ? "element" : "concept";
     afterCatSelectionChange();
   };
 });
-$("catNew").onclick = () => { if (confermaAbbandono()) (catTipo === "element" ? newElement() : newConcept()); };
-$("catDup").onclick = () => { if (confermaAbbandono()) (catTipo === "element" ? duplicateElement() : duplicateConcept()); };
-$("catReload").onclick = () => { if (confermaAbbandono()) AP.store.carica(); };
+$("catNew").onclick = () => (catTipo === "element" ? newElement() : newConcept());
+$("catDup").onclick = () => (catTipo === "element" ? duplicateElement() : duplicateConcept());
+$("catReload").onclick = () => AP.store.carica();
 
 /* ==================================================================
    PANNELLO "DOVE È USATO" — in testa al form della voce selezionata
@@ -841,7 +806,6 @@ AP.store.on("usi", () => { renderCatList(); renderDoveUsato(); });
 
 /* ---------- rotta: #catalogo?tipo=concept|element&id=... ---------- */
 AP.tabs.catalogo = {
-  confermaAbbandono,
   onShow(params = {}) {
     catTipo = (params.tipo === "element") ? "element" : "concept";
     syncSegButtons();
