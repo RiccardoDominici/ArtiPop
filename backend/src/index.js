@@ -36,6 +36,7 @@ import { effectiveProfiles, saveTuning, clearTuning, defaultProfiles, dropTuning
 import { runLabArc, getLabImage } from "./lab.js";
 import { ELEMENTS } from "./concepts.js";
 import { FAMILIES } from "./families.js";
+import { FAMIGLIE_SOSPESE, ELEMENT_SOSPESI } from "./config.js";
 // Il catalogo (concept/element aggiunti dall'utente, vedi catalog.js): si
 // carica UNA volta per richiesta e si passa in giro, invece di rileggere KV
 // a ogni chiamata a resolveConcept/poolForWith dentro lo stesso giro.
@@ -287,8 +288,11 @@ export default {
           },
           maxDeriva: fam.profilo.maxDeriva ?? fam.maxDeriva ?? null,
           maxDegrado: fam.profilo.maxDegrado ?? fam.maxDegrado ?? null,
+          sospeso: FAMIGLIE_SOSPESE.includes(id),
         })),
-        ...Object.values(catalog.concepts).map((c) => ({ ...c, custom: true })),
+        ...Object.values(catalog.concepts).map((c) => ({
+          ...c, custom: true, sospeso: FAMIGLIE_SOSPESE.includes(c.id),
+        })),
       ];
 
       const elements = [
@@ -310,8 +314,13 @@ export default {
           extra: e.extra,
           pubblicato: true,
           canale: CHANNELS.find((c) => c.famiglie.includes(e.famigliaNativa))?.id ?? null,
+          sospeso: ELEMENT_SOSPESI.includes(e.id) || FAMIGLIE_SOSPESE.includes(e.famigliaNativa),
         })),
-        ...Object.values(catalog.elements).map((e) => ({ ...e, custom: true })),
+        ...Object.values(catalog.elements).map((e) => ({
+          ...e,
+          custom: true,
+          sospeso: ELEMENT_SOSPESI.includes(e.id) || FAMIGLIE_SOSPESE.includes(e.famigliaNativa),
+        })),
       ];
 
       return jsonCors({ concepts, elements });
