@@ -639,6 +639,19 @@ if (!sharedChannelId) {
   }
 }
 
+/* ---------- import dei preferiti da link (?fav=<date>) ----------
+   feat-porta-i-tuoi-preferiti-su-un-altro-telefono: applicato una sola
+   volta all'avvio, sul canale portato in cima da uno dei due blocchi sopra
+   (order[0]) — PRIMA del primo renderFavList, che legge già i preferiti
+   salvati. Stesso principio difensivo del resto del modulo: un import
+   fallito non deve mai rompere la home. */
+try {
+  const favParam = sharedParams.get("fav");
+  if (favParam) importaPreferiti(CHANNELS[order[0]].id, favParam);
+} catch {
+  /* import fallito: la home resta usabile, i preferiti restano quelli già salvati */
+}
+
 /* ---------- memoria dei preferiti (localStorage, per canale) ----------
    feat-segna-i-giorni-che-ti-piacciono: stesso principio difensivo della
    memoria del canale sopra — try/catch su ogni accesso, ripiego a oggetto
@@ -678,6 +691,42 @@ function togglePreferito(chId, date) {
     ? attuali.filter((d) => d !== date)
     : [...attuali, date];
   scriviPreferiti(tutti);
+}
+
+// Link di trasferimento: le date preferite di un canale, in un solo
+// parametro leggibile da importaPreferiti su un altro dispositivo. Nessun
+// link per un canale senza preferiti — non c'è nulla da trasferire.
+function linkPreferiti(chId) {
+  const date = preferitiDi(chId);
+  if (date.length === 0) return "";
+  return ORIGIN + "/?c=" + chId + "&fav=" + date.join(",");
+}
+// Vero solo per date in formato YYYY-MM-DD che esistono davvero nel
+// calendario — un controllo di solo formato lascerebbe passare assurdità
+// come "2026-13-99", che è comunque quattro-due-due cifre.
+function dataValida(s) {
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split("-").map(Number);
+  if (m < 1 || m > 12) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+// Importa in preferitiDi(chId) le date valide contenute nel parametro fav
+// (stringa separata da virgole): unione con quanto già salvato, mai
+// sostituzione — un secondo import della stessa URL non deve né duplicare
+// né perdere i preferiti presenti. Ritorna quante date sono state aggiunte
+// davvero; con niente da aggiungere non tocca lo storage.
+function importaPreferiti(chId, grezzo) {
+  if (!grezzo) return 0;
+  const candidate = [...new Set(grezzo.split(",").map((s) => s.trim()).filter(dataValida))];
+  if (candidate.length === 0) return 0;
+  const tutti = leggiPreferiti();
+  const attuali = Array.isArray(tutti[chId]) ? tutti[chId] : [];
+  const nuove = candidate.filter((d) => !attuali.includes(d));
+  if (nuove.length === 0) return 0;
+  tutti[chId] = [...attuali, ...nuove];
+  scriviPreferiti(tutti);
+  return nuove.length;
 }
 
 /* ---------- toast pill (già in VISUAL_SPECS §1.4, mai usato finora) ---------- */
@@ -1315,6 +1364,33 @@ function renderFavList(chId) {
       goToArc(chId, arcIdx, d);
     });
     favListEl.appendChild(row);
+  }
+  // Ultima riga del pannello: copia il link di trasferimento dei preferiti
+  // di questo canale (feat-porta-i-tuoi-preferiti-su-un-altro-telefono).
+  // Stessa .arcrow delle righe dei giorni — nessun componente nuovo — e
+  // solo quando c'è almeno un preferito da trasferire.
+  if (preferiti.length > 0) {
+    const copyRow = document.createElement("button");
+    copyRow.type = "button";
+    copyRow.className = "arcrow";
+    const label = document.createElement("span");
+    label.className = "arcdate";
+    label.textContent = "↗";
+    const text = document.createElement("span");
+    text.className = "arctext";
+    text.textContent = "copia il link dei tuoi preferiti";
+    copyRow.appendChild(label);
+    copyRow.appendChild(text);
+    copyRow.addEventListener("click", async () => {
+      const link = linkPreferiti(chId);
+      try {
+        await copiaNegliAppunti(link);
+        toast("link copiato");
+      } catch {
+        toast(link);
+      }
+    });
+    favListEl.appendChild(copyRow);
   }
   // Nessun preferito per questo canale: niente comando, niente elenco —
   // stessa regola di #arcpick con meno di due archi.

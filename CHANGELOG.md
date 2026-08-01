@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-porta-i-tuoi-preferiti-su-un-altro-telefono
+- I giorni segnati preferiti (ciclo 98) vivevano solo nel localStorage del browser: cambiando
+  telefono, o svuotando i dati di Safari, si perdevano senza preavviso e senza modo di rifarli.
+- `page.js`: il pannello «i tuoi preferiti» (`#favlist`) ha ora, come ultima riga, un comando che
+  copia un link `?c=<canale>&fav=<date>` con tutte le date preferite del canale (`linkPreferiti`).
+  All'avvio, se l'indirizzo porta un parametro `fav`, `importaPreferiti` ne applica le date valide
+  al canale mostrato: unione con i preferiti già presenti, mai sostituzione, così riaprire lo
+  stesso link non produce doppioni. Nessun bottone nuovo in barra comandi, nessuna nuova classe
+  CSS: solo `.arcrow`/`.arcdate`/`.arctext` già in VISUAL_SPECS §1.4.
+
 ## 2026-08-01 — feat-il-feed-racconta-il-giorno
 - L'`<item>` del feed RSS (`/feed/<flusso>.xml` e `/feed.xml`) portava solo un `<img>` muto: il
   racconto del giorno e la posizione nell'arco, che la home sa già mostrare, non arrivavano a chi
