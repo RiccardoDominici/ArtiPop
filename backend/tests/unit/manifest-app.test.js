@@ -23,6 +23,42 @@ describe("renderManifest", () => {
     expect(json.icons[0].src).toBe("/icona.svg");
     expect(json.icons[0].type).toBe("image/svg+xml");
   });
+
+  it("shortcuts contiene Archivi storici e Aiuto, in quest'ordine, dentro scope", () => {
+    const json = JSON.parse(renderManifest());
+
+    expect(Array.isArray(json.shortcuts)).toBe(true);
+    expect(json.shortcuts.length).toBe(2);
+
+    const [archivi, aiuto] = json.shortcuts;
+    expect(archivi.url).toBe("/archivi");
+    expect(aiuto.url).toBe("/aiuto");
+
+    for (const voce of json.shortcuts) {
+      expect(voce.name.length).toBeGreaterThan(0);
+      expect(voce.short_name.length).toBeGreaterThan(0);
+      expect(voce.url.startsWith(json.scope)).toBe(true);
+    }
+  });
+
+  it("il campo shortcuts non cambia i campi preesistenti (nessuna regressione sull'installabilità)", () => {
+    const json = JSON.parse(renderManifest());
+
+    expect(json.name).toBe("ArtiPop");
+    expect(json.start_url).toBe("/");
+    expect(json.scope).toBe("/");
+    expect(json.display).toBe("standalone");
+    expect(json.background_color).toBe("#0a0b10");
+    expect(json.theme_color).toBe("#0a0b10");
+    expect(json.icons).toEqual([
+      {
+        src: "/icona.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+        purpose: "any maskable",
+      },
+    ]);
+  });
 });
 
 describe("iconaSvg", () => {
