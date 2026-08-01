@@ -16,6 +16,21 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-i-vecchi-indirizzi-aprono-il-canale-erede
+- Un link con un vecchio nome di canale (`?c=island`, `?c=studio`, …) apriva la home sul canale
+  di default, ignorando l'alias: `channels.js` dichiara che quegli indirizzi "devono continuare a
+  funzionare per sempre" e ogni rotta di generazione già li risolve, ma la home no — chi ha una
+  Shortcut vecchia o un link salvato arrivava su un canale che non aveva chiesto, senza avviso.
+- `page.js`: iniettata la mappa `LEGACY_ALIASES` nello script client (`ALIAS`); il blocco che legge
+  `?c=` ora tenta la traduzione via alias solo se l'id non è già un flusso attivo, e conserva
+  `pendingSharedDate` quando la traduzione riesce (la guardia esistente in `renderJourney` scarta
+  da sé un giorno assente dall'archivio del canale erede).
+- `index.js`: `risolviCondiviso` accetta anche un alias storico (via `resolveChannel`), ma l'og:image
+  continua a leggere l'archivio dell'id RICHIESTO, non del canale erede — coerente con `/w/<alias>`
+  che serve già l'archivio storico intatto.
+- Nessuna modifica visiva: la home apre semplicemente un'altra card in cima, nessuna baseline
+  toccata.
+
 ## 2026-08-01 — feat-cerca-il-tuo-problema-nell-aiuto
 - `/aiuto` ha 14 voci tutte chiuse per default e il sottotitolo promette «Cerca il tuo sintomo
   qui sotto», ma finora nessuno strumento manteneva quella promessa: bisognava aprire le

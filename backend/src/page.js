@@ -16,7 +16,7 @@
 //  - Sfondo ambient con gradiente animato che segue i colori del canale in cima.
 //  - Nessuna risorsa esterna: font di sistema, CSS e JS inline.
 
-import { ACTIVE_CHANNELS } from "./channels.js";
+import { ACTIVE_CHANNELS, LEGACY_ALIASES } from "./channels.js";
 import { FAVICON_TAG, metaAnteprima } from "./head.js";
 
 // feat-quando-arriva-il-prossimo-wallpaper: specchio di triggers.crons in
@@ -458,6 +458,10 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
 "use strict";
 // Dati canali resi dal server (solo campi pubblici).
 const CHANNELS = ${JSON.stringify(channelData)};
+// Vecchi id di canale (Shortcut/link storici) → id del flusso attivo che ne
+// ha raccolto l'eredità: serve qui per far aprire ?c=<alias> sul flusso
+// erede invece di ignorarlo (feat-i-vecchi-indirizzi-aprono-il-canale-erede).
+const ALIAS = ${JSON.stringify(LEGACY_ALIASES)};
 const ORIGIN = ${JSON.stringify(origin)};
 const TODAY = ${JSON.stringify(dateKey)};
 const ORA_CRON_UTC = ${JSON.stringify(ORA_CRON_UTC)};
@@ -505,9 +509,12 @@ const sharedDateParam = sharedParams.get("d");
 let pendingSharedDate =
   sharedDateParam && /^\\d{4}-\\d{2}-\\d{2}$/.test(sharedDateParam) ? sharedDateParam : null;
 if (sharedChannelId) {
-  const idx = CHANNELS.findIndex((c) => c.id === sharedChannelId);
+  let idx = CHANNELS.findIndex((c) => c.id === sharedChannelId);
+  if (idx === -1 && ALIAS[sharedChannelId]) {
+    idx = CHANNELS.findIndex((c) => c.id === ALIAS[sharedChannelId]);
+  }
   if (idx !== -1) order = [idx, ...order.filter((i) => i !== idx)];
-  else pendingSharedDate = null; // canale sconosciuto: home normale su oggi, niente giorno da applicare
+  else pendingSharedDate = null; // canale sconosciuto (né flusso attivo né alias): home normale su oggi, niente giorno da applicare
 }
 
 /* ---------- memoria del canale (localStorage, solo su questo dispositivo) ----------
