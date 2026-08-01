@@ -66,6 +66,11 @@ Stato attuale: foglio di stile autonomo, parzialmente disallineato dal sito
   code `ui-monospace, SFMono-Regular, Menlo`.
 - Componente distintivo: accordion `<details>/<summary>` con marker `＋/－`;
   variante "hot" con bordo `rgba(143,211,255,.42)`.
+- Componente di ricerca: campo `<input type="search">` in cima, sotto il sottotitolo — bordo
+  `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `14px`, testo `#f2f3f8`,
+  placeholder `#9aa3b8`, altezza minima `44px` (nessun token nuovo, riuso di quelli esistenti).
+  Nasce `hidden` nel markup servito: compare solo se lo script della pagina gira (progressive
+  enhancement), così senza JavaScript la pagina resta identica a prima.
 - Layout: colonna `max-width:720px`, design piatto (niente blur/gradienti): è una pagina di lettura.
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
