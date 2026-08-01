@@ -339,7 +339,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            quello che serve: qui si sfoglia l'arco/settimana in corso (max 7
            giorni, un solo concept), non l'intero archivio permanente — che
            attraversa più concept e mischierebbe storie diverse. -->
-      <p class="hint">Solo questa settimana, giorno per giorno.</p>
+      <p class="hint">Solo questa settimana, giorno per giorno — ↔ scorri o usa le frecce.</p>
       <!-- Niente più miniature: l'archivio si guarda nel mockup qui sopra.
            Qui restano solo data del fotogramma, posizione nel viaggio e le
            frecce giorno prec./succ. — senza, si perderebbe ogni riferimento
@@ -1072,6 +1072,35 @@ journeyEl.addEventListener("keydown", (e) => {
   stepDay(e.key === "ArrowLeft" ? -1 : 1);
 });
 
+/* Sfoglia i giorni col dito, come il mazzo dei canali (attachDrag, riga 691)
+   ma senza trascinare nulla: .journey non è una card, resta ferma. Nessun
+   preventDefault su pointermove, così lo scorrimento verticale della pagina
+   resta libero; solo un trascinamento prevalentemente orizzontale e ampio
+   conta come gesto. */
+let journeySwipe = null;
+function attachJourneySwipe() {
+  journeyEl.addEventListener("pointerdown", (e) => {
+    if (daynavEl.hidden) return; // nessun archivio sfogliabile
+    if (e.target.closest("button, a")) return;
+    journeySwipe = { x0: e.clientX, y0: e.clientY };
+  });
+  journeyEl.addEventListener("pointermove", (e) => {
+    if (!journeySwipe) return;
+    journeySwipe.dx = e.clientX - journeySwipe.x0;
+    journeySwipe.dy = e.clientY - journeySwipe.y0;
+  });
+  const end = () => {
+    if (!journeySwipe) return;
+    const { dx, dy } = journeySwipe;
+    journeySwipe = null;
+    if (dx === undefined) return;
+    if (Math.abs(dx) <= 48 || Math.abs(dx) <= Math.abs(dy)) return;
+    stepDay(dx > 0 ? -1 : 1);
+  };
+  journeyEl.addEventListener("pointerup", end);
+  journeyEl.addEventListener("pointercancel", () => { journeySwipe = null; });
+}
+
 // Governa insieme "arco precedente" e "arco successivo": arcprev visibile
 // solo se esiste un arco più vecchio non ancora raggiunto, arcnext visibile
 // solo se si è già scesi in un arco passato (idx > 0, l'arco in corso è 0).
@@ -1232,6 +1261,7 @@ function startPlayback() {
 
 playEl.addEventListener("click", () => (playing ? stopPlayback() : startPlayback()));
 
+attachJourneySwipe();
 buildDeck();
 </script>
 </body>
