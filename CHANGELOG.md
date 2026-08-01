@@ -634,3 +634,20 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate contro il dev server locale (la
   nuova sezione non è ancora in produzione, quindi il confronto va fatto contro il codice del
   ciclo, non contro il sito live).
+
+## 2026-08-01 — feat-condividi-il-giorno-che-stai-guardando
+- La home ottiene un link condivisibile al giorno esatto mostrato: un bottone "copia link" (pill
+  ghost già canonica) accanto alla navigazione dei giorni compone `<origin>/?c=<canale>&d=<data>`
+  per il canale in cima e il giorno effettivamente in anteprima, e lo copia con
+  `navigator.clipboard.writeText`, confermando col toast pill già presente (mai usato finora nel
+  client). Prima chi condivideva l'indirizzo della home faceva vedere all'amico oggi, non la scena
+  che stava guardando — completa "il viaggio racconta il giorno" del ciclo 47 con la sua forma
+  raggiungibile.
+- Se la clipboard non è disponibile o rifiuta (contesto non sicuro, permesso negato), l'indirizzo
+  si mostra in chiaro nel toast invece di lanciare: l'utente può sempre selezionarlo a mano.
+- All'avvio la home legge `c`/`d` da `location.search`: un canale noto va in cima al deck, una
+  data valida (`YYYY-MM-DD`) e presente nell'archivio di quel canale si mostra ferma (niente
+  autoplay, così chi arriva da un link vede subito la scena condivisa). Canale sconosciuto o data
+  malformata/assente: home normale su oggi, nessun errore.
+- Nuovo `backend/tests/unit/home-link-al-giorno.test.js`; baseline visive
+  `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo bottone.
