@@ -701,3 +701,22 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   `updateDayNav()` allo stesso `srcFor()` di `#dayopen` più `&dl=1`. Nessuna nuova regola CSS.
 - Nuovi `backend/tests/integration/w-download.test.js` e `backend/tests/unit/home-salva-immagine.test.js`;
   baseline visive `tests/visual/baseline/home-{mobile,desktop}.png` rigenerate per il nuovo bottone.
+
+## 2026-08-01 — feat-l-anteprima-del-link-condiviso-mostra-quel-giorno
+- Il link per-giorno esisteva dal ciclo 48 (`?c=<canale>&d=<data>`), ma solo lato client:
+  `head.js:metaAnteprima` costruiva sempre `og:image=/w/natura?v=<oggi>`, quindi condividere il
+  giorno 28 luglio di «citta» in chat mostrava comunque il wallpaper di oggi di «natura» — il link
+  portava alla cosa giusta, l'anteprima raccontava un'altra.
+- `metaAnteprima(origin, todayKey, title, description, condiviso)` accetta ora un quinto argomento
+  opzionale `{ canale, data }`: quando presente, `og:image` diventa `/w/<canale>?date=<data>`,
+  `og:url` diventa `/?c=<canale>&d=<data>` e `og:title` cita canale e data estesa in italiano;
+  assente, markup identico a prima byte per byte.
+- La rotta `/` (`index.js`) legge `?c=`/`?d=` con `risolviCondiviso()`: canale deve essere un flusso
+  attivo per id esatto (lo stesso insieme che il deck riconosce lato client), data in formato
+  YYYY-MM-DD, calendario reale, non futura — qualunque condizione cada, `condiviso = null` e la
+  pagina resta quella di oggi, mai un `og:image` verso una rotta inesistente.
+- `renderPage` inoltra `condiviso` a `metaAnteprima` e nient'altro: nessuna modifica al `<body>`,
+  nessuna baseline visiva da rigenerare.
+- Nuovo `backend/tests/unit/home-anteprima-giorno-condiviso.test.js`; `anteprima-social.test.js`
+  esteso con la copertura end-to-end sulla rotta (valida, canale ignoto, data malformata, data
+  futura).

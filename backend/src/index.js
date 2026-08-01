@@ -88,6 +88,33 @@ function nonAutorizzato(request, env, opzioni, respond) {
   return respond({ error: "non autorizzato" }, 403);
 }
 
+/**
+ * Legge `?c=<canale>&d=<data>` sulla rotta `/` (feat-condividi-il-giorno-
+ * che-stai-guardando, ciclo 48) e li valida per l'anteprima social. Criterio
+ * restrittivo: il canale deve essere un flusso ATTIVO per id esatto (lo
+ * stesso insieme che il deck lato client riconosce, vedi page.js — un alias
+ * storico non aprirebbe comunque il giorno nel deck), la data deve avere
+ * formato YYYY-MM-DD, essere una data di calendario reale (non "2026-02-30")
+ * e non futura rispetto a oggi. Una condizione qualsiasi che cade → `null`,
+ * mai un `og:image` verso una rotta che non esiste.
+ */
+function risolviCondiviso(url, oggi) {
+  const canale = url.searchParams.get("c");
+  const data = url.searchParams.get("d");
+  if (!canale || !data) return null;
+  if (!ACTIVE_CHANNELS.some((c) => c.id === canale)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
+  const [anno, mese, giorno] = data.split("-").map(Number);
+  const parsed = new Date(Date.UTC(anno, mese - 1, giorno));
+  const dataReale =
+    parsed.getUTCFullYear() === anno &&
+    parsed.getUTCMonth() === mese - 1 &&
+    parsed.getUTCDate() === giorno;
+  if (!dataReale) return null;
+  if (data > oggi) return null;
+  return { canale, data };
+}
+
 /** Risposta JSON con status. */
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -869,7 +896,14 @@ export default {
           metas[c.id] = await getMeta(env, c.id);
         })
       );
-      return new Response(renderPage(metas, url.origin, todayKey()), {
+      // Link per-giorno (?c=<canale>&d=<data>, feat-condividi-il-giorno-che-
+      // stai-guardando ciclo 48): se validi, l'anteprima social segue quel
+      // giorno invece del wallpaper di oggi. Validazione restrittiva — ogni
+      // condizione che cade riporta a `condiviso = null`, mai un og:image
+      // verso una rotta che non esiste.
+      const oggi = todayKey();
+      const condiviso = risolviCondiviso(url, oggi);
+      return new Response(renderPage(metas, url.origin, oggi, condiviso), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300",
           ...SECURITY_HEADERS,
