@@ -16,6 +16,21 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-il-lab-non-brucia-neuroni-di-produzione-per-sbaglio
+- Nuovo `tuning/js/ambiente.js` (`AP.ambiente.classifica`): riconosce se la base a cui il tool
+  parla è preview, produzione o sconosciuta, confrontando l'hostname con `artipop-preview.` e con
+  `AP.util.DEFAULT_BASE`.
+- `tuning/js/tab-lab.js`, `eseguiRun` (unico punto da cui parte `POST /lab/arc`, condiviso dal
+  bottone principale e da "↻ rigenera"): fuori da preview chiede ora una conferma esplicita che
+  nomina l'host di destinazione e i giorni richiesti, prima di spendere neuroni. Perché: `/lab/arc`
+  è l'unica chiamata del tool che consuma neuroni AI, dallo stesso budget del cron giornaliero di
+  produzione (ROADMAP «Regole di budget AI») — un clic distratto sulla base sbagliata non deve
+  poterlo intaccare in silenzio, come già valeva per "📌 Pubblica in produzione". Annullando: nessuna
+  richiesta parte, nessun run entra nello storico, toast neutro "annullato".
+- `tuning/index.html`: carica `js/ambiente.js` dopo `js/util.js` e prima di `js/tab-lab.js`.
+- Nuovo `backend/tests/unit/tuning-ambiente.test.js`: copre `classifica()` su preview/produzione/
+  input non validi e verifica a grep il cablaggio (ordine script, controllo prima della chiamata).
+
 ## 2026-08-01 — s-uno-stato-illeggibile-non-blocca-un-flusso-per-sempre
 - `backend/src/storage.js`, `getState`/`getMeta`: erano le uniche letture KV del progetto senza
   rete, fuori dal try/catch di `fetch()` (ciclo `s-rete-di-sicurezza-globale-sul-worker`, che protegge
