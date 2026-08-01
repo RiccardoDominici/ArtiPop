@@ -79,6 +79,13 @@ Stato attuale: foglio di stile autonomo, parzialmente disallineato dal sito
   Nasce `hidden` nel markup servito: compare solo se lo script della pagina gira (progressive
   enhancement), così senza JavaScript la pagina resta identica a prima.
 - Layout: colonna `max-width:720px`, design piatto (niente blur/gradienti): è una pagina di lettura.
+- Blocco stato dei canali (feat-l-aiuto-dice-se-il-canale-e-fermo): elenco piatto (`<ul>` senza
+  bullet) subito sotto il campo di ricerca, prima della sezione «Qualcosa non funziona». Una riga
+  per canale: nome in `#f2f3f8` a sinistra, esito in `#9aa3b8` a destra ("aggiornato oggi" /
+  "fermo da N giorni" / "nessuna immagine ancora"). Separatore `rgba(255,255,255,.08)` fra le
+  righe, nessun colore semaforo. Nessun token nuovo. Reso dal server: compare solo quando lo
+  stato dei canali è disponibile (assente in caso di errore di lettura — la pagina resta identica
+  a prima, mai un contenitore vuoto).
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 
