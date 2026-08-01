@@ -140,6 +140,7 @@ input.invalid, textarea.invalid { border-color:var(--bad) !important; background
 .badge { font-size:10px; padding:2px 7px; border-radius:999px; border:1px solid var(--line); color:var(--dim); white-space:nowrap; }
 .badge.custom { color:var(--accent); border-color:var(--accent); }
 .badge.pub { color:var(--ok); border-color:var(--ok); }
+.badge.sospeso { color:var(--warn); border-color:var(--warn); }
 .field { margin-bottom:13px; }
 .field label { display:block; color:var(--dim); font-size:12.5px; margin-bottom:4px; }
 .field label .lock { font-weight:400; color:var(--dim); font-size:11px; }

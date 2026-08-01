@@ -135,7 +135,7 @@ function renderConceptList() {
     const row = document.createElement("div");
     row.className = "itemrow" + (c.id === conceptSel ? " active" : "");
     row.innerHTML = `<span>${esc(c.nome)}<br><code>${esc(c.id)}</code><br><span class="hint" style="font-size:11px">${usoConceptTxt(c.id)}</span></span>
-      <span class="badges"><span class="badge ${c.custom ? 'custom' : ''}">${c.custom ? 'custom' : 'built-in'}</span></span>`;
+      <span class="badges"><span class="badge ${c.custom ? 'custom' : ''}">${c.custom ? 'custom' : 'built-in'}</span>${c.sospeso === true ? '<span class="badge sospeso">sospeso</span>' : ''}</span>`;
     row.onclick = () => selectConcept(c.id);
     wrap.appendChild(row);
   }
@@ -195,6 +195,7 @@ function renderConceptForm() {
   box.innerHTML = `
     ${readOnly ? `<div class="readonly-banner">Questo è un concept <b>built-in</b>, scritto nel codice: è di sola lettura qui.
       Usa "Duplica" per crearne una tua versione modificabile.</div>` : ""}
+    ${f.sospeso === true ? `<div class="hint">sospeso dalla pesca: nessun flusso lo pesca finché non è tarato (un arco già aperto o il lab per id continuano a funzionare)</div>` : ""}
     <div id="conceptErrors"></div>
     <div class="field">
       <label>id ${idLocked ? '<span class="lock">(non modificabile dopo la creazione)</span>' : ''}</label>
@@ -393,6 +394,7 @@ function renderElementList() {
       <span class="badges">
         <span class="badge ${e.custom ? 'custom' : ''}">${e.custom ? 'custom' : 'built-in'}</span>
         ${e.pubblicato ? `<span class="badge pub">${esc(e.canale || 'pubblicato')}</span>` : ''}
+        ${e.sospeso === true ? '<span class="badge sospeso">sospeso</span>' : ''}
       </span>`;
     row.onclick = () => selectElement(e.id);
     wrap.appendChild(row);
@@ -463,6 +465,7 @@ function renderElementForm() {
   box.innerHTML = `
     ${readOnly ? `<div class="readonly-banner">Questo è un element <b>built-in</b>, scritto nel codice: è di sola lettura qui.
       Usa "Duplica" per crearne una tua versione modificabile.</div>` : ""}
+    ${f.sospeso === true ? `<div class="hint">sospeso dalla pesca: nessun flusso lo pesca finché non è tarato (un arco già aperto o il lab per id continuano a funzionare)</div>` : ""}
     ${coppiaHTML}
     <div id="elementErrors"></div>
     <div class="field">
