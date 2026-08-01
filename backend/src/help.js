@@ -145,7 +145,16 @@ const FAQ = [
       sempre raggiungibile, del tipo <code>/w/natura?date=2026-07-16</code>. Anche i canali che
       non esistono più — rinominati o sostituiti da uno nuovo — conservano il loro archivio
       intatto: si sfoglia giorno per giorno dalla pagina <a href="/archivi">Archivi storici</a>,
-      che indica anche quale canale attivo ne raccoglie l'eredità.`,
+      che indica anche quale canale attivo ne raccoglie l'eredità.
+      <br><br>
+      Se un giorno passato ti piace in particolare, mentre lo sfogli dalla home tocca
+      <strong>«☆ segna preferito»</strong>: lo ritrovi poi nel pannello
+      <strong>«i tuoi preferiti»</strong>. È una memoria del browser (localStorage), tenuta
+      per canale solo su questo dispositivo: svuotare i dati del sito la cancella, e un altro
+      telefono non la vede.
+      Per portarla con te, il pannello offre un <strong>link di trasferimento</strong> che
+      raccoglie tutte le date preferite del canale: aprilo sull'altro dispositivo e i preferiti
+      si aggiungono a quelli già presenti, senza duplicati.`,
   },
   {
     q: "A che ora viene generato lo sfondo del giorno?",
