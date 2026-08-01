@@ -885,7 +885,24 @@ export default {
 
     // ---- Pagina di aiuto ----
     if (path === "/aiuto" || path === "/aiuto.html" || path === "/help") {
-      return new Response(renderHelpPage(), {
+      // feat-l-aiuto-dice-se-il-canale-e-fermo: stesso stato di /health
+      // (getState + buildFreschezzaState), letto qui SOLO per mostrarlo —
+      // nessuna scrittura KV, nessuna chiamata AI/IMAGES. Qualunque lettura
+      // fallita (KV assente/rotto) riporta alla pagina di sempre: /aiuto è
+      // il posto dove si arriva quando qualcosa non va, non deve MAI essere
+      // lei stessa a rompersi.
+      let stato = null;
+      try {
+        const states = await Promise.all(ACTIVE_CHANNELS.map((c) => getState(env, c.id)));
+        const oggi = todayKey();
+        stato = ACTIVE_CHANNELS.map((c, i) => ({
+          id: c.id, nome: c.name, ...buildFreschezzaState(states[i], oggi),
+        }));
+      } catch (err) {
+        console.error(`[aiuto] stato canali non disponibile: ${err.message}`);
+        stato = null;
+      }
+      return new Response(renderHelpPage(stato), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,

@@ -982,3 +982,24 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   di `#hint` sul mazzo). È l'unico cambio visivo di questo ciclo: baseline `home-mobile.png` e
   `home-desktop.png` rigenerate contro il dev server locale (`wrangler dev`, KV locale).
 - Nuovo `backend/tests/unit/home-sfoglia-col-dito.test.js`.
+
+## 2026-08-01 — feat-l-aiuto-dice-se-il-canale-e-fermo
+- `/health` sa già se un canale è fermo (`freschezza`, `s-health-dice-se-un-flusso-e-fermo`) e la
+  home lo dice per il canale che stai sfogliando (`feat-la-home-dice-se-il-canale-e-in-ritardo`), ma
+  la pagina `/aiuto` — il posto dove si arriva proprio quando lo sfondo non cambia — non ne sapeva
+  nulla: chi apriva l'aiuto non aveva modo di distinguere "è il mio iPhone" da "è il canale fermo".
+- `renderHelpPage(stato)` (`backend/src/help.js`) accetta ora uno `stato` opzionale (default `null`,
+  forma `[{ id, nome, aggiornato, giorniDiRitardo }]`, la stessa di `/health`): se assente o vuoto
+  il markup resta identico a prima. Con `stato` valorizzato, un nuovo blocco «Stato dei canali»
+  compare subito sotto il campo di ricerca, prima di «Qualcosa non funziona» — fuori dalle sezioni
+  `h2[data-sezione]`, così `filtra()`/`apriDaHash()` restano intatti e il blocco non è filtrabile
+  né sparisce durante una ricerca.
+- La rotta `/aiuto` (`backend/src/index.js`) legge lo stato con le stesse funzioni di `/health`
+  (`getState` + `buildFreschezzaState`, `todayKey()`), dentro un `try/catch`: qualunque errore di
+  lettura (KV assente/rotto) ricade su `renderHelpPage()` senza argomento — la pagina resta 200 e
+  leggibile, mai un 500. Nessuna scrittura KV, nessuna chiamata AI/IMAGES.
+- `VISUAL_SPECS.md` §2 aggiornata col nuovo componente: nessun token di colore o dimensione nuovo,
+  solo testo `#f2f3f8`/`#9aa3b8` già in spec. Baseline `aiuto-mobile.png`/`aiuto-desktop.png`
+  rigenerate contro il dev server locale (`wrangler dev`, KV locale) — cambio visivo dichiarato.
+- Nuovi `backend/tests/unit/aiuto-stato-canali.test.js` e
+  `backend/tests/integration/aiuto-stato-canali.test.js`.

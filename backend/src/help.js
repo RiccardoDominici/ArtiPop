@@ -362,8 +362,37 @@ ${FAVICON_TAG}
 </html>`;
 }
 
-/** Pagina /aiuto completa (HTML autoconsistente, nessuna risorsa esterna). */
-export function renderHelpPage() {
+/**
+ * Frase di stato per un canale, dato l'esito di `buildFreschezzaState`
+ * (stessa forma letta da /health): "aggiornato oggi" se l'ultima esecuzione
+ * è di oggi, "fermo da ieri"/"fermo da N giorni" se in ritardo, "nessuna
+ * immagine ancora" se il canale non ha mai generato (giorniDiRitardo null).
+ */
+function fraseStato({ aggiornato, giorniDiRitardo }) {
+  if (aggiornato) return "aggiornato oggi";
+  if (giorniDiRitardo === null) return "nessuna immagine ancora";
+  if (giorniDiRitardo === 1) return "fermo da ieri";
+  return `fermo da ${giorniDiRitardo} giorni`;
+}
+
+/**
+ * Blocco «Stato dei canali» (feat-l-aiuto-dice-se-il-canale-e-fermo): una
+ * riga per canale con nome ed esito leggibile. `stato` arriva già nella
+ * forma `[{ id, nome, aggiornato, giorniDiRitardo }]` (la stessa lettura di
+ * /health, vedi index.js) — qui non si legge KV, solo markup. Vuoto o
+ * assente → stringa vuota, cioè nessun contenitore vuoto nella pagina.
+ */
+function renderStatoCanali(stato) {
+  if (!Array.isArray(stato) || stato.length === 0) return "";
+  const righe = stato
+    .map((c) => `<li><span class="nome">${esc(c.nome)}</span><span class="esito">${esc(fraseStato(c))}</span></li>`)
+    .join("");
+  return `
+  <ul class="stato-canali" data-stato-canali>${righe}</ul>`;
+}
+
+/** Pagina /aiuto completa (HTML autoconsistente, nessuna risorsa esterna). `stato`: v. `renderStatoCanali`. */
+export function renderHelpPage(stato = null) {
   const problemi = assegnaId(PROBLEMI, "p", (p) => p.sintomo)
     .map(
       ({ voce: p, id }) => `
@@ -431,6 +460,15 @@ ${FAVICON_TAG}
   .item.filtrata { display: none; }
   h2.filtrata { display: none; }
   .nessuna-voce { color: #9aa3b8; }
+  /* feat-l-aiuto-dice-se-il-canale-e-fermo: elenco piatto, soli token già in spec (§2) */
+  ul.stato-canali { list-style: none; margin: 20px 0 0; padding: 0; }
+  ul.stato-canali li {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 10px 2px; border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  ul.stato-canali li:last-child { border-bottom: none; }
+  ul.stato-canali .nome { font-weight: 600; }
+  ul.stato-canali .esito { color: #9aa3b8; text-align: right; }
   h2 { margin: 44px 0 14px; font-size: 1.15rem; letter-spacing: .01em; }
   .item {
     border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
@@ -476,7 +514,7 @@ ${FAVICON_TAG}
     <p class="sub">Cerca il tuo sintomo qui sotto: la prima voce copre da sola quasi tutti i casi.</p>
     <input type="search" id="cerca" hidden placeholder="Cerca un sintomo o una parola" aria-label="Cerca un sintomo o una parola" autocomplete="off" />
   </header>
-
+${renderStatoCanali(stato)}
   <h2 data-sezione="problemi">Qualcosa non funziona</h2>
   ${problemi}
 
