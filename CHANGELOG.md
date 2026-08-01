@@ -963,3 +963,22 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nessun elemento, `tabindex` o stile nuovo: il fuoco raggiunge già la sezione tramite i bottoni
   esistenti, nessun impatto su `VISUAL_SPECS.md`.
 - Nuovo `backend/tests/unit/home-tastiera-viaggio.test.js`.
+
+## 2026-08-01 — feat-sfoglia-i-giorni-con-il-dito
+- Il mazzo dei canali si sfoglia col dito (`attachDrag`, `page.js:691`) e i giorni si sfogliano
+  con la tastiera (`feat-sfoglia-il-viaggio-con-la-tastiera`), ma su un telefono la tastiera non
+  c'è: dentro "Il viaggio finora" restavano solo i due `.dayctrl` ‹ › piccoli, il buco d'ingresso
+  più evidente sul dispositivo bersaglio del prodotto (la Shortcut è su iPhone).
+- Nuova `attachJourneySwipe()`, agganciata a `journeyEl` (statico, una volta sola all'avvio, non
+  ad ogni `buildDeck` come `attachDrag`): `pointerdown`/`pointermove`/`pointerup`/`pointercancel`
+  con le stesse guardie di `attachDrag` (`daynavEl.hidden`, `closest("button, a")`), ma senza
+  trascinare nulla — `.journey` non è una card — e senza `preventDefault` su `pointermove`, così
+  lo scorrimento verticale della pagina resta libero. Il gesto conta solo se orizzontale e ampio
+  (`|dx| > 48` e `|dx| > |dy|`, soglia in pixel perché `.journey` non ha la stessa larghezza della
+  card): destra → `stepDay(-1)`, sinistra → `stepDay(1)`, stessa direzione delle frecce `#daynav`.
+- Il gesto non raggiunge mai `advance()`/`flyOut()`: il canale in cima al mazzo resta invariato,
+  solo il giorno mostrato cambia.
+- Hint del viaggio aggiornato per dichiarare il gesto: `— ↔ scorri o usa le frecce.` (stessa forma
+  di `#hint` sul mazzo). È l'unico cambio visivo di questo ciclo: baseline `home-mobile.png` e
+  `home-desktop.png` rigenerate contro il dev server locale (`wrangler dev`, KV locale).
+- Nuovo `backend/tests/unit/home-sfoglia-col-dito.test.js`.
