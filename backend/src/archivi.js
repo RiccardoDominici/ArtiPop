@@ -57,7 +57,7 @@ function renderElenco(storici) {
           <ul class="date">${c.date
             .map(
               (d) =>
-                `<li><a href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}">${esc(d)}</a></li>`
+                `<li><a href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}">${esc(d)}</a><a class="salva-giorno" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`
             )
             .join("")}</ul>
         </details>`
@@ -66,13 +66,16 @@ function renderElenco(storici) {
         ? `
         <a class="copertina" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
         : "";
+      const salva = c.ultima
+        ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1">Salva</a>`
+        : "";
       return `
       <li>${copertina}
         <div class="contenuto">
         <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
-          <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}">Riapri l'ultimo giorno →</a>
+          <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}">Riapri l'ultimo giorno →</a>${salva}
         </div>${elencoGiorni}${riga3}
         </div>
       </li>`;
@@ -136,16 +139,21 @@ ${FAVICON_TAG}
   }
   .riga1 { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
   .riga1 .giorni { color: #9aa3b8; font-weight: 400; }
-  .riga2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+  .riga2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
   .intervallo { color: #9aa3b8; font-size: .88rem; }
   .riga3 { margin-top: 6px; font-size: .88rem; color: #9aa3b8; }
   .riga3 a.continua { color: #8fd3ff; }
   details.giorni { margin-top: 8px; }
   details.giorni summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
   details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  details.giorni ul.date li { display: flex; align-items: center; gap: 6px; }
   details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
   a.riapri {
     display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    text-decoration: none; font-weight: 600; flex-shrink: 0;
+  }
+  a.salva, a.salva-giorno {
+    color: #8fd3ff; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
     text-decoration: none; font-weight: 600; flex-shrink: 0;
   }
   footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }

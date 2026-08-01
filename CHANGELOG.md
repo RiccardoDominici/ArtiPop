@@ -16,6 +16,22 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-il-giorno-d-archivio-si-salva-con-un-nome-che-si-capisce
+- La rotta `/w/<id>?date=…&dl=1` produce da tempo un download col nome parlante
+  `artipop-<canale>-<data>.png` (content-disposition, index.js:616), ma su /archivi non era
+  raggiungibile da nessuna parte: chi riapriva un canale storico riceveva un PNG nudo e per
+  tenerselo doveva arrangiarsi col menu contestuale del browser.
+- `archivi.js`: aggiunto un link "Salva" in `riga2` accanto a "Riapri l'ultimo giorno →" (presente
+  solo con `ultima` valorizzato) e un link "↓" (con `aria-label` che nomina la data) accanto a ogni
+  voce dell'elenco `<details class="giorni">`. Entrambi riusano la rotta esistente, nessuna logica
+  nuova lato server. `riga2` ora va a capo (`flex-wrap: wrap`) sui viewport stretti invece di
+  comprimere i link.
+- VISUAL_SPECS §2.1 aggiornata (proposta ai sensi di §7): componente «link di salvataggio»,
+  stessi token già in uso nella sezione (link `#8fd3ff`, area di tocco ≥44px) — nessun colore o
+  componente nuovo.
+- Nuovo `archivi-salva.test.js`: presenza/conteggio dei link con `dl=1`, assenza quando
+  `ultima`/`date` mancano, invarianti di robustezza (`null`, lista vuota) e assenza di `<script>`.
+
 ## 2026-08-01 — feat-l-aiuto-dice-dove-sono-finiti-i-canali-vecchi
 - Chi cercava un canale rinominato o sostituito (island, bloom, studio, neon, …) non trovava in
   /aiuto nessuna traccia di dove fosse finito: la pagina /archivi che li elenca con i loro eredi

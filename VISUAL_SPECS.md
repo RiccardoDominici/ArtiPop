@@ -120,6 +120,16 @@ o componente nuovo.
   `<details class="giorni">`, riga3) si dispone a destra della miniatura, invariato nel contenuto.
   Presente solo quando il canale ha un `ultima` non vuoto: card senza miniatura, mai un
   contenitore vuoto o un'immagine rotta.
+- Componente aggiuntivo «link di salvataggio» (proposta ai sensi di §7): riusa la rotta
+  `/w/<id>?date=<data>&dl=1` (content-disposition con nome parlante, backend/src/index.js:616),
+  già raggiungibile dalla home ma non da `/archivi`. Due punti di emissione, stessi token del
+  resto della sezione (link `#8fd3ff`, nessun colore o componente nuovo, area di tocco ≥44px,
+  `display: inline-flex; align-items: center`): un `<a class="salva">Salva</a>` in `riga2`, subito
+  dopo "Riapri l'ultimo giorno →"; e un `<a class="salva-giorno">↓</a>` accanto a ogni data
+  dell'elenco `<details class="giorni">`, con `aria-label` che nomina la data (il glifo da solo
+  non è autoesplicativo). `riga2` può andare a capo (`flex-wrap: wrap`) sui viewport stretti
+  invece di comprimere i link. Presente solo quando `ultima`/`date` sono valorizzati — stessa
+  guardia della miniatura di copertina: card senza dati, nessun link di salvataggio.
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 
