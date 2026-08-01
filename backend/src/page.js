@@ -17,7 +17,7 @@
 //  - Nessuna risorsa esterna: font di sistema, CSS e JS inline.
 
 import { ACTIVE_CHANNELS, LEGACY_ALIASES } from "./channels.js";
-import { FAVICON_TAG, metaAnteprima } from "./head.js";
+import { FAVICON_TAG, metaAnteprima, feedLinkTag } from "./head.js";
 
 // feat-quando-arriva-il-prossimo-wallpaper: specchio di triggers.crons in
 // backend/wrangler.jsonc (ambiente di produzione) — il cron di generazione
@@ -78,8 +78,12 @@ function noscriptBlocco(metas) {
  * (rotta `/` in index.js): fa seguire l'anteprima Open Graph al giorno e
  * canale del link condiviso invece del wallpaper di oggi. Non tocca il
  * `<body>`: il markup visibile resta identico in entrambi i casi.
+ * `feedUrl` (opzionale, feat-segui-il-canale-dal-lettore-di-feed): indirizzo
+ * del feed RSS del canale reso lato server (`condiviso?.canale` o il primo
+ * flusso attivo), emesso come `<link rel="alternate">` invisibile nel
+ * `<head>` — nessun elemento visibile, nessuna modifica al CSS.
  */
-export function renderPage(metas, origin, dateKey, condiviso = null) {
+export function renderPage(metas, origin, dateKey, condiviso = null, feedUrl = null) {
   // Dati pubblici passati al JS client (niente campi interni).
   const channelData = ACTIVE_CHANNELS.map((c) => ({
     id: c.id,
@@ -117,6 +121,7 @@ export function renderPage(metas, origin, dateKey, condiviso = null) {
 <meta name="description" content="${pageDescription}" />
 <meta name="theme-color" content="#0a0b10" />
 ${FAVICON_TAG}
+${feedLinkTag(feedUrl)}
 ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
 <style>
   :root {
