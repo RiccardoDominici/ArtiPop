@@ -51,6 +51,13 @@ default. Ogni riga (`.arcrow`, `<button>`, tap target min 44px) mostra la data b
 mostrato — nessun colore nuovo, stessa coppia già usata da `.stale`. Comando e blocco
 invisibili quando la journey non è attiva o nessun giorno dell'arco ha testo narrativo.
 
+Elenco-archi (`.arcstory` riusata su `#arclist`, feat-scegli-l-arco-dall-elenco): stessa
+forma dell'elenco-tappe — righe `.arcrow` (tap target min 44px) dietro il comando ghost
+`#arcpick` ("scegli l'arco"), chiuso di default. Ogni riga mostra l'intervallo di date
+dell'arco (`.arcdate`) e il nome del concept (`.arctext`), con testo di ripiego se manca;
+la riga dell'arco mostrato è evidenziata con `.on`. Comando invisibile con meno di due
+archi o senza archivio disponibile — nessun colore o misura nuovi.
+
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
 
