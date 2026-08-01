@@ -55,8 +55,12 @@ export async function loadNote(env) {
       return {
         version: 1,
         updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : null,
-        giorni: Array.isArray(raw.giorni) ? raw.giorni : [],
-        assetti: Array.isArray(raw.assetti) ? raw.assetti : [],
+        giorni: Array.isArray(raw.giorni)
+          ? raw.giorni.filter((g) => typeof g === "object" && g !== null)
+          : [],
+        assetti: Array.isArray(raw.assetti)
+          ? raw.assetti.filter((a) => typeof a === "object" && a !== null)
+          : [],
       };
     }
   } catch (err) {

@@ -548,3 +548,14 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   invariato (candidato accettato al 1º tentativo, stesso ritorno di prima). Zero generazioni AI: gli
   stub lanciano invece di chiamare modelli reali, `fetch` globale (usato da Pollinations, l'ultima
   spiaggia della catena) è sostituito nei test e ripristinato subito dopo.
+
+## 2026-08-01 — s-le-marcature-non-si-rompono-su-un-documento-sporco
+- `loadNote` (`backend/src/note.js`) ora scarta le voci non-oggetto (`null`, numeri, …) da
+  `giorni`/`assetti` al momento della lettura: prima, un documento `note:marcature` con una sola
+  voce sporca dentro uno dei due array faceva lanciare `TypeError` a `putGiornoNota`/`putAssetto`
+  (via `.findIndex((g) => g.canale === …)` su una voce `null`), rendendo la marcatura non più
+  scrivibile per sempre — nessun modo per l'utente di ripararla da sé.
+- Nuovo `backend/tests/unit/note-marcature.test.js`: il modulo, unico tra quelli di scrittura admin,
+  non era importato da nessun test. Copre le quattro funzioni esportate (`loadNote`, `putGiornoNota`,
+  `putAssetto`, `removeAssetto`) con casi felici, errori di validazione e la regressione sul
+  documento sporco.
