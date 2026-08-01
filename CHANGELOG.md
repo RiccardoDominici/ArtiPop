@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-cerca-il-tuo-problema-nell-aiuto
+- `/aiuto` ha 14 voci tutte chiuse per default e il sottotitolo promette «Cerca il tuo sintomo
+  qui sotto», ma finora nessuno strumento manteneva quella promessa: bisognava aprire le
+  `<details>` una alla volta per trovare il proprio caso.
+- Nuovo campo `<input type="search">` nell'header, sotto il sottotitolo: filtra le voci mentre si
+  scrive, cercando anche dentro sintomo, causa e rimedio. Nasce `hidden` nel markup servito e
+  compare solo se lo script della pagina gira (progressive enhancement): senza JavaScript la
+  pagina resta identica a prima (robustezza, principio 3).
+- Query vuota ripristina tutte le voci e tutte le sezioni; nessuna corrispondenza mostra un
+  messaggio esplicito invece di una colonna vuota. `apriDaHash()` azzera il filtro prima di
+  aprire una voce, così un link permanente resta sempre raggiungibile anche a filtro attivo.
+- Nessun `id`/permalink toccato. `VISUAL_SPECS.md` §2 aggiornato con il nuovo componente, che
+  riusa solo token già in spec (bordo, sfondo, raggio, colori testo/placeholder, altezza minima).
+
 ## 2026-08-01 — feat-quando-arriva-il-prossimo-wallpaper
 - L'orario del cron di generazione (`0 3 * * *` UTC, `backend/wrangler.jsonc`) viveva solo in
   GUIDA.md §2.2, cioè per il maintainer: chi aveva attivato la Shortcut non aveva modo di sapere

@@ -411,6 +411,18 @@ ${FAVICON_TAG}
   h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
   /* M6: sottotitolo come testo secondario sul token --dim del sito, non più opacity sul primario */
   .sub { margin: 0; color: #9aa3b8; }
+  /* feat-cerca-il-tuo-problema-nell-aiuto: campo di ricerca, soli token già in spec (§2) */
+  #cerca {
+    display: block; width: 100%; margin-top: 16px; min-height: 44px;
+    border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
+    background: rgba(255,255,255,.03); color: #f2f3f8;
+    padding: 0 16px; font: inherit;
+  }
+  #cerca::placeholder { color: #9aa3b8; }
+  #cerca:focus { outline: none; border-color: rgba(255,255,255,.24); }
+  .item.filtrata { display: none; }
+  h2.filtrata { display: none; }
+  .nessuna-voce { color: #9aa3b8; }
   h2 { margin: 44px 0 14px; font-size: 1.15rem; letter-spacing: .01em; }
   .item {
     border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
@@ -454,13 +466,15 @@ ${FAVICON_TAG}
     <a class="back" href="/">← torna ad ArtiPop</a>
     <h1>Aiuto e problemi comuni</h1>
     <p class="sub">Cerca il tuo sintomo qui sotto: la prima voce copre da sola quasi tutti i casi.</p>
+    <input type="search" id="cerca" hidden placeholder="Cerca un sintomo o una parola" aria-label="Cerca un sintomo o una parola" autocomplete="off" />
   </header>
 
-  <h2>Qualcosa non funziona</h2>
+  <h2 data-sezione="problemi">Qualcosa non funziona</h2>
   ${problemi}
 
-  <h2>Domande frequenti</h2>
+  <h2 data-sezione="faq">Domande frequenti</h2>
   ${faq}
+  <p class="nessuna-voce" id="nessuna-voce" hidden></p>
 
   <footer>
     Non hai trovato il tuo caso? Aprine uno su
@@ -475,6 +489,11 @@ ${FAVICON_TAG}
   function apriDaHash() {
     var id = decodeURIComponent(location.hash.slice(1));
     if (!id) return;
+    var campo = document.getElementById("cerca");
+    if (campo && campo.value) {
+      campo.value = "";
+      filtra("");
+    }
     var voce = document.getElementById(id);
     if (voce && voce.tagName === "DETAILS") {
       voce.open = true;
@@ -483,6 +502,48 @@ ${FAVICON_TAG}
   }
   document.addEventListener("DOMContentLoaded", apriDaHash);
   window.addEventListener("hashchange", apriDaHash);
+
+  // feat-cerca-il-tuo-problema-nell-aiuto: filtro sul testo delle voci
+  // (sintomo, causa e rimedio) mentre l'utente scrive. Progressive
+  // enhancement: il campo nasce "hidden" nel markup e compare solo se
+  // questo script gira, così senza JS la pagina resta quella di sempre.
+  function filtra(query) {
+    var q = query.trim().toLowerCase();
+    var sezioni = document.querySelectorAll("main > h2[data-sezione]");
+    var trovataAlmenoUna = false;
+    sezioni.forEach(function (h2) {
+      var visibiliInSezione = 0;
+      var el = h2.nextElementSibling;
+      while (el && el.tagName === "DETAILS") {
+        var testo = el.textContent.toLowerCase();
+        var corrisponde = q === "" || testo.indexOf(q) !== -1;
+        el.classList.toggle("filtrata", !corrisponde);
+        if (corrisponde) {
+          visibiliInSezione++;
+          trovataAlmenoUna = true;
+        }
+        el = el.nextElementSibling;
+      }
+      h2.classList.toggle("filtrata", q !== "" && visibiliInSezione === 0);
+    });
+    var messaggio = document.getElementById("nessuna-voce");
+    if (messaggio) {
+      if (q !== "" && !trovataAlmenoUna) {
+        messaggio.textContent = "Nessuna voce corrisponde a «" + query.trim() + "».";
+        messaggio.hidden = false;
+      } else {
+        messaggio.hidden = true;
+      }
+    }
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    var campo = document.getElementById("cerca");
+    if (!campo) return;
+    campo.hidden = false;
+    campo.addEventListener("input", function () {
+      filtra(campo.value);
+    });
+  });
 </script>
 </body>
 </html>`;
