@@ -1095,3 +1095,20 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   token, nessun colore o componente nuovo).
 - Nuovo `backend/tests/unit/archivi-eredita.test.js`: copre island→natura, studio→quiete, un id
   senza alias (nessun link in più), l'assenza di `<script`/`fetch(` e i casi `[]`/`null` invariati.
+
+## 2026-08-01 — feat-l-archivio-storico-si-sfoglia-giorno-per-giorno
+- `/archivi` dichiarava "60 giorni · 2026-03-01 → 2026-04-29" ma offriva un solo link, quello
+  dell'ultimo giorno: gli altri 59 esistevano già in KV, serviti da `/w/<id>?date=`, senza alcun
+  indirizzo raggiungibile dal sito — uno spiraglio sull'archivio, non un archivio.
+- `backend/src/storage.js`: `listChannelsWithArchive` accumula ora anche `date: [...]` per
+  canale, dalla più recente alla più vecchia — riusando le date già estratte nel giro di
+  `KV.list` esistente, nessuna lettura KV aggiuntiva. `giorni`/`prima`/`ultima` restano
+  invariati per l'altro chiamante (`index.js:694`).
+- `backend/src/archivi.js`: `renderElenco` aggiunge, dopo la riga dell'intervallo, un
+  `<details class="giorni">tutti i N giorni</summary>` con un link per ciascuna data — assente
+  quando `date` manca o è vuoto (chiamata legacy), lasciando la card invariata. Nessuno
+  `<script>`, nessuna `fetch(` introdotta.
+- `VISUAL_SPECS.md` §2.1 aggiornata con il nuovo componente (proposta ai sensi di §7): stessi
+  token di §2, nessun colore nuovo.
+- Nuovo `backend/tests/unit/archivi-giorni.test.js`; `backend/tests/integration/archivi-rotta.test.js`
+  esteso a verificare che TUTTI i giorni del canale storico compaiano, non solo l'ultimo.

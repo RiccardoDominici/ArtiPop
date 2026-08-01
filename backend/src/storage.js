@@ -209,10 +209,11 @@ export async function listChannelsWithArchive(env) {
         const m = re.exec(k.name);
         if (!m) continue; // chiave imprevista: ignorata in silenzio
         const [, canale, data] = m;
-        const voce = risultato.get(canale) ?? { giorni: 0, prima: data, ultima: data };
+        const voce = risultato.get(canale) ?? { giorni: 0, prima: data, ultima: data, date: [] };
         voce.giorni += 1;
         if (data < voce.prima) voce.prima = data;
         if (data > voce.ultima) voce.ultima = data;
+        voce.date.push(data);
         risultato.set(canale, voce);
       }
       if (page.list_complete) break;
@@ -221,6 +222,9 @@ export async function listChannelsWithArchive(env) {
   } catch (err) {
     console.warn(`[storage] listChannelsWithArchive fallita, considerata vuota: ${err.message}`);
     return new Map();
+  }
+  for (const voce of risultato.values()) {
+    voce.date.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   }
   return risultato;
 }

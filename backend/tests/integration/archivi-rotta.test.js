@@ -20,6 +20,7 @@ describe("GET /archivi", () => {
     const html = await res.text();
     expect(html).toContain("island");
     expect(html).toContain("/w/island?date=2025-01-02");
+    expect(html).toContain("/w/island?date=2025-01-01");
     expect(html).not.toContain(`/w/${ACTIVE_CHANNELS[0].id}?date=2025-01-01`);
   });
 
