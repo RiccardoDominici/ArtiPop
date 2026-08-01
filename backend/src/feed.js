@@ -20,6 +20,28 @@ function dataRfc822(dataKey) {
 }
 
 /**
+ * feat-il-feed-racconta-il-giorno: paragrafi extra della description, oltre
+ * all'`<img>` di sempre — racconto della tappa (`testoTappa`) e posizione
+ * nell'arco (`arco` + `giornoNellArco`), quando la carta d'identità li porta.
+ * Ogni pezzo è opzionale e indipendente: assente (`null`, giorno ricostruito
+ * di canale storico — v. handlers.js:99-133) non produce alcun paragrafo, mai
+ * "null"/"undefined" in output. Ritorna "" quando non c'è nulla da aggiungere,
+ * cosicché la description resti esattamente quella di oggi (solo `<img>`).
+ * `escXml` (usata sotto) trasforma ogni `>` in `&gt;`: una `]]>` dentro
+ * `testoTappa` diventa `]]&gt;` e non può mai chiudere il CDATA in anticipo.
+ */
+function paragrafiGiorno(v) {
+  const pezzi = [];
+  if (typeof v.testoTappa === "string" && v.testoTappa) {
+    pezzi.push(`<p>${escXml(v.testoTappa)}</p>`);
+  }
+  if (typeof v.arco === "number" && typeof v.giornoNellArco === "number") {
+    pezzi.push(`<p>arco ${v.arco + 1}, giorno ${v.giornoNellArco}</p>`);
+  }
+  return pezzi.length ? "\n" + pezzi.join("\n") : "";
+}
+
+/**
  * Compone il feed RSS 2.0 di un canale, o del feed aggregato di tutti i
  * canali (feat-un-solo-feed-per-tutti-i-canali). `canale` = { id, name,
  * tagline }: per un flusso attivo sono i suoi dati (channels.js); per un
@@ -57,7 +79,7 @@ export function renderFeed({ canale, voci, origin, oggi }) {
 <link>${escXml(link)}</link>
 <guid isPermaLink="false">${escXml(link)}</guid>
 <pubDate>${dataRfc822(v.data)}</pubDate>
-<description><![CDATA[<img src="${immagine}" alt="${titolo.replace(/"/g, "&quot;")}" />]]></description>
+<description><![CDATA[<img src="${immagine}" alt="${titolo.replace(/"/g, "&quot;")}" />${paragrafiGiorno(v)}]]></description>
 <enclosure url="${escXml(immagine)}" type="image/png" />
 </item>`;
     })
