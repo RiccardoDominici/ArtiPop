@@ -375,6 +375,12 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            di #dayopen — stesso file, ma con ?dl=1 per farlo arrivare sul disco
            con un nome parlante invece del blob "natura" senza estensione. -->
       <a class="btn ghost" id="daysave" hidden>salva l'immagine</a>
+      <!-- feat-torna-a-oggi-da-qualunque-giorno: nessun percorso di ritorno
+           diretto esisteva prima di questo ciclo — stepDay muove di un
+           giorno, goToNextArc di un arco: chi è sceso di più passi doveva
+           martellare le frecce. Nascosto quando si guarda già oggi
+           nell'arco in corso (v. updateDayNav). -->
+      <button class="btn ghost" id="daytoday" hidden>torna a oggi</button>
       <p class="dcap" id="dcap" hidden></p>
       <!-- feat-leggi-la-storia-dell-arco: chiuso di default (la home non deve
            allungarsi per chi non lo apre); comando e blocco compaiono solo
@@ -466,6 +472,7 @@ const dayshareEl = document.getElementById("dayshare");
 const copyurlEl = document.getElementById("copyurl");
 const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
+const dayTodayEl = document.getElementById("daytoday");
 const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
@@ -847,6 +854,9 @@ function updateDayNav(chId) {
   dayNextEl.disabled = idx <= 0;
   dayopenEl.href = srcFor(chId, date, date === TODAY);
   daysaveEl.href = srcFor(chId, date, date === TODAY) + "&dl=1";
+  // Nascosto solo quando si sta già guardando oggi nell'arco in corso —
+  // altrimenti (giorno diverso o arco passato) offre il ritorno diretto.
+  dayTodayEl.hidden = previewDate === null && (arcIndexCache[chId] ?? 0) === 0;
   updateDayCaption(chId, date);
   updateArcStoryHighlight(date);
 }
@@ -999,6 +1009,26 @@ function goToNextArc() {
   previewDay(chId, d, d === TODAY);
 }
 arcNextEl.addEventListener("click", goToNextArc);
+
+// feat-torna-a-oggi-da-qualunque-giorno: nessun comando esistente riporta
+// direttamente a oggi — stepDay muove di un giorno, goToNextArc di un arco.
+// Riallinea in un solo passaggio alla finestra dell'arco in corso (indice 0,
+// mai unendo archi, stessa meccanica di goToNextArc) e al giorno di oggi; se
+// il canale è in ritardo e oggi non è ancora in archivio, si ferma sul
+// giorno più recente disponibile invece di puntare a una data mai archiviata.
+function goToToday() {
+  const chId = CHANNELS[order[0]].id;
+  if (!archiveCache[chId]) return;
+  stopPlayback();
+  arcIndexCache[chId] = 0;
+  archiveCache[chId] = arcsCache[chId][0];
+  updateArcNav(chId);
+  renderArcStory(chId);
+  const dates = archiveCache[chId];
+  const d = dates.includes(TODAY) ? TODAY : dates[0];
+  previewDay(chId, d, d === TODAY);
+}
+dayTodayEl.addEventListener("click", goToToday);
 
 /* Mostra un giorno nel mockup della card in cima (crossfade). */
 function previewDay(chId, date, isToday) {

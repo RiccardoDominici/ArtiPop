@@ -30,6 +30,22 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Nessun `id`/permalink toccato. `VISUAL_SPECS.md` §2 aggiornato con il nuovo componente, che
   riusa solo token già in spec (bordo, sfondo, raggio, colori testo/placeholder, altezza minima).
 
+## 2026-08-01 — feat-torna-a-oggi-da-qualunque-giorno
+- Tutti i comandi di navigazione della home muovono di UN passo (`stepDay` un giorno,
+  `goToNextArc` un arco) e `#arcnext` è nascosto quando si è già nell'arco in corso: chi è sceso
+  di più giorni o più archi indietro non aveva alcun percorso diretto per tornare al wallpaper di
+  oggi, doveva martellare `›` o ricaricare la pagina (principio 1, utilizzabilità reale).
+- Nuovo bottone `#daytoday` ("torna a oggi") nella sezione `.journey`, stessa pill ghost canonica
+  già usata da `#arcprev`/`#arcnext`/`#storytoggle` (VISUAL_SPECS §1.4): nessun colore, font o
+  componente nuovo. Nasce `hidden`, quindi le baseline `home-mobile.png`/`home-desktop.png` non
+  cambiano.
+- `goToToday()` riporta in un solo passaggio alla finestra dell'arco in corso (indice 0, mai
+  unendo archi — stessa meccanica di `goToNextArc`) e al giorno di oggi, fermando l'eventuale
+  riproduzione; se il canale è in ritardo e oggi non è ancora in archivio, si ferma sul giorno più
+  recente disponibile invece di puntare a una data mai archiviata.
+- Visibilità governata da `updateDayNav`: nascosto solo quando si guarda già oggi nell'arco in
+  corso, così resta coerente anche navigando fra archi senza duplicare logica.
+
 ## 2026-08-01 — feat-quando-arriva-il-prossimo-wallpaper
 - L'orario del cron di generazione (`0 3 * * *` UTC, `backend/wrangler.jsonc`) viveva solo in
   GUIDA.md §2.2, cioè per il maintainer: chi aveva attivato la Shortcut non aveva modo di sapere
