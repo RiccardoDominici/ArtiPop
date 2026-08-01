@@ -478,3 +478,27 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   element custom risulta sospeso via `famigliaNativa`, non via id cablato.
 - Nuovo `backend/tests/unit/tuning-catalogo-sospesi.test.js`: il badge compare solo sulla riga con
   `sospeso:true` e non compare quando il campo è assente, sia in lista Element sia in lista Concept.
+
+## 2026-08-01 — s-un-guasto-a-meta-cancello-non-butta-l-immagine-gia-buona
+- `backend/src/generate.js`, `generateWithGate`: la generazione di ogni tentativo (chiamata a
+  `generateImage` e misura del candidato) è ora avvolta in try/catch dentro il ciclo. Prima, se
+  l'intera catena di generatori falliva al 2º o 3º tentativo, l'eccezione usciva dal cancello e
+  buttava via il candidato già generato e misurato al 1º tentativo — il flusso del giorno restava
+  all'immagine di ieri pur avendo in mano un'immagine pubblicabile, con i neuroni del 1º tentativo
+  già spesi e persi. Ora un guasto a metà interrompe il ciclo (senza consumare altri tentativi contro
+  un generatore appena fallito del tutto) e, se esiste già un candidato, lo pubblica con
+  `ripiego: true` come nel caso "tentativi esauriti". Se `migliore` resta nullo (guasto al 1º
+  tentativo, oppure `maxAttempts` non valido) l'errore del generatore viene rilanciato — o, se non ce
+  n'è uno, un `Error` con frase parlante — invece di lasciare che `migliore.verdetto` sia dereferenziato
+  come `TypeError`.
+- Nuovo `backend/tests/helpers/pngFinto.js`: costruisce una PNG 8 bit grigia uniforme non
+  interlacciata con `zlib.deflateSync` (`node:zlib`, builtin, nessuna dipendenza nuova), per dare a
+  uno stub del binding IMAGES byte davvero decodificabili — cosa che lo stub esistente in
+  `fakeEnv.js` non offre (lì `IMAGES` lancia sempre di proposito, per garantire zero generazioni
+  reali nei test di orchestrazione).
+- Nuovo `backend/tests/unit/cancello-guasto-a-meta.test.js`: guasto al 2º tentativo dopo un 1º
+  candidato rifiutato (torna il 1º con `ripiego`, non lancia); guasto al 1º tentativo (rilancia,
+  nessun candidato inventato); `maxAttempts: 0` (errore parlante, mai un `TypeError`); cammino felice
+  invariato (candidato accettato al 1º tentativo, stesso ritorno di prima). Zero generazioni AI: gli
+  stub lanciano invece di chiamare modelli reali, `fetch` globale (usato da Pollinations, l'ultima
+  spiaggia della catena) è sostituito nei test e ripristinato subito dopo.

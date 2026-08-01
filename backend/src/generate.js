@@ -265,6 +265,7 @@ export async function generateWithGate(env, opts) {
   let dose = doseIniziale;
   let migliore = null;
   let fatti = 0;
+  let ultimoErrore = null;
   const scadenza = Date.now() + CONFIG.GATE_DEADLINE_MS;
 
   for (let tentativo = 1; tentativo <= tentativiMax; tentativo++) {
@@ -275,40 +276,51 @@ export async function generateWithGate(env, opts) {
       console.warn(`[gate] ${label}: tempo esaurito dopo ${tentativo - 1} tentativi`);
       break;
     }
-    const prompt = promptForDose(dose);
-    // Il seme cambia a ogni tentativo: klein non è deterministico nemmeno a
-    // seme fisso, ma variarlo evita di riottenere esattamente lo stesso scarto.
-    const img = await generateImage(env, prompt, seed + tentativo - 1, refs);
-    fatti = tentativo;
+    let candidato;
+    try {
+      const prompt = promptForDose(dose);
+      // Il seme cambia a ogni tentativo: klein non è deterministico nemmeno a
+      // seme fisso, ma variarlo evita di riottenere esattamente lo stesso scarto.
+      const img = await generateImage(env, prompt, seed + tentativo - 1, refs);
+      fatti = tentativo;
 
-    const impronta = await fingerprintFromBytes(env, img.bytes);
-    if (!impronta) {
-      console.warn(`[gate] ${label}: impronta non calcolabile, pubblico senza collaudo`);
-      return { ...img, impronta: null, misure: null, verdetto: null, tentativi: tentativo, dose };
+      const impronta = await fingerprintFromBytes(env, img.bytes);
+      if (!impronta) {
+        console.warn(`[gate] ${label}: impronta non calcolabile, pubblico senza collaudo`);
+        return { ...img, impronta: null, misure: null, verdetto: null, tentativi: tentativo, dose };
+      }
+
+      const misure = compare(prevFingerprint, impronta);
+
+      // Sesta misura: quanto la scena si e' allontanata dal keyframe, e se
+      // rispetto a ieri e' andata avanti o INDIETRO. Le altre cinque non
+      // distinguono una pianta che cresce da una che rimpicciolisce.
+      const occ = occupancy(anchorFingerprint, impronta);
+      if (occ !== null) {
+        misure.occupazione = occ;
+        misure.avanzamento = occupazionePrec === null ? 0 : occ - occupazionePrec;
+      }
+
+      const v = verdict(misure, profile);
+      candidato = { ...img, impronta, misure, verdetto: v, tentativi: tentativo, dose };
+
+      console.log(
+        `[gate] ${label} tentativo ${tentativo}/${tentativiMax} (dose ${dose}): ` +
+        `${formatMeasures(misure)} → ${v.ok ? "ACCETTATO" : "rifiutato: " + v.motivi.join("; ")}`
+      );
+
+      if (v.ok) return candidato;
+      dose = nextDose(misure, profile, dose);
+    } catch (err) {
+      console.warn(`[gate] ${label}: tentativo ${tentativo} fallito: ${err.message}`);
+      ultimoErrore = err;
+      break;
     }
+    if (!migliore || candidato.verdetto.distanza < migliore.verdetto.distanza) migliore = candidato;
+  }
 
-    const misure = compare(prevFingerprint, impronta);
-
-    // Sesta misura: quanto la scena si e' allontanata dal keyframe, e se
-    // rispetto a ieri e' andata avanti o INDIETRO. Le altre cinque non
-    // distinguono una pianta che cresce da una che rimpicciolisce.
-    const occ = occupancy(anchorFingerprint, impronta);
-    if (occ !== null) {
-      misure.occupazione = occ;
-      misure.avanzamento = occupazionePrec === null ? 0 : occ - occupazionePrec;
-    }
-
-    const v = verdict(misure, profile);
-    const candidato = { ...img, impronta, misure, verdetto: v, tentativi: tentativo, dose };
-
-    console.log(
-      `[gate] ${label} tentativo ${tentativo}/${tentativiMax} (dose ${dose}): ` +
-      `${formatMeasures(misure)} → ${v.ok ? "ACCETTATO" : "rifiutato: " + v.motivi.join("; ")}`
-    );
-
-    if (v.ok) return candidato;
-    if (!migliore || v.distanza < migliore.verdetto.distanza) migliore = candidato;
-    dose = nextDose(misure, profile, dose);
+  if (!migliore) {
+    throw ultimoErrore ?? new Error(`[gate] ${label}: nessun tentativo eseguito: tentativiMax non valido`);
   }
 
   console.warn(
