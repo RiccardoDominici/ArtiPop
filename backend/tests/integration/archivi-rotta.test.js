@@ -56,4 +56,44 @@ describe("GET /archivi", () => {
     expect(html).not.toContain("KV.list non disponibile");
     expect(html).not.toContain("Error");
   });
+
+  it("carta d'identità dell'ultimo giorno in KV: la card mostra i nomi di quel giorno", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put(
+      "giorno:island:2025-01-02",
+      JSON.stringify({ data: "2025-01-02", canale: "island", conceptNome: "Costruzione", elementNome: "Isola" })
+    );
+
+    const res = await callWorker(env, "/archivi");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<div class="soggetto">Isola · Costruzione</div>');
+  });
+
+  it("KV.get che lancia durante l'arricchimento (canale senza ricostruzione onesta): comunque 200 con l'elenco completo, senza riga soggetto", async () => {
+    // getGiorno (storage.js) intercetta già i guasti di KV.get e degrada a
+    // "assente" (stesso trattamento di KV.list sopra): il punto qui non è la
+    // provenienza del fallimento, ma che l'arricchimento non porti mai a un
+    // 500 né a una card con soggetto inventato — "horizon" non è in
+    // RICOSTRUZIONE_STORICA, quindi resta senza nomi.
+    const kv = makeKV();
+    await kv.put("archive:horizon:2025-01-01", "1");
+    const env = makeEnv({
+      KV: {
+        ...kv,
+        async get(key, opts) {
+          if (key.startsWith("giorno:")) throw new Error("KV.get non disponibile (simulato)");
+          return kv.get(key, opts);
+        },
+      },
+    });
+
+    const res = await callWorker(env, "/archivi");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("horizon");
+    expect(html).not.toContain('class="soggetto"');
+  });
 });

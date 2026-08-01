@@ -135,6 +135,16 @@ function giornoRicostruito(canale, data) {
 }
 
 /**
+ * Carta d'identità di un giorno di un canale: legge `giorno:<canale>:<data>`
+ * da KV e, se assente, ripiega sulla ricostruzione onesta (vedi sopra) —
+ * unica fonte di verità usata sia da `archivioCanale` che dall'arricchimento
+ * delle card di /archivi.
+ */
+export async function cartaDiIdentita(env, canale, data) {
+  return (await getGiorno(env, canale, data)) ?? giornoRicostruito(canale, data);
+}
+
+/**
  * Archivio di un flusso: le date disponibili con la carta d'identità di
  * ognuna. Per i giorni senza `giorno:<canale>:<data>` registrata si ripiega
  * sulla ricostruzione onesta (vedi sopra): mai inventare numeri, solo
@@ -143,7 +153,7 @@ function giornoRicostruito(canale, data) {
 export async function archivioCanale(env, canale, limit) {
   const dates = await listArchiveDates(env, canale, limit);
   const giorni = await Promise.all(
-    dates.map(async (data) => (await getGiorno(env, canale, data)) ?? giornoRicostruito(canale, data))
+    dates.map((data) => cartaDiIdentita(env, canale, data))
   );
   return { channel: canale, dates, giorni };
 }

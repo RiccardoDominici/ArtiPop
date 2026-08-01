@@ -16,6 +16,26 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — feat-l-archivio-storico-dice-cosa-si-vedeva
+- Su /archivi ogni card di un canale storico mostrava solo un id tecnico ("neon", "atelier",
+  "island"): la pagina diceva quanti giorni conserva e quando, ma mai COSA si vedeva — l'unica
+  informazione che decide se vale la pena riaprire quell'archivio.
+- `handlers.js`: estratta `cartaDiIdentita(env, canale, data)` dalla riga già presente dentro
+  `archivioCanale` (KV `giorno:<canale>:<data>` con ripiego sulla ricostruzione onesta per i
+  canali a tema fisso) — una sola fonte di verità, riusata sia da `/api/archive/<canale>` che
+  dal nuovo arricchimento di /archivi. Nessun cambio di comportamento per la rotta esistente.
+- `index.js`, rotta `/archivi`: dopo aver costruito l'elenco, ogni voce viene arricchita col
+  soggetto (`elementNome`/`conceptNome`) dell'ultimo giorno via `cartaDiIdentita`, in un
+  `try/catch` proprio e separato dalla scansione KV — un guasto qui lascia la pagina identica a
+  prima (elenco completo, senza soggetto), mai un 500.
+- `archivi.js`: nuova riga `<div class="soggetto">` sotto riga1, «{element} · {concept}» (un solo
+  nome se l'altro manca), emessa solo quando almeno un nome è disponibile — card senza dati resta
+  identica a quella del ciclo 86, mai un contenitore vuoto o un `·` orfano.
+- VISUAL_SPECS §2.1 aggiornata (proposta ai sensi di §7): componente «riga del soggetto», stessi
+  token già in uso nella sezione (`#9aa3b8`, `.88rem`) — nessun colore o misura nuovi.
+- Nuovo `archivi-soggetto.test.js` (unit, puro su `renderArchiviPage`) e `archivi-rotta.test.js`
+  esteso (integrazione, KV con e senza carta d'identità, guasto durante l'arricchimento).
+
 ## 2026-08-01 — feat-il-giorno-d-archivio-si-salva-con-un-nome-che-si-capisce
 - La rotta `/w/<id>?date=…&dl=1` produce da tempo un download col nome parlante
   `artipop-<canale>-<data>.png` (content-disposition, index.js:616), ma su /archivi non era
