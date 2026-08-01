@@ -117,6 +117,49 @@ function usoElementTxt(id) {
   return `${nativoTxt} · ${pubTxt} · ${genTxt}`;
 }
 
+/* Messaggi di conferma per le cancellazioni (azione irreversibile, v. PLAN.md
+   ciclo POLISH "eliminare dal catalogo dice prima cosa si perde"): stessa
+   fonte dati di usoElementTxt/usoConceptTxt (AP.store.usi), nessuna chiamata
+   di rete né scrittura di stato. Se AP.store.usi manca o non ha la voce
+   (tool aperto prima che gli usi siano stati costruiti, o Worker muto),
+   degradano alla sola domanda base: la cancellazione resta possibile. */
+function messaggioEliminaElement(id, nome) {
+  const base = `Eliminare l'element "${nome}"?`;
+  const u = AP.store.usi?.element?.[id];
+  if (!u) return base;
+  const righe = [];
+  if (u.pubblicatoSu) {
+    righe.push(`È pubblicato su "${u.pubblicatoSu}": uscirà dal pool di produzione di quel canale e l'arco eventualmente in corso su di lui ripartirà da capo.`);
+  }
+  if (u.giorni > 0) {
+    const nArchi = (u.archi || []).length;
+    righe.push(`Ha già generato ${nArchi} arc${nArchi === 1 ? "o" : "hi"} · ${u.giorni} giorn${u.giorni === 1 ? "o" : "i"}: le immagini già in archivio restano.`);
+  }
+  if (!u.pubblicatoSu && !(u.giorni > 0)) {
+    righe.push("Non è pubblicato su nessun canale · mai generato.");
+  }
+  return righe.length ? `${base}\n\n${righe.join("\n")}` : base;
+}
+function messaggioEliminaConcept(id, nome) {
+  const base = `Eliminare il concept "${nome}"?`;
+  const u = AP.store.usi?.concept?.[id];
+  if (!u) return base;
+  const righe = [];
+  const nativi = u.elementiNativi || [];
+  if (nativi.length) {
+    righe.push(`Element custom che lo hanno come nativo (il Worker rifiuterà la cancellazione): ${nativi.join(", ")}.`);
+  }
+  const canali = u.canaliProduzione || [];
+  if (canali.length) {
+    righe.push(`Canali attivi che lo pescano per indole: ${canali.join(", ")}.`);
+  }
+  if (u.giorni > 0) {
+    const nArchi = (u.archi || []).length;
+    righe.push(`Ha già generato ${nArchi} arc${nArchi === 1 ? "o" : "hi"} · ${u.giorni} giorn${u.giorni === 1 ? "o" : "i"}.`);
+  }
+  return righe.length ? `${base}\n\n${righe.join("\n")}` : base;
+}
+
 /* ================================================================== */
 /* ---------- LISTA + FORM: CONCEPT ---------- */
 /* ================================================================== */
@@ -360,7 +403,7 @@ async function saveConcept() {
 async function deleteConcept() {
   if (!key()) return setStatus($("conceptFormStatus"), "serve la chiave admin");
   if (!conceptForm || !conceptForm.id) return;
-  if (!confirm(`Eliminare il concept "${conceptForm.nome}"? Se qualche element lo usa come nativo, il Worker rifiuterà.`)) return;
+  if (!confirm(messaggioEliminaConcept(conceptForm.id, conceptForm.nome))) return;
   try {
     setStatus($("conceptFormStatus"), "elimino…");
     await api(`/catalogo/concept?id=${encodeURIComponent(conceptForm.id)}`, { method: "DELETE" });
@@ -600,7 +643,7 @@ async function saveElement() {
 async function deleteElement() {
   if (!key()) return setStatus($("elementFormStatus"), "serve la chiave admin");
   if (!elementForm || !elementForm.id) return;
-  if (!confirm(`Eliminare l'element "${elementForm.nome}"?`)) return;
+  if (!confirm(messaggioEliminaElement(elementForm.id, elementForm.nome))) return;
   try {
     setStatus($("elementFormStatus"), "elimino…");
     await api(`/catalogo/element?id=${encodeURIComponent(elementForm.id)}`, { method: "DELETE" });

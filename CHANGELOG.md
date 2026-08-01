@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-01 — s-eliminare-dal-catalogo-dice-prima-cosa-si-perde
+- `tuning/js/tab-catalogo.js`: `deleteElement()`/`deleteConcept()` ora compongono il `confirm()` con
+  `messaggioEliminaElement`/`messaggioEliminaConcept`, due funzioni pure che leggono `AP.store.usi` (già
+  disponibile, usato da `usoElementTxt`/`usoConceptTxt`) e dicono in anticipo cosa si perde: canale di
+  pubblicazione e riavvio dell'arco in corso, archi/giorni già generati (con le immagini d'archivio che
+  restano), o l'assenza esplicita di uso. Prima il `confirm()` era generico e non avvisava di nulla —
+  unica azione irreversibile del tool, principio 1 di CLAUDE.md.
+- Nuovo `backend/tests/unit/tuning-catalogo-elimina.test.js`.
+
 ## 2026-08-01 — s-le-note-private-non-sono-piu-leggibili-da-chiunque
 - `backend/src/index.js`, `GET /note`: ora richiede la chiave admin come tutte le altre rotte
   `/note*`. Prima chiunque conoscesse l'indirizzo del Worker leggeva l'intero documento
