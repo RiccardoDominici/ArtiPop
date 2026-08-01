@@ -882,7 +882,26 @@ function renderJourney(chId) {
     previewDay(chId, d, d === TODAY);
     return;
   }
-  pendingSharedDate = null;
+  // feat-il-link-condiviso-apre-il-giorno-anche-di-un-arco-passato: la data
+  // condivisa non è nella finestra in corso ma può appartenere a un arco già
+  // chiuso — un link riletto la settimana dopo è il caso normale, non va
+  // scartato in silenzio. Si cerca l'arco che la contiene e ci si sposta,
+  // fermi su quel giorno (nessun autoplay, stessa regola del ramo sopra).
+  if (pendingSharedDate) {
+    const arcs = arcsCache[chId] || [];
+    const arcIdx = arcs.findIndex((arc) => arc.includes(pendingSharedDate));
+    if (arcIdx !== -1) {
+      const d = pendingSharedDate;
+      pendingSharedDate = null;
+      goToArc(chId, arcIdx, d);
+      return;
+    }
+    // Giorno mai generato, o archivio che non lo contiene più: si avvisa
+    // l'utente invece di aprire in silenzio il timelapse di oggi come se
+    // nulla fosse successo, e si prosegue con il comportamento odierno.
+    pendingSharedDate = null;
+    toast("quel giorno non è in archivio — ti mostro oggi");
+  }
   // Anteprima "stile GIF": il timelapse parte da solo (salvo motion ridotto).
   if (!playing && !prefersStill) startPlayback();
 }
@@ -1119,7 +1138,12 @@ function updateArcNav(chId) {
 // archivio). Le tre funzioni sotto restano dedicate ai loro comandi
 // (frecce ‹ ›, "torna a oggi": test preesistenti ne fissano il corpo) e
 // aggiornano #arclist con renderArcList senza passare da qui.
-function goToArc(chId, idx) {
+// feat-il-link-condiviso-apre-il-giorno-anche-di-un-arco-passato: terzo
+// parametro opzionale dataTarget — se valorizzato e presente nell'arco di
+// destinazione, l'anteprima si ferma su quel giorno invece che su "oggi o il
+// più recente". Senza il parametro il comportamento resta quello di sempre
+// (frecce, elenco archi, "torna a oggi": i loro test non devono cambiare).
+function goToArc(chId, idx, dataTarget = null) {
   const arcs = arcsCache[chId] || [];
   if (idx < 0 || idx >= arcs.length) return;
   stopPlayback();
@@ -1129,7 +1153,9 @@ function goToArc(chId, idx) {
   renderArcStory(chId);
   renderArcList(chId);
   const dates = archiveCache[chId];
-  const d = dates.includes(TODAY) ? TODAY : dates[0];
+  const d = dataTarget && dates.includes(dataTarget)
+    ? dataTarget
+    : (dates.includes(TODAY) ? TODAY : dates[0]);
   previewDay(chId, d, d === TODAY);
 }
 
