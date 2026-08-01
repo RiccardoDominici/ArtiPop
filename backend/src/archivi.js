@@ -55,7 +55,7 @@ function renderElenco(storici) {
         Array.isArray(c.date) && c.date.length > 0
           ? `
         <details class="giorni">
-          <summary>tutti i ${c.date.length} giorn${c.date.length === 1 ? "o" : "i"}</summary>
+          <summary aria-label="tutti i ${c.date.length} giorn${c.date.length === 1 ? "o" : "i"} di ${esc(c.id)}">tutti i ${c.date.length} giorn${c.date.length === 1 ? "o" : "i"}</summary>
           <ul class="date">${c.date
             .map(
               (d) =>
@@ -66,10 +66,10 @@ function renderElenco(storici) {
           : "";
       const copertina = c.ultima
         ? `
-        <a class="copertina" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
+        <a class="copertina" aria-hidden="true" tabindex="-1" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
         : "";
       const salva = c.ultima
-        ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1">Salva</a>`
+        ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1" aria-label="Salva l'ultimo wallpaper di ${esc(c.id)}">Salva</a>`
         : "";
       const soggetto =
         c.elementNome || c.conceptNome
@@ -82,7 +82,7 @@ function renderElenco(storici) {
         <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${soggetto}
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
-          <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}">Riapri l'ultimo giorno →</a>${salva}
+          <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(c.id)}">Riapri l'ultimo giorno →</a>${salva}
         </div>${elencoGiorni}${riga3}
         </div>
       </li>`;
