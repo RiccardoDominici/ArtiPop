@@ -330,6 +330,10 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
         </div>
         <button class="dayctrl" id="daynext" aria-label="Giorno successivo dell'archivio">›</button>
       </div>
+      <!-- feat-rivedi-l-arco-precedente: visibile solo quando, oltre alla
+           finestra mostrata, esiste almeno un arco (settimana/concept) più
+           vecchio scaricato da /api/archive ma non ancora raggiungibile. -->
+      <button class="btn ghost" id="arcprev" hidden>‹ arco precedente</button>
       <!-- feat-condividi-il-giorno-che-stai-guardando: segue sempre lo stato
            di #daynav (stesso hasJourney in renderJourney) — niente da
            condividere quando non c'è navigazione fra giorni. -->
@@ -418,6 +422,7 @@ const ddateEl = document.getElementById("ddate");
 const dposEl = document.getElementById("dpos");
 const dayPrevEl = document.getElementById("dayprev");
 const dayNextEl = document.getElementById("daynext");
+const arcPrevEl = document.getElementById("arcprev");
 const dcapEl = document.getElementById("dcap");
 const dayshareEl = document.getElementById("dayshare");
 const dayopenEl = document.getElementById("dayopen");
@@ -426,7 +431,10 @@ const toastEl = document.getElementById("toast");
 
 let order = CHANNELS.map((_, i) => i); // ordine corrente del deck (order[0] = card in cima)
 let previewDate = null;                 // data in preview nel mockup (null = oggi)
-const archiveCache = {};                // channelId → [date, ...]
+const archiveCache = {};                // channelId → [date, ...] finestra sfogliabile mostrata ora
+const fullArchiveCache = {};            // channelId → [date, ...] intero archivio scaricato (?limit=30), non tagliato
+const arcsCache = {};                   // channelId → [[date, ...], ...] archi contigui per conceptNome, dal più recente al più vecchio
+const arcIndexCache = {};               // channelId → indice (in arcsCache) dell'arco attualmente mostrato in archiveCache
 const capCache = {};                    // channelId → { date → {conceptNome, elementNome, tappa, testoTappa, giornoNellArco} }
 
 /* ---------- link condiviso (?c=<canale>&d=<data>) ----------
@@ -640,11 +648,34 @@ setInterval(tickClock, 10_000);
    Niente più striscia di miniature: le date d'archivio servono solo a far
    scorrere l'anteprima avanti/indietro e a mostrare "N di M" sotto al
    mockup, così si capisce a colpo d'occhio dove si è nel viaggio. */
+// feat-rivedi-l-arco-precedente: raggruppa le date (dal più recente al più
+// vecchio) in blocchi contigui per conceptNome. Un giorno senza dati
+// narrativi (conceptNome assente, es. giorno ricostruito) non apre un
+// blocco nuovo: resta in quello in cui si trova, così un buco del cron non
+// spezza in due la stessa storia.
+function computeArcs(dates, cap) {
+  const arcs = [];
+  let block = [];
+  let blockConcept = null;
+  for (const d of dates) {
+    const concept = (cap[d] || {}).conceptNome || null;
+    if (concept && blockConcept && concept !== blockConcept) {
+      arcs.push(block);
+      block = [];
+    }
+    if (concept) blockConcept = concept;
+    block.push(d);
+  }
+  if (block.length) arcs.push(block);
+  return arcs;
+}
+
 async function loadArchive(chId) {
   jmsgEl.hidden = false;
   jmsgEl.textContent = "carico l'archivio…";
   daynavEl.hidden = true;
   playEl.hidden = true;
+  arcPrevEl.hidden = true;
   try {
     if (!archiveCache[chId]) {
       const res = await fetch(\`/api/archive/\${chId}?limit=30\`);
@@ -657,6 +688,8 @@ async function loadArchive(chId) {
         if (g && g.data) cap[g.data] = g;
       }
       capCache[chId] = cap;
+      fullArchiveCache[chId] = dates;
+      arcsCache[chId] = computeArcs(dates, cap);
       // Limita l'anteprima all'arco (settimana/concept) in corso: l'archivio
       // permanente attraversa più arc nel tempo, e sfogliarli tutti di fila
       // mischia storie diverse (es. giorni di un cactus seguiti di colpo da
@@ -672,6 +705,10 @@ async function loadArchive(chId) {
       const ch = CHANNELS.find((c) => c.id === chId);
       if (Number.isInteger(ch?.giorno)) dates = dates.slice(0, ch.giorno);
       archiveCache[chId] = dates;
+      // arcsCache[chId][0] contiene sempre la prima data dell'array (la più
+      // recente), perché computeArcs parte da lì: è lo stesso arco della
+      // finestra iniziale appena calcolata sopra.
+      arcIndexCache[chId] = 0;
     }
     renderJourney(chId);
   } catch {
@@ -696,6 +733,7 @@ function renderJourney(chId) {
   daysaveEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
+  updateArcPrev(chId);
   if (!hasJourney) {
     jmsgEl.textContent = "il viaggio inizia oggi ✨";
     dcapEl.hidden = true;
@@ -774,6 +812,31 @@ function stepDay(dir) {
 }
 dayPrevEl.addEventListener("click", () => stepDay(-1));
 dayNextEl.addEventListener("click", () => stepDay(1));
+
+// Mostra "arco precedente" solo se, oltre alla finestra mostrata ora, esiste
+// almeno un altro arco più vecchio già scaricato ma non ancora raggiunto.
+function updateArcPrev(chId) {
+  const arcs = arcsCache[chId] || [];
+  const idx = arcIndexCache[chId] ?? 0;
+  arcPrevEl.hidden = idx >= arcs.length - 1;
+}
+
+// Sposta la finestra sfogliabile sull'arco precedente, mai unendola a quella
+// corrente (un arco alla volta, la regola del ciclo 47 resta intatta), e si
+// posiziona sul giorno più recente del nuovo arco.
+function goToPreviousArc() {
+  const chId = CHANNELS[order[0]].id;
+  const arcs = arcsCache[chId] || [];
+  const idx = arcIndexCache[chId] ?? 0;
+  if (idx >= arcs.length - 1) return;
+  stopPlayback();
+  arcIndexCache[chId] = idx + 1;
+  archiveCache[chId] = arcs[idx + 1];
+  updateArcPrev(chId);
+  const d = archiveCache[chId][0];
+  previewDay(chId, d, d === TODAY);
+}
+arcPrevEl.addEventListener("click", goToPreviousArc);
 
 /* Mostra un giorno nel mockup della card in cima (crossfade). */
 function previewDay(chId, date, isToday) {
