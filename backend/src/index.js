@@ -47,7 +47,7 @@ import {
 import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
 import { renderPage } from "./page.js";
 import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
-import { renderArchiviPage } from "./archivi.js";
+import { renderArchiviPage, renderGiornoArchivio, renderArchivioNonTrovato } from "./archivi.js";
 import { renderManifest, iconaSvg } from "./manifest.js";
 import { SW_REGISTER_TAG } from "./head.js";
 import { serviceWorkerJs } from "./sw.js";
@@ -238,7 +238,7 @@ export default {
       const rottaHtml =
         percorso === "/" || percorso === "/index.html" ||
         percorso === "/aiuto" || percorso === "/aiuto.html" || percorso === "/help" ||
-        percorso === "/archivi" ||
+        percorso === "/archivi" || percorso.match(/^\/archivi\/([a-z]+)$/) ||
         percorso.match(/^\/s\/([a-z]+(?:-base)?)\.shortcut$/);
       if (rottaHtml) {
         return new Response(renderErroreTemporaneo(), {
@@ -1114,6 +1114,74 @@ export default {
           ...SECURITY_HEADERS,
         },
       });
+    }
+
+    // ---- Pagina di un giorno d'archivio: /archivi/<id> ----
+    // feat-il-giorno-d-archivio-si-apre-dentro-il-sito: la destinazione dei
+    // link di /archivi (copertina, "Riapri l'ultimo giorno", ogni data
+    // dell'elenco espandibile) smette di essere il binario grezzo di /w/ e
+    // diventa questa pagina, con precedente/successivo per sfogliare senza
+    // tornare a /archivi ogni volta. Nessuna scansione globale: le date
+    // vengono da listArchiveDates (per-canale), come /feed/<flusso>.xml.
+    const archivioGiornoMatch = path.match(/^\/archivi\/([a-z]+)$/);
+    if (archivioGiornoMatch) {
+      const id = archivioGiornoMatch[1];
+      const archivioHeaders404 = {
+        "content-type": "text/html; charset=utf-8", "cache-control": "no-store",
+        ...SECURITY_HEADERS,
+      };
+
+      let date = [];
+      try {
+        date = await listArchiveDates(env, id, 400);
+      } catch (err) {
+        console.error(`[archivi/${id}] date non disponibili: ${err.message}`);
+        date = [];
+      }
+
+      // Senza ?date= si apre il giorno più recente (come "Riapri l'ultimo
+      // giorno"). Con ?date= presente ma malformata o non in archivio, MAI un
+      // ripiego silenzioso sull'ultimo giorno: è un link rotto (data
+      // sbagliata in un vecchio bookmark, o un giorno mai esistito) e va
+      // segnalato con un 404 leggibile, non camuffato da un 200 su un altro
+      // giorno.
+      const dateParam = url.searchParams.get("date");
+      const data =
+        dateParam === null
+          ? date[0] ?? null
+          : /^\d{4}-\d{2}-\d{2}$/.test(dateParam) && date.includes(dateParam)
+            ? dateParam
+            : null;
+
+      // Nessuna data disponibile: id sconosciuto, canale senza archivio, o
+      // ?date= che non ci sta dentro. Sempre una pagina HTML leggibile con
+      // link a /archivi (principio 3), mai JSON, mai un 500 grezzo.
+      if (!data) {
+        return new Response(conServiceWorker(renderArchivioNonTrovato(id)), {
+          status: 404,
+          headers: archivioHeaders404,
+        });
+      }
+
+      // Soggetto in un try/catch PROPRIO, separato dalla lettura delle date
+      // (stesso schema di /archivi): un errore qui lascia la pagina senza
+      // riga soggetto, mai un 500.
+      let soggetto = { elementNome: null, conceptNome: null };
+      try {
+        soggetto = await cartaDiIdentita(env, id, data);
+      } catch (err) {
+        console.error(`[archivi/${id}] soggetto non disponibile: ${err.message}`);
+      }
+
+      return new Response(
+        conServiceWorker(renderGiornoArchivio({ id, data, date, soggetto, origin: url.origin })),
+        {
+          headers: {
+            "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
+            ...SECURITY_HEADERS,
+          },
+        },
+      );
     }
 
     // ---- Landing page ----

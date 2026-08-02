@@ -31,6 +31,29 @@ function erede(id) {
 }
 
 /**
+ * Riga «la storia continua in …», condivisa fra l'elenco (`renderElenco`) e
+ * la pagina di un singolo giorno (`renderGiornoArchivio`): stesso markup,
+ * un solo punto che sa come chiamare `erede()`.
+ */
+function rigaErede(id) {
+  const flussoErede = erede(id);
+  if (!flussoErede) return "";
+  return `
+        <div class="riga3 continua">la storia continua in <a class="continua" href="/?c=${encodeURIComponent(flussoErede.id)}">${esc(flussoErede.emoji)} ${esc(flussoErede.name)} →</a></div>`;
+}
+
+/**
+ * Riga del soggetto (`elementNome · conceptNome`), condivisa fra le card
+ * dell'elenco e la pagina di un giorno: emessa solo se almeno uno dei due
+ * nomi è disponibile.
+ */
+function rigaSoggetto(elementNome, conceptNome) {
+  if (!elementNome && !conceptNome) return "";
+  return `
+        <div class="soggetto">${[elementNome, conceptNome].filter(Boolean).map(esc).join(" · ")}</div>`;
+}
+
+/**
  * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array già
  * filtrato (nessun canale attivo) e ordinato da chi chiama, forma
  * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome }]` — stessa
@@ -46,11 +69,7 @@ function renderElenco(storici) {
   }
   const righe = storici
     .map((c) => {
-      const flussoErede = erede(c.id);
-      const riga3 = flussoErede
-        ? `
-        <div class="riga3 continua">la storia continua in <a class="continua" href="/?c=${encodeURIComponent(flussoErede.id)}">${esc(flussoErede.emoji)} ${esc(flussoErede.name)} →</a></div>`
-        : "";
+      const riga3 = rigaErede(c.id);
       const elencoGiorni =
         Array.isArray(c.date) && c.date.length > 0
           ? `
@@ -59,30 +78,26 @@ function renderElenco(storici) {
           <ul class="date">${c.date
             .map(
               (d) =>
-                `<li><a href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}">${esc(d)}</a><a class="salva-giorno" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`
+                `<li><a href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}">${esc(d)}</a><a class="salva-giorno" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`
             )
             .join("")}</ul>
         </details>`
           : "";
       const copertina = c.ultima
         ? `
-        <a class="copertina" aria-hidden="true" tabindex="-1" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
+        <a class="copertina" aria-hidden="true" tabindex="-1" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
         : "";
       const salva = c.ultima
         ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1" aria-label="Salva l'ultimo wallpaper di ${esc(c.id)}">Salva</a>`
         : "";
-      const soggetto =
-        c.elementNome || c.conceptNome
-          ? `
-        <div class="soggetto">${[c.elementNome, c.conceptNome].filter(Boolean).map(esc).join(" · ")}</div>`
-          : "";
+      const soggetto = rigaSoggetto(c.elementNome, c.conceptNome);
       return `
       <li>${copertina}
         <div class="contenuto">
         <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${soggetto}
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
-          <a class="riapri" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(c.id)}">Riapri l'ultimo giorno →</a>${salva}
+          <a class="riapri" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(c.id)}">Riapri l'ultimo giorno →</a>${salva}
         </div>${elencoGiorni}${riga3}
         </div>
       </li>`;
@@ -90,6 +105,87 @@ function renderElenco(storici) {
     .join("");
   return `<ul class="archivi">${righe}</ul>`;
 }
+
+/** Regole condivise da tutte le pagine di questo modulo (elenco e singolo giorno): la
+ * palette, i font, l'header e il footer vivono qui un'unica volta, così §2/§2.1/§2.2
+ * di VISUAL_SPECS restano allineati per costruzione invece che per disciplina. */
+const BASE_STYLE = `
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 20px 80px;
+    background: #0a0b10; color: #f2f3f8;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  a { color: #8fd3ff; }
+  header { padding: 48px 0 24px; }
+  .back {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px;
+    margin-left: -6px; margin-bottom: 10px; font-size: .92rem; text-decoration: none; opacity: .8;
+  }
+  .back:hover { opacity: 1; }
+  h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
+  .sub { margin: 0; color: #9aa3b8; }
+  .msg { color: #9aa3b8; }
+  .soggetto { color: #9aa3b8; font-size: .88rem; margin-top: 2px; }
+  .riga3 { margin-top: 6px; font-size: .88rem; color: #9aa3b8; }
+  .riga3 a.continua { color: #8fd3ff; }
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
+  footer a { display: inline-block; padding: 12px 6px; }
+`;
+
+/** Regole specifiche dell'elenco `/archivi` (card, copertina, elenco giorni espandibile). */
+const ARCHIVI_STYLE = `
+  ul.archivi { list-style: none; margin: 32px 0 0; padding: 0; }
+  ul.archivi li {
+    border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
+    background: rgba(255,255,255,.03); margin-bottom: 10px; padding: 14px 18px;
+    display: flex; gap: 14px;
+  }
+  .contenuto { flex: 1; min-width: 0; }
+  .copertina { flex-shrink: 0; display: block; }
+  .copertina img {
+    width: 60px; height: 128px; object-fit: cover; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03);
+    display: block;
+  }
+  .riga1 { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
+  .riga1 .giorni { color: #9aa3b8; font-weight: 400; }
+  .riga2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+  .intervallo { color: #9aa3b8; font-size: .88rem; }
+  details.giorni { margin-top: 8px; }
+  details.giorni summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
+  details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  details.giorni ul.date li { display: flex; align-items: center; gap: 6px; }
+  details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
+  a.riapri {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    text-decoration: none; font-weight: 600; flex-shrink: 0;
+  }
+  a.salva, a.salva-giorno {
+    color: #8fd3ff; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    text-decoration: none; font-weight: 600; flex-shrink: 0;
+  }
+`;
+
+/** Regole specifiche della pagina di un giorno (foto grande, barra precedente/successivo). */
+const GIORNO_STYLE = `
+  figure.foto { margin: 24px 0 0; }
+  figure.foto img {
+    display: block; width: 100%; max-width: 420px; margin: 0 auto;
+    border-radius: 14px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03);
+  }
+  nav.giorni-nav {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    gap: 10px 16px; margin: 20px 0 0; max-width: 420px; margin-left: auto; margin-right: auto;
+  }
+  nav.giorni-nav a {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    text-decoration: none; font-weight: 600;
+  }
+  nav.giorni-nav a.salva { color: #8fd3ff; }
+`;
 
 /**
  * Pagina `/archivi` completa (HTML autoconsistente, nessuna risorsa esterna,
@@ -112,61 +208,7 @@ export function renderArchiviPage(storici, origin = null, dataOggi = null) {
 <meta name="description" content="I canali storici di ArtiPop non più attivi, con i loro giorni in archivio." />
 ${INSTALL_TAGS}
 ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi storici", "I canali storici di ArtiPop non più attivi, con i loro giorni in archivio.", null, "/archivi") : ""}
-<style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 0 20px 80px;
-    background: #0a0b10; color: #f2f3f8;
-    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  main { max-width: 720px; margin: 0 auto; }
-  a { color: #8fd3ff; }
-  header { padding: 48px 0 24px; }
-  .back {
-    display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px;
-    margin-left: -6px; margin-bottom: 10px; font-size: .92rem; text-decoration: none; opacity: .8;
-  }
-  .back:hover { opacity: 1; }
-  h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 6vw, 2.4rem); letter-spacing: -.02em; }
-  .sub { margin: 0; color: #9aa3b8; }
-  .msg { color: #9aa3b8; }
-  ul.archivi { list-style: none; margin: 32px 0 0; padding: 0; }
-  ul.archivi li {
-    border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
-    background: rgba(255,255,255,.03); margin-bottom: 10px; padding: 14px 18px;
-    display: flex; gap: 14px;
-  }
-  .contenuto { flex: 1; min-width: 0; }
-  .copertina { flex-shrink: 0; display: block; }
-  .copertina img {
-    width: 60px; height: 128px; object-fit: cover; border-radius: 10px;
-    border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03);
-    display: block;
-  }
-  .riga1 { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
-  .riga1 .giorni { color: #9aa3b8; font-weight: 400; }
-  .soggetto { color: #9aa3b8; font-size: .88rem; margin-top: 2px; }
-  .riga2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
-  .intervallo { color: #9aa3b8; font-size: .88rem; }
-  .riga3 { margin-top: 6px; font-size: .88rem; color: #9aa3b8; }
-  .riga3 a.continua { color: #8fd3ff; }
-  details.giorni { margin-top: 8px; }
-  details.giorni summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
-  details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
-  details.giorni ul.date li { display: flex; align-items: center; gap: 6px; }
-  details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
-  a.riapri {
-    display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
-    text-decoration: none; font-weight: 600; flex-shrink: 0;
-  }
-  a.salva, a.salva-giorno {
-    color: #8fd3ff; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
-    text-decoration: none; font-weight: 600; flex-shrink: 0;
-  }
-  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
-  footer a { display: inline-block; padding: 12px 6px; }
-</style>
+<style>${BASE_STYLE}${ARCHIVI_STYLE}</style>
 </head>
 <body>
 <main>
@@ -178,6 +220,104 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi stor
   ${corpo}
   <footer>
     <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
+  </footer>
+</main>
+</body>
+</html>`;
+}
+
+/**
+ * Pagina di un giorno d'archivio (`/archivi/<id>?date=<data>`): il wallpaper
+ * con intestazione (canale + data), soggetto se disponibile, e la barra
+ * precedente/successivo per sfogliare l'archivio senza tornare a `/archivi`
+ * ogni volta. Server-rendered come `renderArchiviPage`: nessuno `<script>`,
+ * nessuna `fetch`.
+ *
+ * `date`: array di TUTTE le date del canale, dalla più recente alla più
+ * vecchia (stessa forma di `storici[].date` sopra) — serve solo a calcolare
+ * precedente/successivo, non viene mostrato per intero come in `/archivi`.
+ * Al bordo dell'archivio (giorno più vecchio o più recente) il comando
+ * assente non viene emesso: mai un link morto.
+ */
+export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null }) {
+  const idx = Array.isArray(date) ? date.indexOf(data) : -1;
+  const precedente = idx >= 0 && idx + 1 < date.length ? date[idx + 1] : null;
+  const successivo = idx > 0 ? date[idx - 1] : null;
+
+  const encId = encodeURIComponent(id);
+  const encData = encodeURIComponent(data);
+
+  const linkPrecedente = precedente
+    ? `<a class="precedente" href="/archivi/${encId}?date=${encodeURIComponent(precedente)}">← giorno precedente</a>`
+    : "";
+  const linkSuccessivo = successivo
+    ? `<a class="successivo" href="/archivi/${encId}?date=${encodeURIComponent(successivo)}">giorno successivo →</a>`
+    : "";
+
+  const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
+  const riga3 = rigaErede(id);
+
+  const titolo = `ArtiPop — ${esc(id)}, ${esc(data)}`;
+  const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(id)}.`;
+
+  return `<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>${titolo}</title>
+<meta name="description" content="${descrizione}" />
+${INSTALL_TAGS}
+${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno ${data} dell'archivio storico di ${id}.`, null, `/archivi/${encId}?date=${encData}`) : ""}
+<style>${BASE_STYLE}${GIORNO_STYLE}</style>
+</head>
+<body>
+<main>
+  <header>
+    <a class="back" href="/archivi">← tutti gli archivi</a>
+    <h1>${esc(id)}</h1>
+    <p class="sub">${esc(data)}</p>
+  </header>${rigaSogg}
+  <figure class="foto">
+    <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
+  </figure>
+  <nav class="giorni-nav" aria-label="Sfoglia i giorni dell'archivio">
+    ${linkPrecedente}
+    ${linkSuccessivo}
+    <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
+  </nav>${riga3}
+  <footer>
+    <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
+  </footer>
+</main>
+</body>
+</html>`;
+}
+
+/**
+ * Pagina HTML 404 per `/archivi/<id>`: id sconosciuto, canale senza archivio
+ * o `?date=` non presente in archivio. Mai JSON, mai la pagina d'errore
+ * grezza di Cloudflare (principio 3) — stesso trattamento di
+ * `renderShortcutMancante` (help.js) per un'altra rotta pubblica.
+ */
+export function renderArchivioNonTrovato(id) {
+  return `<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ArtiPop — giorno non trovato</title>
+${INSTALL_TAGS}
+<style>${BASE_STYLE}</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Questo giorno non c'è</h1>
+    <p class="sub">«${esc(id)}» non ha un archivio consultabile, o il giorno richiesto non ne fa parte.</p>
+  </header>
+  <footer>
+    <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a>
   </footer>
 </main>
 </body>

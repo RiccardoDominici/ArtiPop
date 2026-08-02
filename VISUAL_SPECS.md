@@ -150,7 +150,8 @@ o componente nuovo.
   `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `14px` — stesso trattamento
   visivo delle voci `<details>` di §2, senza l'accordion (qui non c'è contenuto da comprimere).
   Riga superiore: id canale in `#f2f3f8` a sinistra, conteggio giorni in `#9aa3b8` a destra. Riga
-  inferiore: intervallo date in `#9aa3b8`, link "Riapri l'ultimo giorno →" in `#8fd3ff`. Quando il
+  inferiore: intervallo date in `#9aa3b8`, link "Riapri l'ultimo giorno →" (verso `/archivi/<id>?date=<ultima>`,
+  §2.2) in `#8fd3ff`. Quando il
   canale storico ha un erede attivo (`LEGACY_ALIASES` di backend/src/channels.js): terza riga
   «la storia continua in {emoji} {nome} →», testo in `#9aa3b8`, link in `#8fd3ff`, verso
   `/?c=<erede>`. Nessuna riga aggiuntiva quando l'erede non esiste o non è attivo — stessi token,
@@ -162,14 +163,15 @@ o componente nuovo.
 - Componente aggiuntivo «tutti i N giorni» (proposta ai sensi di §7): dentro ogni card, dopo la
   riga dell'intervallo, un `<details class="giorni">` — stesso trattamento visivo dell'accordion
   di §2, nessun token nuovo. `<summary>` in `#9aa3b8`; una volta aperto, l'elenco dei link a ogni
-  giorno (`/w/<id>?date=<data>`, dalla più recente alla più vecchia) in `#8fd3ff`. Presente solo
+  giorno (`/archivi/<id>?date=<data>`, §2.2, dalla più recente alla più vecchia) in `#8fd3ff`. Presente solo
   quando la scansione ha raccolto le date del canale (chiamata legacy o `date` vuoto: nessun
   `<details>`, card identica a quella dei cicli 80-81).
 - Componente aggiuntivo «miniatura di copertina» (proposta ai sensi di §7): a sinistra di ogni
   card, un `<a class="copertina">` con dentro `<img>` `60×128`, `object-fit:cover`, raggio `10px`,
   bordo `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)` — stessi token del bordo/raggio
-  già in uso in questa sezione, nessun colore nuovo. `src` e `href` sono lo stesso indirizzo del
-  link "Riapri l'ultimo giorno →" (`/w/<id>?date=<ultima>`), `loading="lazy"`, `decoding="async"`,
+  già in uso in questa sezione, nessun colore nuovo. `src` resta `/w/<id>?date=<ultima>` (il byte
+  dell'immagine), `href` è `/archivi/<id>?date=<ultima>` (§2.2) — stesso indirizzo del link
+  "Riapri l'ultimo giorno →", `loading="lazy"`, `decoding="async"`,
   `alt=""` (decorativa: id e link nominano già il canale). Il resto della card (riga1, riga2,
   `<details class="giorni">`, riga3) si dispone a destra della miniatura, invariato nel contenuto.
   Presente solo quando il canale ha un `ultima` non vuoto: card senza miniatura, mai un
@@ -192,6 +194,33 @@ o componente nuovo.
   separatore orfano. Presente solo quando almeno uno dei due nomi è disponibile (carta d'identità
   registrata in KV o ricostruzione onesta per i canali a tema fisso, `RICOSTRUZIONE_STORICA` in
   backend/src/handlers.js): card senza dati, nessuna riga del soggetto, mai un contenitore vuoto.
+
+### 2.2 Pagina giorno d'archivio `/archivi/<id>` (sorgente: backend/src/archivi.js, proposta ai sensi di §7)
+
+Adozione integrale dei token di §2/§2.1: nessun colore, componente o dimensione nuovi — questa
+sottosezione fissa solo la composizione. Stesso `--bg #0a0b10`, `--text #f2f3f8`, `--dim #9aa3b8`,
+link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<head>`
+(`INSTALL_TAGS`, `metaAnteprima`).
+- Intestazione: link `.back` "← tutti gli archivi" verso `/archivi` — stesso stile del link `.back`
+  di §2.1 verso `/`. `<h1>` con l'id del canale storico, sotto un `<p class="sub">` con la data del
+  giorno mostrato — stessi token di `h1`/`.sub` già in uso in §2/§2.1.
+- Riga del soggetto: stesso `<div class="soggetto">` di §2.1 (stessi token, stessa guardia —
+  presente solo se almeno un nome è disponibile), subito sotto l'intestazione.
+- Immagine: `<figure>` con `<img src="/w/<id>?date=<data>">`, `alt` descrittivo (canale + data),
+  `loading="lazy"`, `decoding="async"`. Più grande della miniatura di copertina di §2.1 (non
+  `60×128`) ma contenuta: `max-width:420px`, centrata, stesso bordo `rgba(255,255,255,.10)` e
+  raggio `14px` delle card di §2.1 (non il `10px` della miniatura).
+- Barra di navigazione: `<nav>` con «← giorno precedente» / «giorno successivo →» in `#8fd3ff`,
+  area di tocco ≥44px (`display:inline-flex; align-items:center`) come gli altri link di §2/§2.1.
+  Il comando assente al bordo dell'archivio (giorno più vecchio o più recente) non viene emesso:
+  mai un link disabilitato o morto. Accanto, un `<a class="salva">Salva</a>` verso
+  `/w/<id>?date=<data>&dl=1` — stesso trattamento del link "Salva" di §2.1.
+- Riga erede: quando il canale ha un erede attivo, la stessa riga «la storia continua in …» di
+  §2.1 (stessi token, stessa guardia), sotto la barra di navigazione.
+- Nessun `<script>`, nessuna `fetch(` nell'HTML servito — stesso contratto di §2.1.
+- Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente): messaggio umano
+  in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON, mai la pagina
+  d'errore generica di Cloudflare (principio 3 di CLAUDE.md).
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 

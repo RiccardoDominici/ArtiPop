@@ -20,9 +20,9 @@ describe("renderArchiviPage(storici) — elenco di tutti i giorni", () => {
     const html = renderArchiviPage(CON_DATE);
     expect(html).toContain('<details class="giorni">');
     expect(html).toContain("tutti i 3 giorni");
-    expect(html).toContain('/w/island?date=2025-01-03');
-    expect(html).toContain('/w/island?date=2025-01-02');
-    expect(html).toContain('/w/island?date=2025-01-01');
+    expect(html).toContain('<a href="/archivi/island?date=2025-01-03">');
+    expect(html).toContain('<a href="/archivi/island?date=2025-01-02">');
+    expect(html).toContain('<a href="/archivi/island?date=2025-01-01">');
 
     const i3 = html.indexOf("2025-01-03");
     const i2 = html.indexOf("2025-01-02");

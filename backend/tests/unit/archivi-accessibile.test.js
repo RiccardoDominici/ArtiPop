@@ -27,8 +27,8 @@ describe("renderArchiviPage(storici) — accessibilità screen reader", () => {
     const html = renderArchiviPage(DUE_CARD);
     const occorrenze = html.match(/class="copertina"/g) || [];
     expect(occorrenze.length).toBe(2);
-    expect(html).toContain('<a class="copertina" aria-hidden="true" tabindex="-1" href="/w/island?date=2025-01-03">');
-    expect(html).toContain('<a class="copertina" aria-hidden="true" tabindex="-1" href="/w/bloom?date=2025-02-01">');
+    expect(html).toContain('<a class="copertina" aria-hidden="true" tabindex="-1" href="/archivi/island?date=2025-01-03">');
+    expect(html).toContain('<a class="copertina" aria-hidden="true" tabindex="-1" href="/archivi/bloom?date=2025-02-01">');
   });
 
   it("ogni a.riapri ha un aria-label con l'id del proprio canale, diverso fra le card", () => {

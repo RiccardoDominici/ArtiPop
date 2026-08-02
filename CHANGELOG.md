@@ -16,6 +16,21 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-il-giorno-d-archivio-si-apre-dentro-il-sito
+- Nuova pagina `/archivi/<id>[?date=]` (`renderGiornoArchivio` in `archivi.js`): mostra il
+  wallpaper del giorno con data, canale e comandi «giorno precedente / successivo», invece dello
+  scaricare i vecchi archivi a un vicolo cieco — prima ogni link di `/archivi` (copertina, "Riapri
+  l'ultimo giorno", ogni data dell'elenco espandibile) puntava al binario grezzo di `/w/`, senza
+  titolo, data né modo di continuare a sfogliare se non col tasto indietro del browser.
+- `/archivi` ora fa puntare a `/archivi/<id>?date=…` gli stessi tre link; il link "Salva" (`&dl=1`)
+  resta su `/w/…`, perché è un download e non una pagina.
+- Nessuna scansione globale: le date del canale arrivano da `listArchiveDates` (per-canale, come
+  `/feed/<flusso>.xml`), e il soggetto da `cartaDiIdentita` — nessuna funzione nuova, solo riuso.
+- Id sconosciuto, canale senza archivio, `?date=` malformata o non presente in archivio: pagina
+  HTML 404 con link a `/archivi`, mai JSON né la pagina d'errore generica di Cloudflare.
+- `VISUAL_SPECS.md` §2.2: nuova sottosezione per la pagina, che riusa senza eccezioni i token già
+  in vigore per `/archivi` (§2.1) — nessun colore o componente nuovo.
+
 ## 2026-08-02 — feat-riscopri-un-giorno-a-caso
 - Nuovo comando ghost `#dayrand` ("🎲 un giorno a caso") nella fila dei comandi di "Il viaggio
   finora": con centinaia di giorni in archivio, chi non sa cosa rivedere oggi non aveva nessun

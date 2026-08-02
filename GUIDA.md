@@ -203,7 +203,7 @@ Dettagli tecnici: [`backend/README.md`](backend/README.md).
 | `backend/src/storage.js` | layout delle chiavi KV |
 | `backend/src/page.js` | landing page |
 | `backend/src/help.js` | pagina `/aiuto` (troubleshooting + FAQ) |
-| `backend/src/archivi.js` | pagina `/archivi` (elenco dei canali storici e link all'ultimo giorno) |
+| `backend/src/archivi.js` | pagina `/archivi` (elenco dei canali storici) e `/archivi/<id>` (un giorno d'archivio con precedente/successivo) |
 | `backend/src/config.js` | tutti i parametri regolabili, documentati |
 | `shortcut/` | template, build e verifica dei file `.shortcut` firmati |
 | `tuning/` | strumento locale per il maintainer — vedi [`tuning/README.md`](tuning/README.md) |
@@ -270,7 +270,8 @@ usano il sito e lo strumento di tuning in sola lettura.
 | `GET /health` *(pubblico)* | per flusso: `id`, `famiglie`, `concepts`, `cancello` dell'ultima esecuzione, `freschezza` (`ultimaData`, `aggiornato`, `giorniDiRitardo` rispetto a oggi); più `flussiFermi` (numero di flussi con `freschezza.aggiornato:false`) e `misuratore` (booleano, binding Images disponibile) |
 | `GET /w/<flusso>[.jpg\|.png][?date=\|?v=][&dl=1]` *(pubblico)* | immagine del giorno per la lock screen; il corpo è **sempre** byte immagine, **mai** JSON — se il canale non ha ancora generato nulla o `?date=` non esiste, risponde con il placeholder statico. Con `?dl=1` la risposta aggiunge `content-disposition: attachment` con un nome file parlante (`artipop-<flusso>-<data>.png`/`.jpg`), per far arrivare il salvataggio su disco con un nome riconoscibile invece del blob senza estensione — non emesso sul placeholder |
 | `GET /s/<flusso>[-base].shortcut` *(pubblico)* | Shortcut firmata da installare (variante principale o base, vedi [2.7](#27-le-shortcut-firmate)) |
-| `GET /archivi` *(pubblico)* | pagina HTML: i canali storici (island, bloom, studio, neon, …) con giorni in archivio, intervallo date e link per riaprire l'ultimo giorno di ciascuno |
+| `GET /archivi` *(pubblico)* | pagina HTML: i canali storici (island, bloom, studio, neon, …) con giorni in archivio, intervallo date e link per riaprire l'ultimo giorno di ciascuno — copertina, "Riapri l'ultimo giorno" e ogni data dell'elenco espandibile aprono `/archivi/<id>`, non più il binario grezzo di `/w/` |
+| `GET /archivi/<id>[?date=]` *(pubblico)* | pagina HTML di un giorno d'archivio: wallpaper, data, canale e comandi «giorno precedente / successivo» per sfogliare senza tornare a `/archivi`; senza `?date=` mostra il giorno più recente; `?date=` malformata o non in archivio, o id sconosciuto → HTML 404 con link a `/archivi`, mai JSON |
 | `GET /feed/<flusso>.xml` *(pubblico)* | feed RSS 2.0 degli ultimi 20 giorni d'archivio (accetta alias storici); un `<item>` per giorno con titolo, link, `pubDate` ed enclosure verso `/w/<flusso>?date=`; flusso inesistente → 404 con corpo XML, mai JSON |
 | `GET /feed.xml` *(pubblico)* | feed RSS 2.0 aggregato: gli ultimi giorni di tutti i canali attivi in un solo feed, ordinati dal più recente, ogni `<item>` col nome del canale nel titolo e link/enclosure verso il proprio canale |
 
