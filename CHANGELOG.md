@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-il-giorno-d-archivio-racconta-la-sua-tappa
+- `rigaRacconto(testoTappa)` in `archivi.js`, accanto a `rigaSoggetto()`: restituisce
+  `<p class="racconto">` col testo della tappa (sfuggito con `esc()`), o stringa vuota se il testo
+  non è disponibile — mai un paragrafo vuoto per i giorni ricostruiti che hanno `testoTappa: null`.
+- `renderGiornoArchivio` inserisce la riga subito dopo il soggetto e prima della `<figure>`: il dato
+  arrivava già dalla carta d'identità letta per la riga element·concept e veniva buttato via —
+  zero letture KV in più, zero JS, zero fetch aggiunti.
+- `VISUAL_SPECS.md` §2.2: voce «Riga del racconto», stesso `--text #f2f3f8`, nessun colore o
+  dimensione nuovi.
+
 ## 2026-08-02 — feat-un-giorno-d-archivio-sbagliato-mostra-quelli-giusti
 - `renderArchivioNonTrovato(id, date)`: secondo parametro opzionale e retrocompatibile con le date
   d'archivio reali del canale. Quando `?date=` in un link non è in archivio (vecchio bookmark, link

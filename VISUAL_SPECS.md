@@ -206,6 +206,10 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   giorno mostrato — stessi token di `h1`/`.sub` già in uso in §2/§2.1.
 - Riga del soggetto: stesso `<div class="soggetto">` di §2.1 (stessi token, stessa guardia —
   presente solo se almeno un nome è disponibile), subito sotto l'intestazione.
+- Riga del racconto: `<p class="racconto">` col testo della tappa in `#f2f3f8` (stesso `--text`),
+  emessa solo se il testo è disponibile — i giorni ricostruiti di `handlers.js` hanno
+  `testoTappa: null`, quindi nessun paragrafo vuoto — subito dopo la riga del soggetto e prima
+  della `<figure>`. Nessun `font-size` nuovo: stessa dimensione di corpo già in uso.
 - Immagine: `<figure>` con `<img src="/w/<id>?date=<data>">`, `alt` descrittivo (canale + data),
   `loading="lazy"`, `decoding="async"`. Più grande della miniatura di copertina di §2.1 (non
   `60×128`) ma contenuta: `max-width:420px`, centrata, stesso bordo `rgba(255,255,255,.10)` e
