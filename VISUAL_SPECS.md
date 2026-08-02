@@ -86,6 +86,14 @@ mostrato — nessun colore, token o misura nuovi. `#dayfav` invisibile insieme a
 del giorno quando non c'è un viaggio da sfogliare; `#favpick`/`#favlist` invisibili quando il
 canale mostrato non ha alcun giorno segnato.
 
+Un giorno a caso (`#dayrand`, feat-riscopri-un-giorno-a-caso — proposta ai sensi di §7):
+comando ghost `#dayrand` ("🎲 un giorno a caso") nella fila dei comandi del pannello, accanto
+a "segna preferito" — stessa pill `.btn.ghost` già canonica, nessun colore, token o misura
+nuovi. Invisibile insieme al resto dei comandi del giorno quando non c'è un viaggio da
+sfogliare, E quando l'archivio noto del canale mostrato ha meno di due date. Al tocco apre un
+giorno d'archivio diverso da quello mostrato, pescato a caso; se non ce n'è nessun altro un
+toast avvisa e la vista non cambia.
+
 Condividi l'immagine (`#dayshareimg`, feat-condividi-l-immagine-del-giorno — proposta ai sensi
 di §7): comando ghost nella fila dei comandi del pannello, accanto a "salva l'immagine" —
 stessa pill `.btn.ghost` già canonica, nessun colore, token o misura nuovi. Invisibile insieme
