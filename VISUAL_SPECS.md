@@ -226,7 +226,14 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
 - Immagine: `<figure>` con `<img src="/w/<id>?date=<data>">`, `alt` descrittivo (canale + data),
   `loading="lazy"`, `decoding="async"`. Più grande della miniatura di copertina di §2.1 (non
   `60×128`) ma contenuta: `max-width:420px`, centrata, stesso bordo `rgba(255,255,255,.10)` e
-  raggio `14px` delle card di §2.1 (non il `10px` della miniatura).
+  raggio `14px` delle card di §2.1 (non il `10px` della miniatura). L'`<img>` è avvolta da un
+  `<a class="apri" href="/w/<id>?date=<data>" target="_blank" rel="noopener">` verso lo stesso URL
+  del `src` — apre il wallpaper a grandezza piena in una nuova scheda, come già il bottone «apri
+  l'immagine» della home (proposta ai sensi di §7, feat-il-wallpaper-d-archivio-si-apre-a-grandezza-piena).
+  L'`<a>` porta un `aria-label` descrittivo («Apri a grandezza piena il wallpaper di <id> del
+  <data>») così lo screen reader non legge due volte l'`alt`, e un focus visibile (`outline: 2px
+  solid #8fd3ff`, stesso colore link già in uso). Nessun token nuovo: nessuna dimensione, colore o
+  componente oltre a quelli già presenti in §2/§2.1.
 - Barra di navigazione: `<nav>` con «← giorno precedente» / «giorno successivo →» in `#8fd3ff`,
   area di tocco ≥44px (`display:inline-flex; align-items:center`) come gli altri link di §2/§2.1.
   Il comando assente al bordo dell'archivio (giorno più vecchio o più recente) non viene emesso:

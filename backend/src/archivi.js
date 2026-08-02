@@ -238,6 +238,8 @@ const ARCHIVI_STYLE = `
 const GIORNO_STYLE = `
   .racconto { color: #f2f3f8; margin: 12px 0 0; }
   figure.foto { margin: 24px 0 0; }
+  figure.foto a.apri { display: block; }
+  figure.foto a.apri:focus-visible { outline: 2px solid #8fd3ff; outline-offset: 2px; border-radius: 14px; }
   figure.foto img {
     display: block; width: 100%; max-width: 420px; margin: 0 auto;
     border-radius: 14px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03);
@@ -348,7 +350,9 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
     <p class="sub">${rigaData(data)}</p>
   </header>${rigaSogg}${rigaPos}${rigaRacc}
   <figure class="foto">
-    <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
+    <a class="apri" href="/w/${encId}?date=${encData}" target="_blank" rel="noopener" aria-label="Apri a grandezza piena il wallpaper di ${esc(id)} del ${esc(data)}">
+      <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
+    </a>
   </figure>
   <nav class="giorni-nav" aria-label="Sfoglia i giorni dell'archivio">
     ${linkPrecedente}
