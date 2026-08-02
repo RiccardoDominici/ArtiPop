@@ -62,7 +62,14 @@ function paragrafiGiorno(v) {
  * Nessuna rete, nessun accesso a KV qui dentro: solo composizione di stringhe.
  */
 export function renderFeed({ canale, voci, origin, oggi }) {
-  const linkCanale = canale.id ? `${origin}/?c=${canale.id}` : `${origin}/`;
+  // feat-il-feed-di-un-canale-storico-apre-il-giorno-in-archivio: l'alias
+  // storico risolve sulla home nel flusso erede, che non ha quella data —
+  // la card corretta per quell'id vive in /archivi.
+  const linkCanale = canale.storico
+    ? `${origin}/archivi`
+    : canale.id
+    ? `${origin}/?c=${canale.id}`
+    : `${origin}/`;
   const selfUrl = canale.id ? `${origin}/feed/${canale.id}.xml` : `${origin}/feed.xml`;
   const descrizione = canale.tagline || "Un flusso di wallpaper AI di ArtiPop, un giorno nuovo alla volta.";
 
@@ -72,7 +79,13 @@ export function renderFeed({ canale, voci, origin, oggi }) {
       const soggetto = v.conceptNome && v.elementNome ? `${v.conceptNome} · ${v.elementNome}` : null;
       const titoloBase = soggetto ? `${v.data} — ${soggetto}` : v.data;
       const titolo = v.canaleNome ? `${v.canaleNome} — ${titoloBase}` : titoloBase;
-      const link = `${origin}/?c=${idVoce}&d=${v.data}`;
+      // Stesso motivo del link di canale sopra: l'alias storico non ha
+      // quella data sul flusso erede, ma l'archivio letto sotto l'id
+      // richiesto (/archivi/<id>?date=) la mostra correttamente — è lo
+      // stesso posto già puntato da enclosure e <img> qui sotto.
+      const link = canale.storico
+        ? `${origin}/archivi/${idVoce}?date=${v.data}`
+        : `${origin}/?c=${idVoce}&d=${v.data}`;
       const immagine = `${origin}/w/${idVoce}?date=${v.data}`;
       return `<item>
 <title>${escXml(titolo)}</title>

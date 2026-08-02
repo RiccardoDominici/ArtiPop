@@ -34,6 +34,34 @@ describe("GET /feed/<flusso>.xml", () => {
     expect(xml).not.toContain(`/w/${ACTIVE_CHANNELS[0].id}?date=2025-06-01`);
   });
 
+  // feat-il-feed-di-un-canale-storico-apre-il-giorno-in-archivio: la voce di
+  // un alias storico deve portare alla pagina d'archivio di quello stesso
+  // id, non alla home del flusso erede (che non ha mai avuto quella data).
+  it("alias storico: link/guid di voce puntano a /archivi/<id>?date=, mai a /?c=<id>&d=", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-02", "1");
+
+    const res = await callWorker(env, "/feed/island.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/rss+xml; charset=utf-8");
+    const xml = await res.text();
+    expect(xml).toContain("/archivi/island?date=2025-01-02");
+    expect(xml).not.toContain("/?c=island&amp;d=");
+  });
+
+  it("flusso attivo: link di voce e di canale restano /?c=<flusso>&d= e /?c=<flusso>, invariati", async () => {
+    const env = makeEnv();
+    const id = ACTIVE_CHANNELS[0].id;
+    await env.KV.put(`archive:${id}:2026-07-30`, "1");
+
+    const res = await callWorker(env, `/feed/${id}.xml`);
+    expect(res.status).toBe(200);
+    const xml = await res.text();
+    expect(xml).toContain(`/?c=${id}&amp;d=2026-07-30`);
+    expect(xml).toContain(`<link>https://artipop.test/?c=${id}</link>`);
+    expect(xml).not.toContain(`/archivi/${id}`);
+  });
+
   it("flusso inesistente: 404 ma corpo XML, mai JSON né HTML", async () => {
     const env = makeEnv();
     const res = await callWorker(env, "/feed/nonesiste.xml");

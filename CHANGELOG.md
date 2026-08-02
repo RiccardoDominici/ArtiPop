@@ -1610,3 +1610,16 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovo `backend/tests/unit/archivi-apri-immagine.test.js`: struttura del link (posizione dentro
   `<figure>`, `href`/`target`/`rel`), `aria-label` non vuoto, escaping su id/data con caratteri
   speciali, contratto «zero `<script>`/`fetch(`» invariato, attributi dell'immagine invariati.
+
+## 2026-08-02 — feat-il-feed-di-un-canale-storico-apre-il-giorno-in-archivio
+- `renderFeed` (`feed.js`): quando `canale.storico` è vero, `link`/`guid` di ogni `<item>` e il
+  `<link>` del `<channel>` puntano rispettivamente a `/archivi/<id>?date=<data>` e `/archivi`
+  invece che a `/?c=<id>&d=<data>` e `/?c=<id>` — chi segue un canale storico dal lettore di feed
+  finiva sulla home del flusso erede, su un giorno che quel canale non ha mai avuto (l'archivio
+  si legge sotto l'id richiesto, ma la home lo risolve sull'erede). `enclosure` e `<img>` della
+  description non cambiano: puntavano già, correttamente, a `/w/<id>?date=<data>`.
+- `index.js`: la rotta `/feed/<flusso>.xml`, nel ramo `isLegacy`, marca il canale con
+  `storico: true`; il ramo del flusso attivo e il feed aggregato `/feed.xml` restano invariati.
+- Test estesi in `feed-render.test.js` e `feed-rotta.test.js`: comportamento nuovo per
+  `canale.storico`, non-regressione byte-per-byte per i feed dei flussi attivi e per il feed
+  aggregato.
