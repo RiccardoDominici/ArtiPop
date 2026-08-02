@@ -25,16 +25,6 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
   al render), zero JS aggiunto (contratto §2.2 «nessun `<script>`, nessuna `fetch(`» intatto).
   Miniature decorative (`alt=""`), il nome accessibile del link resta il testo.
 
-## 2026-08-02 — feat-quel-giorno-negli-altri-canali
-- La pagina di un giorno d'archivio mostra ora, dopo il wallpaper e prima della barra
-  precedente/successivo, un blocco «quel giorno negli altri canali»: miniatura e link verso
-  `/archivi/<altroId>?date=<data>` per ciascun altro canale attivo che ha la stessa data in
-  archivio — l'asse di navigazione orizzontale che mancava (finora l'archivio si sfogliava solo
-  dentro un canale). Calcolo server-side in un unico `try/catch` con `Promise.all` sugli altri
-  canali di `ACTIVE_CHANNELS`: un errore azzera il blocco (mai un 500), coerente con lo stesso
-  schema già usato per il soggetto del giorno. Riuso integrale della miniatura `60×128` e del
-  colore link `#8fd3ff` già in VISUAL_SPECS §2.2 — zero componenti o colori nuovi, zero JS.
-
 ## 2026-08-02 — feat-riscopri-un-giorno-a-caso-dall-archivio
 - Nuovo comando «un giorno a caso» nella barra della pagina di un giorno d'archivio
   (`/archivi/<id>?date=casuale`): pesca a sorte una data fra quelle già in archivio per il

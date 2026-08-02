@@ -347,19 +347,6 @@ const GIORNO_STYLE = `
     width: 60px; height: 128px; object-fit: cover; border-radius: 10px;
     border: 1px solid rgba(255,255,255,.10);
   }
-  nav.altri-canali {
-    display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start;
-    gap: 10px 16px; margin: 20px 0 0; max-width: 420px; margin-left: auto; margin-right: auto;
-  }
-  nav.altri-canali .sub { flex-basis: 100%; text-align: center; margin: 0 0 4px; }
-  nav.altri-canali a {
-    display: inline-flex; flex-direction: column; gap: 6px; align-items: center;
-    text-decoration: none; font-weight: 600; color: #8fd3ff; min-height: 44px;
-  }
-  nav.altri-canali a .mini {
-    width: 60px; height: 128px; object-fit: cover; border-radius: 10px;
-    border: 1px solid rgba(255,255,255,.10);
-  }
 `;
 
 /**
@@ -427,7 +414,7 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * `scegliDataACaso`, rotazione.js). Con un solo giorno il comando non si
  * emette: porterebbe sempre alla pagina già aperta, un link inutile.
  */
-export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null, altriCanali = [] }) {
+export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null }) {
   const idx = Array.isArray(date) ? date.indexOf(data) : -1;
   const precedente = idx >= 0 && idx + 1 < date.length ? date[idx + 1] : null;
   const successivo = idx > 0 ? date[idx - 1] : null;
@@ -452,23 +439,6 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   const rigaRacc = rigaRacconto(soggetto?.testoTappa);
   const elencoGiorniGiorno = elencoGiorni(id, date, data);
   const riga3 = rigaErede(id);
-
-  // feat-quel-giorno-negli-altri-canali: con `altriCanali` vuoto (nessun
-  // altro canale ha questa data, o il calcolo in index.js è fallito) il
-  // blocco non viene emesso affatto — retrocompatibile con ogni chiamata
-  // esistente che non passa il parametro.
-  const altriCanaliNav =
-    Array.isArray(altriCanali) && altriCanali.length > 0
-      ? `<nav class="altri-canali" aria-label="Questo giorno negli altri canali">
-    <p class="sub">Quel giorno negli altri canali</p>
-    ${altriCanali
-      .map((altroId) => {
-        const encAltro = encodeURIComponent(altroId);
-        return `<a href="/archivi/${encAltro}?date=${encData}"><img class="mini" src="/w/${encAltro}?date=${encData}" alt="" loading="lazy" decoding="async" width="60" height="128" />${esc(altroId)}</a>`;
-      })
-      .join("")}
-  </nav>`
-      : "";
 
   const titolo = `ArtiPop — ${esc(id)}, ${esc(data)}`;
   const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(id)}.`;
@@ -499,7 +469,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
     <a class="apri" href="/w/${encId}?date=${encData}" target="_blank" rel="noopener" aria-label="Apri a grandezza piena il wallpaper di ${esc(id)} del ${esc(data)}">
       <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
     </a>
-  </figure>${altriCanaliNav}
+  </figure>
   <nav class="giorni-nav" aria-label="Sfoglia i giorni dell'archivio">
     ${linkPrecedente}
     ${linkSuccessivo}

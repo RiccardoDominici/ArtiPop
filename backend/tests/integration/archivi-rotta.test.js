@@ -226,57 +226,6 @@ describe("GET /archivi/<id>", () => {
     expect(res.headers.get("x-frame-options")).toBeTruthy();
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
   });
-
-  // feat-quel-giorno-negli-altri-canali: quali altri canali attivi hanno la
-  // stessa data in archivio, calcolato server-side in un try/catch proprio.
-  describe("quel giorno negli altri canali", () => {
-    it("un altro canale attivo ha la stessa data: la pagina lo linka con miniatura", async () => {
-      const env = makeEnv();
-      await env.KV.put(`archive:${ACTIVE_CHANNELS[0].id}:2025-01-02`, "1");
-      await env.KV.put(`archive:${ACTIVE_CHANNELS[1].id}:2025-01-02`, "1");
-
-      const res = await callWorker(env, `/archivi/${ACTIVE_CHANNELS[0].id}?date=2025-01-02`);
-      expect(res.status).toBe(200);
-      const html = await res.text();
-      expect(html).toContain('<nav class="altri-canali"');
-      expect(html).toContain(`href="/archivi/${ACTIVE_CHANNELS[1].id}?date=2025-01-02"`);
-      expect(html).toContain(`src="/w/${ACTIVE_CHANNELS[1].id}?date=2025-01-02"`);
-    });
-
-    it("l'altro canale NON ha quella data: nessun blocco", async () => {
-      const env = makeEnv();
-      await env.KV.put(`archive:${ACTIVE_CHANNELS[0].id}:2025-01-02`, "1");
-      await env.KV.put(`archive:${ACTIVE_CHANNELS[1].id}:2025-06-15`, "1");
-
-      const res = await callWorker(env, `/archivi/${ACTIVE_CHANNELS[0].id}?date=2025-01-02`);
-      expect(res.status).toBe(200);
-      const html = await res.text();
-      expect(html).not.toContain('<nav class="altri-canali"');
-    });
-
-    it("KV.list che lancia durante il calcolo degli altri canali: comunque 200, senza blocco, mai 500", async () => {
-      const kv = makeKV();
-      await kv.put(`archive:${ACTIVE_CHANNELS[0].id}:2025-01-02`, "1");
-      let chiamate = 0;
-      const env = makeEnv({
-        KV: {
-          ...kv,
-          async list(opts) {
-            chiamate += 1;
-            if (chiamate > 1) throw new Error("KV.list non disponibile (simulato)");
-            return kv.list(opts);
-          },
-        },
-      });
-
-      const res = await callWorker(env, `/archivi/${ACTIVE_CHANNELS[0].id}?date=2025-01-02`);
-      expect(res.status).toBe(200);
-      const html = await res.text();
-      expect(html).not.toContain('<nav class="altri-canali"');
-      expect(html).not.toContain("KV.list non disponibile");
-      expect(html).not.toContain("Error");
-    });
-  });
 });
 
 // feat-riscopri-un-giorno-a-caso-dall-archivio: /archivi/<id>?date=casuale
