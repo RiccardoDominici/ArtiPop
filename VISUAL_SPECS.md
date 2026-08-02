@@ -58,6 +58,14 @@ dell'arco (`.arcdate`) e il nome del concept (`.arctext`), con testo di ripiego 
 la riga dell'arco mostrato è evidenziata con `.on`. Comando invisibile con meno di due
 archi o senza archivio disponibile — nessun colore o misura nuovi.
 
+Archivio completo del canale (`#archlink`, feat-l-archivio-completo-del-canale-a-un-tocco —
+proposta ai sensi di §7): comando ghost dentro `.journey`, subito dopo la didascalia "Solo
+questa settimana…" — stessa pill `.btn.ghost` già canonica, nessun colore, token o misura
+nuovi. Porta a `/archivi/<canale mostrato>`, l'archivio permanente (tutti i giorni, mese per
+mese) del canale in cima alla pila; segue lo stesso canale di `#feedlink` e si aggiorna
+insieme ad esso a ogni cambio card. Sempre visibile: è un `<a href>` reale, funzionante anche
+senza JavaScript.
+
 Ripiego senza JavaScript (`<noscript>`, feat-la-home-si-vede-anche-senza-javascript): un
 elenco testuale (`.ns-list`) con una voce (`.ns-item`) per canale attivo — nome, wallpaper
 di oggi in miniatura quando c'è un meta con data, link alla Shortcut del canale e link

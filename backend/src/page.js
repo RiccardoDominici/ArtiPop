@@ -419,6 +419,12 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            giorni, un solo concept), non l'intero archivio permanente — che
            attraversa più concept e mischierebbe storie diverse. -->
       <p class="hint">Solo questa settimana, giorno per giorno — ↔ scorri o usa le frecce.</p>
+      <!-- Il viaggio qui sopra mostra solo l'arco/settimana in corso (vedi
+           didascalia sopra); l'archivio permanente del canale — tutti i
+           giorni, mese per mese — vive su /archivi/<id> dal ciclo 130.
+           #archlink ci porta con un tocco e segue lo stesso ciclo di vita
+           di #feedlink: stesso canale in cima alla pila, stesso aggiornamento. -->
+      <a class="btn ghost" id="archlink" href="/archivi/${esc(feedChannelId)}">tutti i giorni di questo canale</a>
       <!-- Niente più miniature: l'archivio si guarda nel mockup qui sopra.
            Qui restano solo data del fotogramma, posizione nel viaggio e le
            frecce giorno prec./succ. — senza, si perderebbe ogni riferimento
@@ -993,6 +999,10 @@ function updateChrome() {
   if (feedlinkEl) feedlinkEl.href = \`/feed/\${ch.id}.xml\`;
   const feedAutodiscoveryEl = document.querySelector('link[type="application/rss+xml"]');
   if (feedAutodiscoveryEl) feedAutodiscoveryEl.href = \`/feed/\${ch.id}.xml\`;
+  // "tutti i giorni di questo canale" punta all'archivio permanente del
+  // canale in cima: stesso ciclo di vita di #feedlink, sempre in sync.
+  const archlinkEl = document.getElementById("archlink");
+  if (archlinkEl) archlinkEl.href = "/archivi/" + encodeURIComponent(ch.id);
   dotsEl.innerHTML = CHANNELS.map((c) =>
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
   previewDate = null;
