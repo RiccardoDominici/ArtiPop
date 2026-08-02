@@ -1638,3 +1638,28 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   blocco su `/w/`, coerenza dei path con le rotte realmente presenti in `index.js`) e la rotta
   end-to-end (200, `text/plain`, zero letture KV).
 - `GUIDA.md`: nuova riga nella tabella delle rotte pubbliche per `GET /robots.txt`.
+
+## 2026-08-02 — feat-l-archivio-storico-si-sfoglia-per-mese
+- `elencoGiorni()` (`backend/src/archivi.js`), condivisa dalle tre superfici che elencano i giorni
+  di un canale storico (card di `/archivi`, pagina di un giorno, pagina d'errore), ora raggruppa le
+  date in `<details class="mese">` per mese di calendario invece di stamparle tutte in un unico
+  `<ul class="date">` piatto: `listArchiveDates` arriva fino a 400 date, e una colonna di 400
+  righe tutte uguali è il primo attrito reale di chi riscarica l'archivio di un vecchio canale.
+  Nuova `etichettaMese()` deriva chiave e forma estesa italiana del mese riusando lo stesso pattern
+  di `dataEstesaItaliana` (head.js): mezzogiorno UTC, la data è una chiave calendario non un
+  istante. Le chiavi malformate (o con data invalida, es. `2026-13-99`) confluiscono nell'ultimo
+  gruppo «altri giorni», mai scartate e mai un "Invalid Date" in pagina. Il gruppo che contiene il
+  giorno mostrato (pagina di un giorno) è aperto di default; con un solo mese quel gruppo resta
+  aperto comunque; nella card di `/archivi` e nella pagina d'errore, senza un giorno corrente,
+  nessun gruppo è aperto. Zero JS, zero letture KV in più: stesso numero di chiamate a
+  `listChannelsWithArchive`/`listArchiveDates` di prima.
+- Nuovo `backend/tests/unit/archivi-giorni-per-mese.test.js`: raggruppamento su tre mesi diversi,
+  singolare/plurale del conteggio, ordine complessivo invariato, apertura del solo gruppo corretto
+  (o dell'unico gruppo), chiavi malformate senza "Invalid Date"/"NaN", `date` vuoto/assente
+  invariato, nessuno `<script>`/`fetch(`. I test esistenti (`archivi-giorni`, `archivi-accessibile`,
+  `archivi-salva`, `archivi-non-trovato`, `archivi-giorno-salta`, integrazione `archivi-rotta`)
+  restano verdi senza modifiche: le loro date di prova cadono tutte in un solo mese, quindi la
+  nidificazione non cambia la forma attesa.
+- `VISUAL_SPECS.md` §2.1 e §2.2 aggiornate ai sensi di §7: il `<details class="mese">` riusa il
+  trattamento visivo dell'accordion già fissato in §2, `<summary>` in `#9aa3b8`, link in `#8fd3ff`
+  — nessun colore, componente o dimensione nuovi.
