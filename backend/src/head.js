@@ -61,6 +61,19 @@ export function feedLinkTag(feedUrl) {
   return `<link rel="alternate" type="application/rss+xml" title="ArtiPop" href="${feedUrl}" />`;
 }
 
+/**
+ * `<link rel="canonical">`: dichiara l'indirizzo ufficiale della pagina
+ * (feat-un-solo-indirizzo-ufficiale-per-ogni-pagina), così i suoi alias
+ * (es. `/aiuto.html`, `/help` → `/aiuto`) e le varianti per-query (`?c=`/`?d=`
+ * sulla home) non appaiono ai motori come copie senza indirizzo preferito.
+ * Stringa vuota se `origin` è assente, stessa guardia di `feedLinkTag`: mai
+ * un indirizzo finto inventato.
+ */
+export function canonicalTag(origin, percorso = "/") {
+  if (!origin) return "";
+  return `<link rel="canonical" href="${origin}${percorso}" />`;
+}
+
 // Data YYYY-MM-DD → "28 luglio 2026". Mezzogiorno UTC fisso per non far
 // scivolare il giorno per via del fuso (vedi CONFIG.TIMEZONE altrove): qui
 // la data è già una chiave calendario, non un istante da localizzare.

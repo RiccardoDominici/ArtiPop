@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-un-solo-indirizzo-ufficiale-per-ogni-pagina
+- `head.js` guadagna `canonicalTag(origin, percorso)`, funzione pura (stessa guardia di
+  `feedLinkTag`: stringa vuota senza `origin`) che compone `<link rel="canonical">`.
+- Inserito in `renderPage` (fisso su `/`, non segue `?c=`/`?d=`), `renderHelpPage` (`/aiuto`,
+  così i tre alias `/aiuto`, `/aiuto.html`, `/help` dichiarano lo stesso indirizzo ufficiale),
+  `renderArchiviPage` (`/archivi`) e `renderGiornoArchivio` (il proprio percorso completo di
+  `?date=`). Perché ora: robots.txt dice cosa non visitare (ciclo 127) e sitemap.xml cosa esiste
+  (ciclo 129), ma nessuno dei due dice quale indirizzo, fra più copie della stessa pagina, è
+  quello preferito — canonical chiude quella terza gamba.
+
 ## 2026-08-02 — feat-la-home-dice-da-dove-viene-questo-canale
 - `channelData` in `page.js` guadagna il campo `eredita: [id, ...]`, calcolato invertendo
   `LEGACY_ALIASES` (già importata, oggi usata solo per risolvere `?c=<alias>`): zero fetch nuove,

@@ -11,7 +11,7 @@
 
 import { ACTIVE_CHANNELS } from "./channels.js";
 import { CONFIG } from "./config.js";
-import { INSTALL_TAGS, metaAnteprima } from "./head.js";
+import { INSTALL_TAGS, metaAnteprima, canonicalTag } from "./head.js";
 
 /** Voci di troubleshooting: sintomo → causa → rimedio. `priority` le mette in cima. */
 const PROBLEMI = [
@@ -453,6 +453,7 @@ export function renderHelpPage(stato = null, origin = null, dataOggi = null) {
 <title>ArtiPop — aiuto e problemi comuni</title>
 <meta name="description" content="Perché l'automazione dello sfondo non parte, e tutte le altre domande su ArtiPop." />
 ${INSTALL_TAGS}
+${canonicalTag(origin, "/aiuto")}
 ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — aiuto e problemi comuni", "Perché l'automazione dello sfondo non parte, e tutte le altre domande su ArtiPop.", null, "/aiuto") : ""}
 <style>
   *, *::before, *::after { box-sizing: border-box; }

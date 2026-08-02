@@ -17,7 +17,7 @@
 //  - Nessuna risorsa esterna: font di sistema, CSS e JS inline.
 
 import { ACTIVE_CHANNELS, LEGACY_ALIASES } from "./channels.js";
-import { INSTALL_TAGS, metaAnteprima, feedLinkTag } from "./head.js";
+import { INSTALL_TAGS, metaAnteprima, feedLinkTag, canonicalTag } from "./head.js";
 
 // feat-quando-arriva-il-prossimo-wallpaper: specchio di triggers.crons in
 // backend/wrangler.jsonc (ambiente di produzione) — il cron di generazione
@@ -135,6 +135,7 @@ export function renderPage(metas, origin, dateKey, condiviso = null, feedUrl = n
 <title>${pageTitle}</title>
 <meta name="description" content="${pageDescription}" />
 ${INSTALL_TAGS}
+${canonicalTag(origin, "/")}
 ${feedLinkTag(feedUrl)}
 ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
 <style>

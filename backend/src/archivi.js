@@ -9,7 +9,7 @@
 // limita a renderla — coerente con la guardia `fetches.length === 1` sulla
 // home, che questo modulo non tocca.
 
-import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana } from "./head.js";
+import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag } from "./head.js";
 import { LEGACY_ALIASES, getChannel } from "./channels.js";
 
 /** Escape minimo per il testo dinamico inserito nell'HTML (id canale, date). */
@@ -362,6 +362,7 @@ export function renderArchiviPage(storici, origin = null, dataOggi = null) {
 <title>ArtiPop — archivi</title>
 <meta name="description" content="Tutti i canali di ArtiPop con giorni in archivio, in corso e non, con i loro giorni consultabili." />
 ${INSTALL_TAGS}
+${canonicalTag(origin, "/archivi")}
 ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "Tutti i canali di ArtiPop con giorni in archivio, in corso e non, con i loro giorni consultabili.", null, "/archivi") : ""}
 <style>${BASE_STYLE}${ARCHIVI_STYLE}</style>
 </head>
@@ -417,6 +418,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 
   const titolo = `ArtiPop — ${esc(id)}, ${esc(data)}`;
   const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(id)}.`;
+  const percorso = `/archivi/${encId}?date=${encData}`;
 
   return `<!doctype html>
 <html lang="it">
@@ -426,7 +428,8 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 <title>${titolo}</title>
 <meta name="description" content="${descrizione}" />
 ${INSTALL_TAGS}
-${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno ${data} dell'archivio storico di ${id}.`, { canale: id, data }, `/archivi/${encId}?date=${encData}`) : ""}
+${canonicalTag(origin, percorso)}
+${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno ${data} dell'archivio storico di ${id}.`, { canale: id, data }, percorso) : ""}
 <style>${BASE_STYLE}${GIORNO_STYLE}</style>
 </head>
 <body>
