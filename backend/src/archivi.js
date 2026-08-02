@@ -407,6 +407,12 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * di `#feedlink` in `page.js` e della rotta in `index.js`), e il `<head>`
  * porta l'autodiscovery `feedLinkTag` — assente senza `origin`, mai un `href`
  * monco, coerente con `canonicalTag`/`metaAnteprima` qui sopra.
+ *
+ * feat-riscopri-un-giorno-a-caso-dall-archivio: con almeno 2 giorni in
+ * archivio, la barra include anche «un giorno a caso» verso
+ * `/archivi/<id>?date=casuale` (rotta gestita in `index.js` con
+ * `scegliDataACaso`, rotazione.js). Con un solo giorno il comando non si
+ * emette: porterebbe sempre alla pagina già aperta, un link inutile.
  */
 export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null }) {
   const idx = Array.isArray(date) ? date.indexOf(data) : -1;
@@ -422,6 +428,11 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   const linkSuccessivo = successivo
     ? `<a class="successivo" href="/archivi/${encId}?date=${encodeURIComponent(successivo)}"><img class="mini" src="/w/${encId}?date=${encodeURIComponent(successivo)}" alt="" loading="lazy" decoding="async" width="60" height="128" />giorno successivo →</a>`
     : "";
+
+  const linkACaso =
+    Array.isArray(date) && date.length >= 2
+      ? `<a class="salva" href="/archivi/${encId}?date=casuale" aria-label="Apri un giorno a caso dell'archivio di ${esc(id)}">un giorno a caso</a>`
+      : "";
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
   const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
@@ -463,7 +474,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
     ${linkPrecedente}
     ${linkSuccessivo}
     <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
-    <a class="salva" href="${feedPath}">segui col lettore di feed</a>
+    <a class="salva" href="${feedPath}">segui col lettore di feed</a>${linkACaso}
   </nav>${elencoGiorniGiorno}${riga3}
   <footer>
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>

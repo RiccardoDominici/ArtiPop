@@ -227,3 +227,33 @@ describe("GET /archivi/<id>", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
   });
 });
+
+// feat-riscopri-un-giorno-a-caso-dall-archivio: /archivi/<id>?date=casuale
+// pesca una data a sorte fra quelle in archivio e redirige, senza cache.
+describe("GET /archivi/<id>?date=casuale", () => {
+  it("canale con archivio: 302 verso /archivi/<id>?date=<una data reale>, no-store, corpo mai JSON", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put("archive:island:2025-01-03", "1");
+
+    const res = await callWorker(env, "/archivi/island?date=casuale");
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location");
+    expect(location).toMatch(/^\/archivi\/island\?date=2025-01-0[123]$/);
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    const body = await res.text();
+    expect(body).not.toContain('"ok"');
+  });
+
+  it("canale senza archivio: 404 HTML renderArchivioNonTrovato, mai JSON", async () => {
+    const env = makeEnv();
+
+    const res = await callWorker(env, "/archivi/nonesiste?date=casuale");
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).not.toContain('"ok":false');
+    expect(html).toContain('href="/archivi"');
+  });
+});
