@@ -107,6 +107,19 @@ solo testo come oggi, mai un `<img src="">`. La riga «↗ copia il link dei tuo
 un giorno e non riceve miniatura. Componente proposto, pannello `#favlist` chiuso di default:
 le baseline `home-mobile.png`/`home-desktop.png` non cambiano.
 
+Righe degli altri canali (proposta ai sensi di §7, feat-i-preferiti-degli-altri-canali-non-si-
+perdono): in coda a `#favlist`, dopo la riga «↗ copia il link dei tuoi preferiti», una `.arcrow`
+per ciascun altro canale con almeno un giorno segnato — stessa forma delle righe esistenti (tap
+target min 44px), senza miniatura: la riga riassume più giorni, non ne rappresenta uno solo.
+Colonna `.arcdate`: l'emoji del canale se ancora fra le card mostrate, altrimenti il segno «⤳».
+Colonna `.arctext`: il nome del canale se noto, altrimenti l'id, seguito da «— N giorni segnati»
+(singolare/plurale corretti). Al tocco porta al preferito più recente di quel canale: `/?c=<id>&
+d=<data>` (stesso meccanismo dei link condivisi) se il canale è ancora fra le card, `/archivi/<id
+>?date=<data>` se è stato ritirato. `#favpick`/`#favlist` restano visibili anche quando il canale
+mostrato non ha preferiti propri ma ne esistono altrove — in tal caso il pannello contiene solo
+queste righe, nessuna riga «copia il link» (non ci sarebbe nulla da trasferire). Nessun colore,
+token o componente nuovo: cambia solo il contenuto della riga.
+
 Un giorno a caso (`#dayrand`, feat-riscopri-un-giorno-a-caso — proposta ai sensi di §7):
 comando ghost `#dayrand` ("🎲 un giorno a caso") nella fila dei comandi del pannello, accanto
 a "segna preferito" — stessa pill `.btn.ghost` già canonica, nessun colore, token o misura

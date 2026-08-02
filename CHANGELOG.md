@@ -1853,3 +1853,31 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovo `backend/tests/unit/archivi-nome-canale.test.js`: canale attivo → nome vero in card,
   h1, title, description e aria-label; canale storico e id sconosciuto → id invariato ovunque,
   nessun crash; href sempre sull'id tecnico anche quando il testo mostra il nome.
+
+## 2026-08-02 — feat-i-preferiti-degli-altri-canali-non-si-perdono
+- `renderFavList` (home) mostrava solo i giorni preferiti del canale in vista (`preferitiDi(chId)`)
+  e nascondeva il comando «i tuoi preferiti» quando quel canale non ne aveva: chi segnava giorni
+  su un canale e apriva la home su un altro (o vi arrivava dal canale ricordato) non vedeva alcuna
+  traccia dei propri preferiti — né sapeva che esistevano. Peggio: se il canale coi preferiti era
+  stato ritirato, quei giorni restavano irraggiungibili dalla home pur essendo ancora salvati in
+  `localStorage` e pur avendo una pagina valida in `/archivi/<id>?date=`.
+- Nuovo `preferitiAltrove(chId)` in `page.js`: legge `leggiPreferiti()` e restituisce le voci degli
+  ALTRI canali (mai `chId`) con almeno una data valida (stesso filtro `dataValida` di
+  `importaPreferiti`), date ordinate dal più recente al più vecchio come già fa `preferitiDi`.
+- `renderFavList` aggiunge, in coda al pannello dopo la riga «copia il link», una `.arcrow` per
+  ciascuna voce di `preferitiAltrove`: emoji del canale se ancora fra le card mostrate (altrimenti
+  «⤳»), nome se noto (altrimenti l'id) seguito da «— N giorni segnati». Nessuna miniatura: la riga
+  riassume più giorni, non ne rappresenta uno solo. Il click riapre il preferito più recente di
+  quel canale riusando i percorsi già esistenti — mai una seconda implementazione del cambio
+  canale: `/?c=<id>&d=<data>` (stesso meccanismo dei link condivisi) se il canale è ancora fra le
+  card, `/archivi/<id>?date=<data>` se è stato ritirato. Id e data sempre `encodeURIComponent`.
+- Corretta la visibilità di `#favpick`: nascosto solo quando non c'è alcun preferito né su questo
+  canale né altrove, non più solo in base al canale mostrato. Con preferiti solo altrove il
+  pannello contiene le sole righe degli altri canali, senza la riga «copia il link» (che
+  trasferisce i preferiti di questo canale e non avrebbe nulla da copiare).
+- `VISUAL_SPECS.md` §1.4 esteso: le righe degli altri canali riusano `.arcrow` senza introdurre
+  alcun componente, colore o dimensione nuovi.
+- Nuovo `backend/tests/unit/home-preferiti-altri-canali.test.js`: `preferitiAltrove` esclude
+  sempre il canale corrente, ordina le date del più recente al più vecchio, scarta date non
+  valide e canali che ne restano privi; `renderFavList` emette i due rami `/?c=`/`/archivi/` con
+  `encodeURIComponent`; la nuova condizione di visibilità di `#favpick`; nessuna classe CSS nuova.
