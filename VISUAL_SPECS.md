@@ -105,6 +105,12 @@ giorno mostrato (stessa URL di "apri l'immagine") al foglio di condivisione di s
 ripiego sul comportamento di `#dayshare` (copia link) per qualunque errore diverso
 dall'annullamento dell'utente.
 
+Riga dell'eredità (`.eredita`, feat-la-home-dice-da-dove-viene-questo-canale — proposta ai
+sensi di §7): dentro `.cinfo`, in coda dopo l'eventuale `.stale` — stessa coppia di token
+(testo `.8rem`, colore `--dim`). Elenca i vecchi id che il canale ha ereditato, con un
+link sottolineato (colore `--a1`, già in uso per i link della pagina) a `/archivi`.
+Assente e senza alcun nodo nel DOM per i canali senza alias storici.
+
 Nota di connessione (`#netstate`, feat-la-home-dice-quando-sei-senza-rete): riga `.hint`
 dentro l'hero, subito dopo `#nextdrop` — stesso posto, stesso registro di linguaggio della
 nota di freschezza. Compare (toglie `hidden`) solo quando il browser dichiara l'assenza di

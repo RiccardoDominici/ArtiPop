@@ -84,6 +84,15 @@ function noscriptBlocco(metas) {
  * `<head>` — nessun elemento visibile, nessuna modifica al CSS.
  */
 export function renderPage(metas, origin, dateKey, condiviso = null, feedUrl = null) {
+  // Mappa inversa di LEGACY_ALIASES (flusso attivo → vecchi id che vi
+  // puntano, nell'ordine di dichiarazione): feat-la-home-dice-da-dove-viene-
+  // questo-canale, per dire in home quali canali storici un flusso ha
+  // ereditato. Stessi id già pubblici in ALIAS, nessun dato nuovo.
+  const legacyByTarget = {};
+  for (const [oldId, targetId] of Object.entries(LEGACY_ALIASES)) {
+    (legacyByTarget[targetId] ||= []).push(oldId);
+  }
+
   // Dati pubblici passati al JS client (niente campi interni).
   const channelData = ACTIVE_CHANNELS.map((c) => ({
     id: c.id,
@@ -91,6 +100,7 @@ export function renderPage(metas, origin, dateKey, condiviso = null, feedUrl = n
     emoji: c.emoji,
     accent: c.accent,
     tagline: c.tagline,
+    eredita: legacyByTarget[c.id] || [],
     scene: metas[c.id]?.scene || null,
     // Il concept della settimana in corso: da questa versione un flusso non è
     // più un tema fisso, quindi va detto all'utente COSA sta guardando adesso.
@@ -230,6 +240,8 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .cinfo .scene b { color: var(--text); font-weight: 600; font-style: normal; }
   .cinfo .stale { font-size: .8rem; color: var(--dim); line-height: 1.45; }
+  .cinfo .eredita { font-size: .8rem; color: var(--dim); line-height: 1.45; }
+  .cinfo .eredita a { color: var(--a1); text-decoration: underline; }
 
   /* ---------- controlli deck ---------- */
   .controls { display: flex; align-items: center; gap: 1rem; }
@@ -911,6 +923,11 @@ function aggiornaTitolo() {
 function descrizioneWallpaper(ch, date, isToday) {
   return \`\${ch.name} — wallpaper \${isToday ? "di oggi" : "del " + fmtDataEstesa(date)}\`;
 }
+// feat-la-home-dice-da-dove-viene-questo-canale: elenco leggibile con "e"
+// finale, riusato per gli id ereditati nella riga .eredita della card.
+function elencoIt(ids) {
+  return ids.length < 2 ? ids.join("") : ids.slice(0, -1).join(", ") + " e " + ids[ids.length - 1];
+}
 function cardHTML(ch) {
   return \`
     <div class="phone" aria-hidden="true">
@@ -931,6 +948,7 @@ function cardHTML(ch) {
       <div class="tag">\${ch.tagline}</div>
       <div class="scene">\${ch.concept ? "<b>Questa settimana:</b> " + ch.concept + (ch.giorno ? " — giorno " + ch.giorno + " di 7" : "") + "<br>" : ""}\${ch.scene ? ch.scene : "in preparazione…"}</div>
       \${ch.inRitardo ? '<p class="stale">Il wallpaper di oggi non è ancora arrivato: questa è l\\'ultima immagine disponibile, del ' + fmtDataEstesa(ch.date) + ".</p>" : ""}
+      \${ch.eredita.length > 0 ? '<p class="eredita">Raccoglie l\\'eredità di ' + elencoIt(ch.eredita) + ' — <a href="/archivi">sfoglia i loro archivi</a></p>' : ""}
     </div>\`;
 }
 

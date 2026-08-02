@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-la-home-dice-da-dove-viene-questo-canale
+- `channelData` in `page.js` guadagna il campo `eredita: [id, ...]`, calcolato invertendo
+  `LEGACY_ALIASES` (già importata, oggi usata solo per risolvere `?c=<alias>`): zero fetch nuove,
+  zero letture KV, gli id sono già pubblici nella costante `ALIAS` serializzata in pagina.
+- `cardHTML` rende, in coda a `.cinfo` dopo l'eventuale `.stale`, la riga `.eredita` con l'elenco
+  leggibile (nuovo helper client-side `elencoIt`, "e" finale) dei vecchi canali ereditati e un link
+  a `/archivi` — così chi arriva da una Shortcut storica (island/bloom/studio/…) capisce dove sono
+  finiti i suoi vecchi wallpaper. Assente per i canali senza alias.
+- Escalation rispetto al tentativo fallito in EXEC (ciclo 123, planner opus): quel piano imponeva
+  una `fetch('/api/channels?all=1')`, in conflitto con la guardia "regressione anti-ciclo-77" che
+  impone esattamente UNA occorrenza di `fetch(` nell'HTML reso — questo piano non tocca la rete.
+- `VISUAL_SPECS.md` §1.4: voce «Riga dell'eredità» (proposta ai sensi di §7), stessa coppia di
+  token di `.stale` per il testo, `--a1` per il link (già in uso in pagina).
+
 ## 2026-08-02 — feat-il-giorno-d-archivio-dice-a-che-punto-della-storia-sei
 - `rigaPosizione(arco, giornoNellArco, tappa)` in `archivi.js`, accanto a `rigaSoggetto()` e
   `rigaRacconto()`: restituisce `<div class="soggetto">` con «arco N · giorno M · tappa K» (solo le
