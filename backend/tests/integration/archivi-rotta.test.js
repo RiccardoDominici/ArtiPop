@@ -6,6 +6,8 @@ import { describe, it, expect } from "vitest";
 import { ACTIVE_CHANNELS } from "../../src/channels.js";
 import { makeEnv, makeKV, callWorker } from "../helpers/fakeEnv.js";
 
+const ORIGIN = "https://artipop.test";
+
 describe("GET /archivi", () => {
   it("200 text/html, elenca island (storico) ma NON il canale attivo", async () => {
     const env = makeEnv();
@@ -130,6 +132,18 @@ describe("GET /archivi/<id>", () => {
     expect(html).toContain('<img src="/w/island?date=2025-01-02"');
     expect(html).toContain('href="/archivi/island?date=2025-01-01"');
     expect(html).toContain('href="/archivi/island?date=2025-01-03"');
+  });
+
+  it("?date= esplicita: og:image mostra quel giorno, og:url punta al percorso della pagina", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put("archive:island:2025-01-03", "1");
+
+    const res = await callWorker(env, "/archivi/island?date=2025-01-02");
+    const html = await res.text();
+    expect(html).toContain(`<meta property="og:image" content="${ORIGIN}/w/island?date=2025-01-02" />`);
+    expect(html).toContain(`<meta property="og:url" content="${ORIGIN}/archivi/island?date=2025-01-02" />`);
   });
 
   it("?date= malformata: HTML 404 con link a /archivi, mai JSON", async () => {

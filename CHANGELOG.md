@@ -31,6 +31,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - `VISUAL_SPECS.md` §2.2: nuova sottosezione per la pagina, che riusa senza eccezioni i token già
   in vigore per `/archivi` (§2.1) — nessun colore o componente nuovo.
 
+## 2026-08-02 — feat-condividere-un-giorno-d-archivio-mostra-quel-giorno
+- `metaAnteprima` (`head.js`): `condiviso` e `percorso` ora si compongono invece di escludersi —
+  l'`og:url` segue sempre `percorso` quando presente (anche con `condiviso` valorizzato), così una
+  pagina con un indirizzo proprio dichiara quell'indirizzo invece di ricadere sulla home.
+- `renderGiornoArchivio` (`archivi.js`) passa `{ canale: id, data }` a `metaAnteprima`: chi
+  condivide il link di un giorno d'archivio ora vede in anteprima proprio quel wallpaper, non il
+  wallpaper di oggi del canale natura (bug ereditato dalla pagina nata al ciclo precedente).
+  Home, `/aiuto` e `/archivi` restano invariati: nessuno dei loro chiamanti passa entrambi gli
+  argomenti.
+
 ## 2026-08-02 — feat-riscopri-un-giorno-a-caso
 - Nuovo comando ghost `#dayrand` ("🎲 un giorno a caso") nella fila dei comandi di "Il viaggio
   finora": con centinaia di giorni in archivio, chi non sa cosa rivedere oggi non aveva nessun

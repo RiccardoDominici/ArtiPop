@@ -268,7 +268,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 <title>${titolo}</title>
 <meta name="description" content="${descrizione}" />
 ${INSTALL_TAGS}
-${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno ${data} dell'archivio storico di ${id}.`, null, `/archivi/${encId}?date=${encData}`) : ""}
+${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno ${data} dell'archivio storico di ${id}.`, { canale: id, data }, `/archivi/${encId}?date=${encData}`) : ""}
 <style>${BASE_STYLE}${GIORNO_STYLE}</style>
 </head>
 <body>
