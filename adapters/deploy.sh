@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/deploy.sh — pipeline di deploy per ArtiPop v3 (preview + produzione).
+# adapters/deploy.sh — pipeline di deploy per ArtiPop v3 (preview + produzione).
 #
 # Libreria di funzioni pensata per essere chiamata da run-loop.sh, ma anche
 # utilizzabile a mano da riga di comando come sottocomandi. NON esegue MAI la
@@ -14,13 +14,13 @@
 # gia' autenticato in locale (wrangler login).
 #
 # Uso da CLI (dalla root del repo o da qualunque cartella):
-#   scripts/deploy.sh preview
-#   scripts/deploy.sh save-live-version
-#   scripts/deploy.sh production
-#   scripts/deploy.sh rollback <version-id> [messaggio]
+#   adapters/deploy.sh preview
+#   adapters/deploy.sh save-live-version
+#   adapters/deploy.sh production
+#   adapters/deploy.sh rollback <version-id> [messaggio]
 #
 # Uso come libreria (senza eseguire nulla al caricamento):
-#   source scripts/deploy.sh --lib
+#   source adapters/deploy.sh --lib
 #   deploy_preview
 #   version="$(save_production_version | grep '^VERSION:' | cut -d' ' -f2)"
 #   deploy_production
@@ -36,7 +36,7 @@ set -uo pipefail
 # nel nome della cartella del repo ("ArtiPop v3").
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$REPO_DIR/backend"
-SMOKE_TEST="$REPO_DIR/smoke-test.sh"
+SMOKE_TEST="$REPO_DIR/adapters/smoke-test.sh"
 
 WORKER_PROD="artipop"
 WORKER_PREVIEW="artipop-preview"
@@ -193,7 +193,7 @@ rollback_production() {
 
 _usage() {
   cat >&2 <<'EOF'
-Uso: scripts/deploy.sh <comando> [argomenti]
+Uso: adapters/deploy.sh <comando> [argomenti]
 
 Comandi:
   preview                            Deploy ambiente preview + smoke test
@@ -203,7 +203,7 @@ Comandi:
 
 In alternativa lo script puo' essere caricato come libreria di funzioni senza
 eseguire nulla:
-  source scripts/deploy.sh --lib
+  source adapters/deploy.sh --lib
 EOF
 }
 
@@ -221,7 +221,7 @@ _main() {
 
 # Se lo script viene "sorgente" con --lib, definisce solo le funzioni sopra e
 # si ferma qui (nessuna esecuzione). Se invece viene eseguito direttamente
-# (./scripts/deploy.sh <comando> oppure bash scripts/deploy.sh <comando>),
+# (./adapters/deploy.sh <comando> oppure bash adapters/deploy.sh <comando>),
 # fa il dispatch del sottocomando.
 if [ "${1:-}" = "--lib" ]; then
   return 0 2>/dev/null || exit 0

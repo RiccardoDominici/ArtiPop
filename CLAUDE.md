@@ -1,61 +1,48 @@
-# CLAUDE.md — ArtiPop v3 (contesto di sistema, caricato ad ogni stadio)
+# CLAUDE.md — ArtiPop v3 (contesto di progetto, caricato ad ogni stadio)
 
-Vale per Planner, Executor e Verifier del sistema autonomo. Nessuna eccezione.
+Vale per Planner, Executor e Verifier, IN AGGIUNTA a `ENGINE-CONTRACT.md` del motore
+(disciplina del contesto, strategia git, formato del registro, divieti strutturali —
+non ripetuta qui: quella è fissa per ogni progetto, questa è la parte che cambia).
 
 ## Principi (in ordine — in caso di conflitto vince quello sopra)
 1. **Utilizzabilità** — il sito e le rotte devono funzionare per l'utente reale (Shortcut inclusa).
 2. **Bellezza** = conformità a `VISUAL_SPECS.md`. Mai giudizio di gusto: solo aderenza alla spec.
 3. **Robustezza** — errori gestiti, mai un crash grezzo esposto all'utente.
-4. **Essenzialità** — la soluzione più semplice che risolve il problema; niente aggiunto "perché utile".
-   Le feature nuove proposte dal planner (slug `feat-`) non violano questo principio: l'essenzialità
-   vincola il come (la realizzazione più semplice), non il cosa.
+4. **Essenzialità** — la soluzione più semplice che risolve il problema; niente aggiunto "perché
+   utile". Le feature nuove proposte dal planner (slug `feat-`) non violano questo principio:
+   l'essenzialità vincola il *come* (la realizzazione più semplice), non il *cosa*.
 
-## Disciplina del contesto
-- Localizzare con Grep/Glob, mai esplorare a tappeto.
-- Lettura integrale solo dei file che si intende MODIFICARE.
-- MAI leggere l'albero completo del repo o un file oltre 1500 righe senza un filtro (Grep/offset).
-- `IMPROVEMENTS.md` è l'unico file che si legge sempre per intero: è la memoria del sistema.
-- Margine di contesto: dimensiona il lavoro per usare al massimo il ~90% del contesto della
-  sessione. Se ti avvicini al limite: chiudi PULITO con l'esito corrente (executor: commit
-  completo o revert + `ESITO:`; verifier: `VERDETTO:` sui criteri già verificati), mai un
-  lavoro a metà, mai iniziare un passo nuovo oltre quella soglia.
+## Comandi
+- **Test**: `cd backend && npx vitest run` — DEVE combaciare con `TEST_CMD` in `loop.config`:
+  sono la stessa cosa scritta in due posti, se li disallinei uno dei due mente.
+- **Visual check** (solo se `VISUAL_ENABLED=1`): `node adapters/visual-check.mjs`
+- **Smoke test** (solo se `DEPLOY_ENABLED=1`): `./adapters/smoke-test.sh <url>`
+- **Linter**: nessuno — scelta deliberata, non aggiungerne.
 
-## Strategia git
-- `main`: intoccabile da questi ruoli. Solo Riccardo vi fonde manualmente, da fuori del loop.
-- `auto/production`: base di ogni ciclo e memoria operativa (contiene `IMPROVEMENTS.md` aggiornato).
-- Ogni ciclo lavora su un branch `auto/<timestamp UTC>`, creato da `auto/production`.
-- **Mai push** su remote, da nessun ruolo, in nessuna circostanza.
+## Perimetro cloud
+- Account: Cloudflare, `d6886aa91f37af4da724e3b0693f04fe`
+- Risorse che il loop può toccare: worker `artipop` e `artipop-preview`, e i loro KV
+- MAI: DNS/zone/altri progetti/altri worker
 
-## Registro `IMPROVEMENTS.md`
-Tabella con colonne: `| data | tipo | area | obiettivo | file | planner | esito | branch | deploy |`
-- `data` = `YYYY-MM-DD HH:MM UTC`
-- `tipo` ∈ {BUILD, POLISH}
-- `planner` ∈ {opus, fable}
-- `esito` ∈ {FATTO, DUPLICATO, SCARTATO, FALLITO(EXEC), FALLITO(VERIFY), FALLITO(DEPLOY), BLOCCATO}
-- `deploy` = version-id oppure `—`
-Solo append, eccetto la compattazione dello storico oltre le 150 righe (ad opera del planner).
-Nota: il loop (non i ruoli) può registrare anche l'esito `NESSUNA-PROPOSTA` per i cicli
-in cui il planner non ha proposto nulla.
+## Budget esterno
+- Risorsa limitata: generazioni AI immagine
+- Tetto per ciclo: 10
+- Ambiente consentito: solo preview, mai scritture sul KV di produzione
 
-## Divieti (vincolanti per planner, executor, verifier — senza eccezioni)
-Non modificare: `run-loop.sh`, `monitor.py`, `CLAUDE.md`, `ROLE-*.md`, `smoke-test.sh`, `scripts/deploy.sh`, `scripts/loop-lib.sh`, `scripts/visual-check.mjs`, `Dockerfile`.
-Non toccare `main`. Mai push su remote. Mai nuove dipendenze runtime nel worker; devDependencies solo se previste nel piano.
-`IMPROVEMENTS.md` solo append (salvo compattazione planner). Cloudflare: solo worker `artipop`/`artipop-preview`
-e i loro KV; MAI DNS/zone/altri progetti. Mai stampare/loggare/committare token o secret (env inclusi).
-Mai skip/xfail, mai abbassare soglie, mai cancellare test esistenti. Max 10 generazioni AI/ciclo, solo preview.
-Executor: budget 3 tentativi di fix contati ad alta voce; revert immediato senza consumare tentativi se il fix
-esce dai FILE dichiarati nel piano, richiede dipendenze nuove, o lo stesso test fallisce 2 volte identico.
+## Secret
+Le variabili elencate in `SECRET_ENV_NAMES` di `loop.config` (oggi: `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID`, `PREVIEW_ADMIN_KEY`, `ADMIN_KEY`) non vanno MAI stampate, loggate o
+committate — vale per planner, executor, verifier, senza eccezioni, env compresi.
 
-## Budget AI
-Massimo 10 generazioni AI per ciclo. Solo contro l'ambiente **preview** (mai la produzione).
-Mai scritture sul KV di produzione da parte del loop.
+## Brainstorming (Planner, fase POLISH)
+Il planner incrocia tre liste (A×B×C, meccanismo descritto nel ruolo Planner del motore) per
+generare proposte non ovvie invece di girare sempre sulle stesse idee. Liste stabili fra i cicli:
 
-## Segreti
-Mai stampare, loggare o committare variabili d'ambiente, token o chiavi — incluso `CLOUDFLARE_API_TOKEN`,
-`CLOUDFLARE_ACCOUNT_ID`, `PREVIEW_ADMIN_KEY`, `ADMIN_KEY`.
-
-## Comandi del progetto
-- Test: `cd backend && npx vitest run`
-- Visual check: `node scripts/visual-check.mjs`
-- Smoke test: `./smoke-test.sh <url>`
-- Nessun linter: scelta deliberata, non aggiungerne.
+- **A — persone e momenti d'uso**: chi imposta lo sfondo con la Shortcut al tramonto, chi apre
+  il sito e sfoglia i canali, chi segue la storia narrativa di un arco, chi regola il tuning dei
+  range, chi riscarica l'archivio di un vecchio canale
+- **B — materia prima già esistente**: wallpaper giornalieri, flussi/canali e i loro alias
+  storici, catalogo concept/element, meta e storia dell'arco, le chiavi KV, il cron giornaliero,
+  le rotte `/api/*`, la pagina `/aiuto`, le Shortcut firmate
+- **C — forme di valore**: vedere/rivedere, confrontare due giorni, condividere, personalizzare,
+  capire cosa succede, ricevere al momento giusto, esplorare l'archivio

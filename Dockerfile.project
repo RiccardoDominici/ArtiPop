@@ -1,0 +1,20 @@
+# Dockerfile.project — toolchain di ArtiPop v3 sopra l'immagine motore
+# (autoloop-base): deploy su Cloudflare Workers (wrangler) + visual-check con
+# Playwright/Chromium. Costruito da start-loop.sh quando presente (immagine
+# "artipop-loop"), niente ENTRYPOINT qui: si eredita quello di autoloop-base
+# (/engine/docker/entrypoint.sh, risolto a runtime dal mount di /engine).
+FROM autoloop-base
+
+# CLI di deploy Cloudflare Workers, usata da adapters/deploy.sh.
+RUN npm install -g wrangler
+
+# Chromium per il visual-check (Playwright), con le sue dipendenze di sistema
+# (--with-deps: stessa strategia del vecchio Dockerfile, nessun apt-get
+# aggiuntivo a mano). Versione PINNATA alla stessa dichiarata in package.json
+# di root: i browser scaricati qui devono corrispondere alla revision attesa
+# dalla libreria playwright installata a runtime con npm ci, altrimenti
+# l'adapter visual-check fallirebbe con "browser revision not found".
+ARG PLAYWRIGHT_VERSION=1.62.0
+RUN npx --yes playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium
+
+WORKDIR /work

@@ -1,5 +1,8 @@
 # PORTING.md — rendere il loop autonomo riusabile su un'altra repo
 
+**AGGIORNAMENTO 2026-08-02: porting ESEGUITO — il motore vive in ~/Developer/autoloop, questo
+file resta come mappa storica delle decisioni.**
+
 Mappa scritta durante il setup (2026-07-31) su richiesta di Riccardo: NIENTE è stato
 refactorato per la portabilità — questo file salva le informazioni chiave per farlo in
 futuro senza riscoprire nulla. Fotografa lo stato al momento del setup: prima di usarla,

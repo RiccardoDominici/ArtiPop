@@ -1,15 +1,29 @@
 #!/bin/bash
-# Avvio comodo della TUI di monitoraggio ArtiPop: doppio click dal Finder
-# (o ./monitor.command dal terminale). Apre monitor.py nella cartella giusta,
-# qualunque sia la cwd di partenza; path con spazio gestito dal dirname.
-cd "$(dirname "$0")" || exit 1
+# monitor.command — avvia il monitor TUI per QUESTO progetto.
+# Copia (o linka) questo file nella root del progetto, accanto a loop.config.
+# I file .command sono eseguibili: Finder lo apre in Terminal al doppio click
+# (serve `chmod +x` una tantum dopo la copia). Risolve ENGINE_DIR dal
+# loop.config della propria directory e lancia monitor.py del motore puntato
+# a questo progetto — nessuna logica propria oltre alla risoluzione del path.
+set -e
+cd "$(dirname "$0")"
 
-# rich è richiesta: se manca, spiega come procurarsela senza toccare il repo.
-if ! python3 -c "import rich" 2>/dev/null; then
-    echo "Manca la libreria Python 'rich' (la TUI ne ha bisogno)."
-    echo "Installala in un ambiente utente:  python3 -m pip install --user rich"
-    read -r -p "Premi Invio per chiudere..."
+if [ ! -f loop.config ]; then
+    echo "ERRORE: loop.config non trovato in $(pwd)" >&2
     exit 1
 fi
 
-exec python3 monitor.py
+# Sourcing in subshell isolata: stessa cautela di start-loop.sh, non vogliamo
+# che variabili/funzioni del loop.config del progetto sporchino questa shell.
+ENGINE_DIR="$(
+    # shellcheck disable=SC1091
+    source loop.config
+    printf '%s' "${ENGINE_DIR:-$HOME/Developer/autoloop}"
+)"
+
+if [ ! -f "$ENGINE_DIR/monitor.py" ]; then
+    echo "ERRORE: monitor.py non trovato in $ENGINE_DIR (controlla ENGINE_DIR in loop.config)" >&2
+    exit 1
+fi
+
+exec python3 "$ENGINE_DIR/monitor.py" "$(pwd)"

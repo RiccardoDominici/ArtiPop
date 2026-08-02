@@ -6,7 +6,7 @@
 // che guarda gli screenshot a occhio contro tests/visual/baseline/.
 //
 // Uso:
-//   node scripts/visual-check.mjs [--base-url <url>] [--baseline] [--out <dir>]
+//   node adapters/visual-check.mjs [--base-url <url>] [--baseline] [--out <dir>]
 //
 //   --base-url  origine del worker da fotografare per "/" e "/aiuto"
 //               (default: produzione, vedi DEFAULT_BASE sotto).
@@ -23,7 +23,7 @@ import { mkdir, copyFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-// REPO_DIR = radice del repo: questo file vive in scripts/, quindi risaliamo di uno.
+// REPO_DIR = radice del repo: questo file vive in adapters/, quindi risaliamo di uno.
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_DIR = path.dirname(SCRIPT_DIR);
 
@@ -197,7 +197,7 @@ async function checkWNatura(baseUrl, outDir) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("Uso: node scripts/visual-check.mjs [--base-url <url>] [--baseline] [--out <dir>]");
+    console.log("Uso: node adapters/visual-check.mjs [--base-url <url>] [--baseline] [--out <dir>]");
     process.exit(0);
   }
 
