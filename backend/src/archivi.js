@@ -10,7 +10,7 @@
 // home, che questo modulo non tocca.
 
 import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag, feedLinkTag } from "./head.js";
-import { LEGACY_ALIASES, getChannel } from "./channels.js";
+import { LEGACY_ALIASES, getChannel, displayName } from "./channels.js";
 
 /** Escape minimo per il testo dinamico inserito nell'HTML (id canale, date). */
 function esc(s) {
@@ -250,16 +250,16 @@ function renderElenco(storici) {
         <a class="copertina" aria-hidden="true" tabindex="-1" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
         : "";
       const salva = c.ultima
-        ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1" aria-label="Salva l'ultimo wallpaper di ${esc(c.id)}">Salva</a>`
+        ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1" aria-label="Salva l'ultimo wallpaper di ${esc(displayName(c.id))}">Salva</a>`
         : "";
       const soggetto = rigaSoggetto(c.elementNome, c.conceptNome);
       return `
       <li>${copertina}
         <div class="contenuto">
-        <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${soggetto}
+        <div class="riga1"><span class="nome">${esc(displayName(c.id))}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${soggetto}
         <div class="riga2">
           <span class="intervallo">${rigaData(c.prima)} → ${rigaData(c.ultima)}</span>
-          <a class="riapri" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(c.id)}">Riapri l'ultimo giorno →</a>${salva}
+          <a class="riapri" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(displayName(c.id))}">Riapri l'ultimo giorno →</a>${salva}
         </div>${elencoGiorniCard}${riga3}
         </div>
       </li>`;
@@ -444,7 +444,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 
   const linkACaso =
     Array.isArray(date) && date.length >= 2
-      ? `<a class="salva" href="/archivi/${encId}?date=casuale" aria-label="Apri un giorno a caso dell'archivio di ${esc(id)}">un giorno a caso</a>`
+      ? `<a class="salva" href="/archivi/${encId}?date=casuale" aria-label="Apri un giorno a caso dell'archivio di ${esc(displayName(id))}">un giorno a caso</a>`
       : "";
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
@@ -456,8 +456,9 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   // su un giorno che il canale erede non ha.
   const riga3 = rigaErede(id) || rigaInCorso(id, data);
 
-  const titolo = `ArtiPop — ${esc(id)}, ${esc(data)}`;
-  const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(id)}.`;
+  const nome = displayName(id);
+  const titolo = `ArtiPop — ${esc(nome)}, ${esc(data)}`;
+  const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(nome)}.`;
   const percorso = `/archivi/${encId}?date=${encData}`;
   const feedPath = `/feed/${encId}.xml`;
 
@@ -471,19 +472,19 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 ${INSTALL_TAGS}
 ${canonicalTag(origin, percorso)}
 ${origin ? feedLinkTag(`${origin}${feedPath}`) : ""}
-${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno ${data} dell'archivio storico di ${id}.`, { canale: id, data }, percorso) : ""}
+${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorno ${data} dell'archivio storico di ${nome}.`, { canale: id, data }, percorso) : ""}
 <style>${BASE_STYLE}${GIORNO_STYLE}</style>
 </head>
 <body>
 <main>
   <header>
     <a class="back" href="/archivi">← tutti gli archivi</a>
-    <h1>${esc(id)}</h1>
+    <h1>${esc(nome)}</h1>
     <p class="sub">${rigaData(data)}</p>
   </header>${rigaSogg}${rigaPos}${rigaRacc}
   <figure class="foto">
-    <a class="apri" href="/w/${encId}?date=${encData}" target="_blank" rel="noopener" aria-label="Apri a grandezza piena il wallpaper di ${esc(id)} del ${esc(data)}">
-      <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
+    <a class="apri" href="/w/${encId}?date=${encData}" target="_blank" rel="noopener" aria-label="Apri a grandezza piena il wallpaper di ${esc(nome)} del ${esc(data)}">
+      <img src="/w/${encId}?date=${encData}" alt="${esc(nome)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
     </a>
   </figure>
   <nav class="giorni-nav" aria-label="Sfoglia i giorni dell'archivio">
