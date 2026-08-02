@@ -215,8 +215,13 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   Il comando assente al bordo dell'archivio (giorno più vecchio o più recente) non viene emesso:
   mai un link disabilitato o morto. Accanto, un `<a class="salva">Salva</a>` verso
   `/w/<id>?date=<data>&dl=1` — stesso trattamento del link "Salva" di §2.1.
+- Elenco «tutti i N giorni»: stesso componente `<details class="giorni">` di §2.1 (stesso summary,
+  stessi link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine dalla più recente
+  alla più vecchia), subito dopo la barra di navigazione — presente solo se l'archivio ha almeno
+  un giorno. La voce del giorno mostrato non è un link verso se stessa: testo semplice marcato
+  `aria-current="page"`, mantenendo comunque il link di salvataggio `↓` della riga.
 - Riga erede: quando il canale ha un erede attivo, la stessa riga «la storia continua in …» di
-  §2.1 (stessi token, stessa guardia), sotto la barra di navigazione.
+  §2.1 (stessi token, stessa guardia), sotto l'elenco dei giorni.
 - Nessun `<script>`, nessuna `fetch(` nell'HTML servito — stesso contratto di §2.1.
 - Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente): messaggio umano
   in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON, mai la pagina

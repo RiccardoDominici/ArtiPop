@@ -54,6 +54,33 @@ function rigaSoggetto(elementNome, conceptNome) {
 }
 
 /**
+ * Blocco `<details class="giorni">` con l'elenco di tutti i giorni di un
+ * canale, condiviso fra l'elenco (`renderElenco`) e la pagina di un singolo
+ * giorno (`renderGiornoArchivio`): stesso summary «tutti i N giorn(o|i)»,
+ * stessi link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine
+ * dalla più recente alla più vecchia. Se `dataCorrente` corrisponde a una
+ * voce, quella riga viene emessa come testo non cliccabile con
+ * `aria-current="page"` (VISUAL_SPECS §2.2) invece che come link verso se
+ * stessa. Restituisce stringa vuota se `date` non è un array non vuoto.
+ */
+function elencoGiorni(id, date, dataCorrente = null) {
+  if (!Array.isArray(date) || date.length === 0) return "";
+  return `
+        <details class="giorni">
+          <summary aria-label="tutti i ${date.length} giorn${date.length === 1 ? "o" : "i"} di ${esc(id)}">tutti i ${date.length} giorn${date.length === 1 ? "o" : "i"}</summary>
+          <ul class="date">${date
+            .map((d) => {
+              const voce =
+                d === dataCorrente
+                  ? `<span aria-current="page">${esc(d)}</span>`
+                  : `<a href="/archivi/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}">${esc(d)}</a>`;
+              return `<li>${voce}<a class="salva-giorno" href="/w/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`;
+            })
+            .join("")}</ul>
+        </details>`;
+}
+
+/**
  * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array già
  * filtrato (nessun canale attivo) e ordinato da chi chiama, forma
  * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome }]` — stessa
@@ -70,19 +97,7 @@ function renderElenco(storici) {
   const righe = storici
     .map((c) => {
       const riga3 = rigaErede(c.id);
-      const elencoGiorni =
-        Array.isArray(c.date) && c.date.length > 0
-          ? `
-        <details class="giorni">
-          <summary aria-label="tutti i ${c.date.length} giorn${c.date.length === 1 ? "o" : "i"} di ${esc(c.id)}">tutti i ${c.date.length} giorn${c.date.length === 1 ? "o" : "i"}</summary>
-          <ul class="date">${c.date
-            .map(
-              (d) =>
-                `<li><a href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}">${esc(d)}</a><a class="salva-giorno" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`
-            )
-            .join("")}</ul>
-        </details>`
-          : "";
+      const elencoGiorniCard = elencoGiorni(c.id, c.date);
       const copertina = c.ultima
         ? `
         <a class="copertina" aria-hidden="true" tabindex="-1" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}"><img src="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" alt="" loading="lazy" decoding="async" width="60" height="128" /></a>`
@@ -98,7 +113,7 @@ function renderElenco(storici) {
         <div class="riga2">
           <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
           <a class="riapri" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(c.id)}">Riapri l'ultimo giorno →</a>${salva}
-        </div>${elencoGiorni}${riga3}
+        </div>${elencoGiorniCard}${riga3}
         </div>
       </li>`;
     })
@@ -133,9 +148,19 @@ const BASE_STYLE = `
   .riga3 a.continua { color: #8fd3ff; }
   footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.08); font-size: .85rem; color: #9aa3b8; }
   footer a { display: inline-block; padding: 12px 6px; }
+  details.giorni { margin-top: 8px; }
+  details.giorni summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
+  details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  details.giorni ul.date li { display: flex; align-items: center; gap: 6px; }
+  details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
+  details.giorni ul.date [aria-current] { color: #f2f3f8; font-weight: 600; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
+  a.salva, a.salva-giorno {
+    color: #8fd3ff; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    text-decoration: none; font-weight: 600; flex-shrink: 0;
+  }
 `;
 
-/** Regole specifiche dell'elenco `/archivi` (card, copertina, elenco giorni espandibile). */
+/** Regole specifiche dell'elenco `/archivi` (card, copertina). */
 const ARCHIVI_STYLE = `
   ul.archivi { list-style: none; margin: 32px 0 0; padding: 0; }
   ul.archivi li {
@@ -154,17 +179,8 @@ const ARCHIVI_STYLE = `
   .riga1 .giorni { color: #9aa3b8; font-weight: 400; }
   .riga2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
   .intervallo { color: #9aa3b8; font-size: .88rem; }
-  details.giorni { margin-top: 8px; }
-  details.giorni summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
-  details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
-  details.giorni ul.date li { display: flex; align-items: center; gap: 6px; }
-  details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
   a.riapri {
     display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
-    text-decoration: none; font-weight: 600; flex-shrink: 0;
-  }
-  a.salva, a.salva-giorno {
-    color: #8fd3ff; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
     text-decoration: none; font-weight: 600; flex-shrink: 0;
   }
 `;
@@ -255,6 +271,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
     : "";
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
+  const elencoGiorniGiorno = elencoGiorni(id, date, data);
   const riga3 = rigaErede(id);
 
   const titolo = `ArtiPop — ${esc(id)}, ${esc(data)}`;
@@ -285,7 +302,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
     ${linkPrecedente}
     ${linkSuccessivo}
     <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
-  </nav>${riga3}
+  </nav>${elencoGiorniGiorno}${riga3}
   <footer>
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
   </footer>
