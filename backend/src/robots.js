@@ -28,12 +28,20 @@ const ROTTE_DI_SERVIZIO = [
   "/test-size",
 ];
 
-/** Corpo del file `/robots.txt`. */
-export function renderRobots() {
+/**
+ * Corpo del file `/robots.txt`. Con `origin` presente (feat-i-motori-di-
+ * ricerca-trovano-anche-gli-archivi) appende in coda la riga `Sitemap:`,
+ * come vogliono i crawler; senza origin il file resta identico a prima —
+ * mai un indirizzo finto inventato.
+ */
+export function renderRobots(origin) {
   const righe = [
     "User-agent: *",
     "Allow: /",
     ...ROTTE_DI_SERVIZIO.map((path) => `Disallow: ${path}`),
   ];
+  if (origin) {
+    righe.push(`Sitemap: ${origin}/sitemap.xml`);
+  }
   return righe.join("\n") + "\n";
 }

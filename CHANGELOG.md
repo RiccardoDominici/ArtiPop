@@ -1663,3 +1663,28 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - `VISUAL_SPECS.md` §2.1 e §2.2 aggiornate ai sensi di §7: il `<details class="mese">` riusa il
   trattamento visivo dell'accordion già fissato in §2, `<summary>` in `#9aa3b8`, link in `#8fd3ff`
   — nessun colore, componente o dimensione nuovi.
+
+## 2026-08-02 — feat-i-motori-di-ricerca-trovano-anche-gli-archivi
+- Nuova rotta pubblica `GET /sitemap.xml` (`backend/src/sitemap.js`, `renderSitemap` puro, falsariga
+  di `robots.js`/`feed.js`): dichiara `/`, `/aiuto`, `/archivi` e una `<url>` per ogni canale storico
+  con archivio, con `<lastmod>` pari alla data del suo ultimo giorno — la scansione KV è la stessa
+  già fatta da `/archivi` (`listChannelsWithArchive`), senza l'arricchimento col soggetto che qui
+  non serve. Perché ora: `robots.txt` (ciclo `feat-il-sito-si-fa-trovare-solo-dove-serve`) dice ai
+  crawler dove non entrare, ma nessuno gli diceva quali pagine esistono e quando cambiano — un
+  canale storico che guadagna giorni non veniva mai ri-visitato.
+  Scansione KV fallita → documento con le sole tre voci fisse, mai un 500, mai un corpo vuoto.
+- `renderRobots()` (`backend/src/robots.js`) accetta ora un `origin` opzionale: quando presente
+  appende `Sitemap: <origin>/sitemap.xml` in coda al file; senza origin il corpo resta identico a
+  prima. `index.js` passa `url.origin` alla chiamata già esistente.
+- `escXml` (`backend/src/feed.js`) esportata invece che privata al modulo: `sitemap.js` la riusa
+  per l'escaping degli URL, invece di riscriverne una seconda copia.
+- Nuovi `backend/tests/unit/sitemap-xml.test.js` (copertura pura di `renderSitemap`, incluse voci
+  fisse, `lastmod`, `storici = null`, id con carattere da escapare, nessuna rotta di servizio) e
+  `backend/tests/integration/sitemap-rotta.test.js` (200 XML, esclusione dei canali attivi,
+  `KV.list` che lancia → sempre 200, header di sicurezza). `robots-testo.test.js` esteso con la
+  coppia origin/nessun-origin; `robots-rotta.test.js` aggiornato per il nuovo argomento di
+  `renderRobots` (l'origin fittizio del test).
+- `GUIDA.md` § «Endpoint, in breve»: riga per `/sitemap.xml` e nota della riga `Sitemap:` in quella
+  di `/robots.txt`.
+- Nessuna superficie visibile cambia (`sitemap.xml` non è una pagina resa, come `robots.txt` e
+  `feed.xml`): `VISUAL_SPECS.md` non toccato.
