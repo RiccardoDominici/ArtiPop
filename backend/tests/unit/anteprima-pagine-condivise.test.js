@@ -4,7 +4,7 @@
 // nessun binding — vedi anteprima-social.test.js per la copertura end-to-end
 // sulle rotte.
 import { describe, it, expect } from "vitest";
-import { renderArchiviPage } from "../../src/archivi.js";
+import { renderArchiviPage, renderGiornoArchivio } from "../../src/archivi.js";
 import { renderHelpPage } from "../../src/help.js";
 import { metaAnteprima, FAVICON_TAG } from "../../src/head.js";
 
@@ -71,5 +71,44 @@ describe("metaAnteprima: retrocompatibilità del parametro percorso", () => {
     const html = metaAnteprima(ORIGIN, OGGI, "Titolo", "Descrizione", null, "/aiuto");
 
     expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/aiuto`);
+  });
+
+  it("con condiviso E percorso, og:url segue percorso e og:image segue condiviso (componibili)", () => {
+    const condiviso = { canale: "natura", data: "2026-06-01" };
+    const html = metaAnteprima(ORIGIN, OGGI, "Titolo", "Descrizione", condiviso, "/archivi/natura?date=2026-06-01");
+
+    expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/archivi/natura?date=2026-06-01`);
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/natura?date=2026-06-01`);
+  });
+
+  it("solo condiviso (senza percorso, caso home) non cambia: og:url resta /?c=&d=", () => {
+    const condiviso = { canale: "natura", data: "2026-06-01" };
+    const html = metaAnteprima(ORIGIN, OGGI, "Titolo", "Descrizione", condiviso);
+
+    expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/?c=natura&d=2026-06-01`);
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/natura?date=2026-06-01`);
+  });
+});
+
+describe("renderGiornoArchivio: anteprima social", () => {
+  const BASE = { id: "natura", data: "2026-06-01", date: ["2026-06-02", "2026-06-01", "2026-05-31"] };
+
+  it("con origin espone og:image sul wallpaper di quel giorno e og:url sul percorso della pagina", () => {
+    const html = renderGiornoArchivio({ ...BASE, origin: ORIGIN });
+
+    expect(estraiMeta(html, "og:image")).toBe(`${ORIGIN}/w/natura?date=2026-06-01`);
+    expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/archivi/natura?date=2026-06-01`);
+  });
+
+  it("senza origin non emette alcun tag og:", () => {
+    const html = renderGiornoArchivio(BASE);
+
+    expect(html).not.toContain("og:");
+  });
+
+  it("l'HTML della pagina giorno resta senza <script>", () => {
+    const html = renderGiornoArchivio({ ...BASE, origin: ORIGIN });
+
+    expect(html).not.toContain("<script");
   });
 });
