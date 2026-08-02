@@ -340,6 +340,13 @@ const GIORNO_STYLE = `
     text-decoration: none; font-weight: 600;
   }
   nav.giorni-nav a.salva { color: #8fd3ff; }
+  nav.giorni-nav a.precedente, nav.giorni-nav a.successivo {
+    display: inline-flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  nav.giorni-nav a .mini {
+    width: 60px; height: 128px; object-fit: cover; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.10);
+  }
 `;
 
 /**
@@ -410,10 +417,10 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   const encData = encodeURIComponent(data);
 
   const linkPrecedente = precedente
-    ? `<a class="precedente" href="/archivi/${encId}?date=${encodeURIComponent(precedente)}">← giorno precedente</a>`
+    ? `<a class="precedente" href="/archivi/${encId}?date=${encodeURIComponent(precedente)}"><img class="mini" src="/w/${encId}?date=${encodeURIComponent(precedente)}" alt="" loading="lazy" decoding="async" width="60" height="128" />← giorno precedente</a>`
     : "";
   const linkSuccessivo = successivo
-    ? `<a class="successivo" href="/archivi/${encId}?date=${encodeURIComponent(successivo)}">giorno successivo →</a>`
+    ? `<a class="successivo" href="/archivi/${encId}?date=${encodeURIComponent(successivo)}"><img class="mini" src="/w/${encId}?date=${encodeURIComponent(successivo)}" alt="" loading="lazy" decoding="async" width="60" height="128" />giorno successivo →</a>`
     : "";
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);

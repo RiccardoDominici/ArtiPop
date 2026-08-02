@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-il-giorno-d-archivio-mostra-dove-porta-il-passo-avanti
+- I comandi «← giorno precedente» / «giorno successivo →» nella pagina di un giorno d'archivio
+  portano ora anche una miniatura `60×128` del wallpaper di quel giorno, sopra il testo: si vede
+  dove si sta andando prima di cliccare, invece di sfogliare alla cieca fra due date. Riuso
+  integrale del token `.copertina` già in VISUAL_SPECS §2.1 (stesso `object-fit:cover`, raggio,
+  bordo) — zero componenti nuovi, zero letture KV in più (l'URL si ricava dalla data già in mano
+  al render), zero JS aggiunto (contratto §2.2 «nessun `<script>`, nessuna `fetch(`» intatto).
+  Miniature decorative (`alt=""`), il nome accessibile del link resta il testo.
+
 ## 2026-08-02 — feat-l-aiuto-spiega-come-salvare-e-condividere-un-giorno
 - La FAQ «Che fine fanno gli sfondi vecchi?» in `help.js` si arricchisce con la spiegazione dei
   tre gesti già esistenti sul sito per salvare o condividere il giorno che si sta guardando (anche
