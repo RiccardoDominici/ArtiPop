@@ -171,8 +171,14 @@ o componente nuovo.
   contenitore vuoto o una pagina rotta.
 - Componente aggiuntivo «tutti i N giorni» (proposta ai sensi di §7): dentro ogni card, dopo la
   riga dell'intervallo, un `<details class="giorni">` — stesso trattamento visivo dell'accordion
-  di §2, nessun token nuovo. `<summary>` in `#9aa3b8`; una volta aperto, l'elenco dei link a ogni
-  giorno (`/archivi/<id>?date=<data>`, §2.2, dalla più recente alla più vecchia) in `#8fd3ff`. Presente solo
+  di §2, nessun token nuovo. `<summary>` esterno in `#9aa3b8`; una volta aperto, un
+  `<details class="mese">` per ogni mese di calendario delle date del canale (proposta ai sensi di
+  §7, feat-l-archivio-storico-si-sfoglia-per-mese), nell'ordine già ricevuto (dalla più recente alla
+  più vecchia), stesso trattamento visivo dell'accordion di §2: `<summary>` «{mese} {anno} — N
+  giorn(o|i)» in forma estesa italiana, in `#9aa3b8`, nessun colore o dimensione nuovi. Dentro
+  ciascun gruppo, lo stesso elenco di link a ogni giorno (`/archivi/<id>?date=<data>`, §2.2, in
+  `#8fd3ff`) e lo stesso link di salvataggio `↓` di sempre. Chiavi data non riconoscibili come
+  `YYYY-MM-DD` confluiscono nell'ultimo gruppo «altri giorni», mai scartate. Presente solo
   quando la scansione ha raccolto le date del canale (chiamata legacy o `date` vuoto: nessun
   `<details>`, card identica a quella dei cicli 80-81).
 - Componente aggiuntivo «miniatura di copertina» (proposta ai sensi di §7): a sinistra di ogni
@@ -245,22 +251,27 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   Il comando assente al bordo dell'archivio (giorno più vecchio o più recente) non viene emesso:
   mai un link disabilitato o morto. Accanto, un `<a class="salva">Salva</a>` verso
   `/w/<id>?date=<data>&dl=1` — stesso trattamento del link "Salva" di §2.1.
-- Elenco «tutti i N giorni»: stesso componente `<details class="giorni">` di §2.1 (stesso summary,
-  stessi link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine dalla più recente
-  alla più vecchia), subito dopo la barra di navigazione — presente solo se l'archivio ha almeno
-  un giorno. La voce del giorno mostrato non è un link verso se stessa: testo semplice marcato
-  `aria-current="page"`, mantenendo comunque il link di salvataggio `↓` della riga.
+- Elenco «tutti i N giorni»: stesso componente `<details class="giorni">` di §2.1, raggruppato per
+  mese negli stessi `<details class="mese">` (stesso summary «{mese} {anno} — N giorn(o|i)», stessi
+  link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine dalla più recente alla più
+  vecchia), subito dopo la barra di navigazione — presente solo se l'archivio ha almeno un giorno.
+  Il gruppo mensile che contiene il giorno mostrato è aperto di default (`open`), gli altri restano
+  chiusi; con un solo gruppo, quel gruppo resta aperto comunque. La voce del giorno mostrato non è
+  un link verso se stessa: testo semplice marcato `aria-current="page"`, mantenendo comunque il
+  link di salvataggio `↓` della riga.
 - Riga erede: quando il canale ha un erede attivo, la stessa riga «la storia continua in …» di
   §2.1 (stessi token, stessa guardia), sotto l'elenco dei giorni.
 - Nessun `<script>`, nessuna `fetch(` nell'HTML servito — stesso contratto di §2.1.
 - Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente in archivio):
   messaggio umano in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON,
   mai la pagina d'errore generica di Cloudflare (principio 3 di CLAUDE.md). Quando il canale ha
-  almeno un giorno in archivio, la pagina emette in più lo stesso `<details class="giorni">` di
-  §2.1 (stesso summary, stessi link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso
-  ordine dalla più recente alla più vecchia), senza alcuna voce marcata `aria-current="page"`
-  (nessun giorno dell'elenco è quello mostrato). Con archivio vuoto o id sconosciuto la pagina
-  resta al solo messaggio, nessun `<details>` con zero voci. Nessun `<script>`.
+  almeno un giorno in archivio, la pagina emette in più lo stesso `<details class="giorni">`
+  raggruppato per mese di §2.1 (stesso summary esterno e per gruppo, stessi link
+  `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine dalla più recente alla più
+  vecchia), senza alcuna voce marcata `aria-current="page"` e senza alcun gruppo `open` (nessun
+  giorno dell'elenco è quello mostrato) — salvo il caso di un solo gruppo mensile, che resta aperto
+  come in §2.1. Con archivio vuoto o id sconosciuto la pagina resta al solo messaggio, nessun
+  `<details>` con zero voci. Nessun `<script>`.
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 

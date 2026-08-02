@@ -103,29 +103,96 @@ function rigaPosizione(arco, giornoNellArco, tappa) {
 }
 
 /**
+ * Chiave e forma estesa italiana del mese di una data d'archivio, usate da
+ * `elencoGiorni` per raggruppare — riusa `Intl.DateTimeFormat("it-IT", {
+ * month: "long", year: "numeric", timeZone: "UTC" })` a mezzogiorno UTC,
+ * stessa scelta e stesso motivo di `dataEstesaItaliana` (head.js:69-76): la
+ * data è una chiave calendario, non un istante. Chiavi non conformi a
+ * `YYYY-MM-DD` (malformate o mancanti) ricadono nel gruppo condiviso «altri
+ * giorni», mai su un "Invalid Date".
+ */
+function etichettaMese(dataKey) {
+  if (typeof dataKey !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dataKey)) {
+    return { chiave: "altri-giorni", label: "altri giorni" };
+  }
+  const istante = new Date(`${dataKey}T12:00:00Z`);
+  if (Number.isNaN(istante.getTime())) {
+    return { chiave: "altri-giorni", label: "altri giorni" };
+  }
+  const label = new Intl.DateTimeFormat("it-IT", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(istante);
+  return { chiave: dataKey.slice(0, 7), label };
+}
+
+/** Riga `<li>` di una singola data dentro `elencoGiorni`: stesso link/aria-current/↓ di sempre. */
+function vocegiorno(id, d, dataCorrente) {
+  const voce =
+    d === dataCorrente
+      ? `<span aria-current="page">${esc(d)}</span>`
+      : `<a href="/archivi/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}">${esc(d)}</a>`;
+  return `<li>${voce}<a class="salva-giorno" href="/w/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`;
+}
+
+/**
  * Blocco `<details class="giorni">` con l'elenco di tutti i giorni di un
  * canale, condiviso fra l'elenco (`renderElenco`) e la pagina di un singolo
- * giorno (`renderGiornoArchivio`): stesso summary «tutti i N giorn(o|i)»,
- * stessi link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine
- * dalla più recente alla più vecchia. Se `dataCorrente` corrisponde a una
- * voce, quella riga viene emessa come testo non cliccabile con
- * `aria-current="page"` (VISUAL_SPECS §2.2) invece che come link verso se
+ * giorno (`renderGiornoArchivio`): stesso summary esterno «tutti i N
+ * giorn(o|i)», stessi link `/archivi/<id>?date=<data>` e di salvataggio `↓`,
+ * stesso ordine dalla più recente alla più vecchia. Se `dataCorrente`
+ * corrisponde a una voce, quella riga viene emessa come testo non cliccabile
+ * con `aria-current="page"` (VISUAL_SPECS §2.2) invece che come link verso se
  * stessa. Restituisce stringa vuota se `date` non è un array non vuoto.
+ *
+ * feat-l-archivio-storico-si-sfoglia-per-mese: internamente le date sono
+ * raggruppate in `<details class="mese">`, uno per mese di calendario,
+ * nell'ordine di prima comparsa (nessun riordino, nessuna deduplica). Le
+ * chiavi malformate finiscono tutte nell'ultimo gruppo «altri giorni», mai
+ * scartate. Solo il gruppo che contiene `dataCorrente` è aperto di default;
+ * con un solo gruppo, quel gruppo resta aperto comunque.
  */
 function elencoGiorni(id, date, dataCorrente = null) {
   if (!Array.isArray(date) || date.length === 0) return "";
+
+  const ordine = [];
+  const perChiave = new Map();
+  let altriGiorni = null;
+  for (const d of date) {
+    const { chiave, label } = etichettaMese(d);
+    if (chiave === "altri-giorni") {
+      if (!altriGiorni) altriGiorni = { label, voci: [] };
+      altriGiorni.voci.push(d);
+      continue;
+    }
+    let gruppo = perChiave.get(chiave);
+    if (!gruppo) {
+      gruppo = { label, voci: [] };
+      perChiave.set(chiave, gruppo);
+      ordine.push(gruppo);
+    }
+    gruppo.voci.push(d);
+  }
+  const gruppi = altriGiorni ? [...ordine, altriGiorni] : ordine;
+  const unicoGruppo = gruppi.length === 1;
+
+  const blocchiMese = gruppi
+    .map((gruppo) => {
+      const n = gruppo.voci.length;
+      const plurale = n === 1 ? "o" : "i";
+      const aperto = unicoGruppo || gruppo.voci.includes(dataCorrente);
+      return `
+          <details class="mese"${aperto ? " open" : ""}>
+            <summary aria-label="${esc(gruppo.label)} — ${n} giorn${plurale} di ${esc(id)}">${esc(gruppo.label)} — ${n} giorn${plurale}</summary>
+            <ul class="date">${gruppo.voci.map((d) => vocegiorno(id, d, dataCorrente)).join("")}</ul>
+          </details>`;
+    })
+    .join("");
+
   return `
         <details class="giorni">
-          <summary aria-label="tutti i ${date.length} giorn${date.length === 1 ? "o" : "i"} di ${esc(id)}">tutti i ${date.length} giorn${date.length === 1 ? "o" : "i"}</summary>
-          <ul class="date">${date
-            .map((d) => {
-              const voce =
-                d === dataCorrente
-                  ? `<span aria-current="page">${esc(d)}</span>`
-                  : `<a href="/archivi/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}">${esc(d)}</a>`;
-              return `<li>${voce}<a class="salva-giorno" href="/w/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`;
-            })
-            .join("")}</ul>
+          <summary aria-label="tutti i ${date.length} giorn${date.length === 1 ? "o" : "i"} di ${esc(id)}">tutti i ${date.length} giorn${date.length === 1 ? "o" : "i"}</summary>${blocchiMese}
         </details>`;
 }
 
@@ -199,6 +266,8 @@ const BASE_STYLE = `
   footer a { display: inline-block; padding: 12px 6px; }
   details.giorni { margin-top: 8px; }
   details.giorni summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
+  details.mese { margin-top: 6px; }
+  details.mese summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
   details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
   details.giorni ul.date li { display: flex; align-items: center; gap: 6px; }
   details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
