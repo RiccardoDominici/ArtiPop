@@ -150,7 +150,10 @@ o componente nuovo.
   `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `14px` — stesso trattamento
   visivo delle voci `<details>` di §2, senza l'accordion (qui non c'è contenuto da comprimere).
   Riga superiore: id canale in `#f2f3f8` a sinistra, conteggio giorni in `#9aa3b8` a destra. Riga
-  inferiore: intervallo date in `#9aa3b8`, link "Riapri l'ultimo giorno →" (verso `/archivi/<id>?date=<ultima>`,
+  inferiore: intervallo date in `#9aa3b8` — ciascuna in forma estesa italiana ("31 gennaio 2026")
+  dentro un `<time datetime="YYYY-MM-DD">` (proposta ai sensi di §7, feat-le-date-d-archivio-si-
+  leggono-in-italiano; con chiave non valida resta il testo grezzo, senza `<time>`) —, link
+  "Riapri l'ultimo giorno →" (verso `/archivi/<id>?date=<ultima>`,
   §2.2) in `#8fd3ff`. Quando il
   canale storico ha un erede attivo (`LEGACY_ALIASES` di backend/src/channels.js): terza riga
   «la storia continua in {emoji} {nome} →», testo in `#9aa3b8`, link in `#8fd3ff`, verso
@@ -203,7 +206,11 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
 (`INSTALL_TAGS`, `metaAnteprima`).
 - Intestazione: link `.back` "← tutti gli archivi" verso `/archivi` — stesso stile del link `.back`
   di §2.1 verso `/`. `<h1>` con l'id del canale storico, sotto un `<p class="sub">` con la data del
-  giorno mostrato — stessi token di `h1`/`.sub` già in uso in §2/§2.1.
+  giorno mostrato — stessi token di `h1`/`.sub` già in uso in §2/§2.1. La data è in forma estesa
+  italiana ("2 agosto 2026") dentro un `<time datetime="YYYY-MM-DD">` (proposta ai sensi di §7,
+  feat-le-date-d-archivio-si-leggono-in-italiano; con chiave non valida resta il testo grezzo,
+  senza `<time>`), coerente con l'anteprima social dello stesso giorno (`dataEstesaItaliana`,
+  head.js).
 - Riga del soggetto: stesso `<div class="soggetto">` di §2.1 (stessi token, stessa guardia —
   presente solo se almeno un nome è disponibile), subito sotto l'intestazione.
 - Riga della posizione: stesso `<div class="soggetto">` di §2.1/sopra (stessi token, stessa guardia),

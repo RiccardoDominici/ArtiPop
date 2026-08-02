@@ -29,7 +29,7 @@ describe("renderArchiviPage — eredità del canale storico", () => {
     expect(html).not.toContain("/?c=");
     expect(html).toContain("sconosciuto");
     expect(html).toContain("2 giorni");
-    expect(html).toContain("2025-01-01 → 2025-01-02");
+    expect(html).toContain('<time datetime="2025-01-01">1 gennaio 2025</time> → <time datetime="2025-01-02">2 gennaio 2025</time>');
     expect(html).toContain("Riapri l'ultimo giorno →");
   });
 

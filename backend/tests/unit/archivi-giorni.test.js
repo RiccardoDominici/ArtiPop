@@ -43,7 +43,7 @@ describe("renderArchiviPage(storici) — elenco di tutti i giorni", () => {
       { id: "bloom", giorni: 3, prima: "2025-02-01", ultima: "2025-02-03" },
     ]);
     expect(html).not.toContain('<details class="giorni">');
-    expect(html).toContain("2025-02-01 → 2025-02-03");
+    expect(html).toContain('<time datetime="2025-02-01">1 febbraio 2025</time> → <time datetime="2025-02-03">3 febbraio 2025</time>');
   });
 
   it("date vuoto ([]): nessun <details class=\"giorni\">", () => {
