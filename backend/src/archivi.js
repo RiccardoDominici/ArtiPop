@@ -9,7 +9,7 @@
 // limita a renderla — coerente con la guardia `fetches.length === 1` sulla
 // home, che questo modulo non tocca.
 
-import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag } from "./head.js";
+import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag, feedLinkTag } from "./head.js";
 import { LEGACY_ALIASES, getChannel } from "./channels.js";
 
 /** Escape minimo per il testo dinamico inserito nell'HTML (id canale, date). */
@@ -394,6 +394,12 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * precedente/successivo, non viene mostrato per intero come in `/archivi`.
  * Al bordo dell'archivio (giorno più vecchio o più recente) il comando
  * assente non viene emesso: mai un link morto.
+ *
+ * feat-dall-archivio-si-segue-il-canale-col-lettore-di-feed: la barra include
+ * anche «segui col lettore di feed» verso `/feed/<id>.xml` (stesso indirizzo
+ * di `#feedlink` in `page.js` e della rotta in `index.js`), e il `<head>`
+ * porta l'autodiscovery `feedLinkTag` — assente senza `origin`, mai un `href`
+ * monco, coerente con `canonicalTag`/`metaAnteprima` qui sopra.
  */
 export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null }) {
   const idx = Array.isArray(date) ? date.indexOf(data) : -1;
@@ -419,6 +425,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   const titolo = `ArtiPop — ${esc(id)}, ${esc(data)}`;
   const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(id)}.`;
   const percorso = `/archivi/${encId}?date=${encData}`;
+  const feedPath = `/feed/${encId}.xml`;
 
   return `<!doctype html>
 <html lang="it">
@@ -429,6 +436,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 <meta name="description" content="${descrizione}" />
 ${INSTALL_TAGS}
 ${canonicalTag(origin, percorso)}
+${origin ? feedLinkTag(`${origin}${feedPath}`) : ""}
 ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno ${data} dell'archivio storico di ${id}.`, { canale: id, data }, percorso) : ""}
 <style>${BASE_STYLE}${GIORNO_STYLE}</style>
 </head>
@@ -448,6 +456,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
     ${linkPrecedente}
     ${linkSuccessivo}
     <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
+    <a class="salva" href="${feedPath}">segui col lettore di feed</a>
   </nav>${elencoGiorniGiorno}${riga3}
   <footer>
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
