@@ -1688,3 +1688,35 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   di `/robots.txt`.
 - Nessuna superficie visibile cambia (`sitemap.xml` non è una pagina resa, come `robots.txt` e
   `feed.xml`): `VISUAL_SPECS.md` non toccato.
+
+## 2026-08-02 — feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio
+- `/archivi` (`index.js`) smette di filtrare via i canali attivi (`filter(([id]) => !attivi.has(id))`
+  tolto): l'elenco ora marca ogni voce con `attivo: <l'id è in ACTIVE_CHANNELS>` invece di
+  escluderla. Perché ora: la rotta `/archivi/<id>` funziona già per qualunque canale con giorni in
+  archivio, ma nessun link ci arrivava per un canale in corso — chi ha JavaScript disattivato (il
+  `<noscript>` di `page.js` rimanda a `/archivi`, che di un canale attivo non diceva nulla), uno
+  screen reader statico o un motore di ricerca restavano fuori dall'archivio più recente.
+  Ordinamento invariato (per `ultima` decrescente): i canali in corso finiscono naturalmente in
+  cima, nessun codice d'ordine nuovo.
+- `archivi.js`: nuova `rigaInCorso(id)`, gemella di `rigaErede`, che emette «canale in corso — vai a
+  {emoji} {nome} →» verso `/?c=<id>` riusando esattamente il markup/i token di `rigaErede`
+  (`<div class="riga3 continua">`). `renderElenco` sceglie fra le due in base a `voce.attivo`: le
+  due righe sono mutuamente esclusive per costruzione (un canale attivo non ha mai un erede). Con
+  id non risolvibile da `getChannel`, nessuna riga — mai un contenitore vuoto. Resto della card
+  (copertina, riga1, intervallo, `<details class="giorni">`, link di salvataggio, riga soggetto)
+  condiviso e invariato fra canali storici e attivi.
+- `renderArchiviPage`: titolo, `<h1>`, sottotitolo e `<meta name="description">`/anteprima social
+  non promettono più i soli canali storici («archivi storici» → «archivi»): l'elenco ora comprende
+  anche i canali in corso.
+- `VISUAL_SPECS.md` §2.1: la terza riga della card (mutuamente esclusiva, stessi token) documenta
+  ora entrambi i casi — erede storico e canale ancora attivo.
+- `GUIDA.md`: le righe su `archivi.js` e su `GET /archivi` (tabella file, tabella endpoint)
+  aggiornate per dire che l'elenco comprende anche i canali in corso.
+- Nuovo `backend/tests/unit/archivi-canali-attivi.test.js`: riga «canale in corso» con link
+  corretto e assenza della riga erede, card storica invariata, id non risolvibile senza riga
+  aggiuntiva, componenti della card identici fra canale attivo e storico, nessuno `<script>`/`fetch(`.
+  Assertion aggiornate in `anteprima-pagine-condivise.test.js` (title `og:title` ora contiene solo
+  "archivi") e `archivi-rotta.test.js` (un canale attivo con giorni in archivio compare in `/archivi`,
+  marcato «canale in corso», invece di essere escluso). Messaggio dell'elenco vuoto lasciato
+  invariato ("Nessun archivio storico da mostrare.") per non uscire dai file dichiarati nel piano
+  (`archivi-accessibile.test.js`/`archivi-salva.test.js` lo asseriscono e non erano fra i `FILE:`).

@@ -1,5 +1,6 @@
-// Pagina /archivi — riapre i canali storici (island, bloom, studio, neon, …)
-// che non sono più attivi ma restano consultabili via /w/<id>?date=<data>.
+// Pagina /archivi — riapre tutti i canali con giorni in archivio: sia quelli
+// storici (island, bloom, studio, neon, …) non più attivi sia quelli ancora
+// in corso, entrambi consultabili via /w/<id>?date=<data>.
 //
 // Sta in un modulo separato da page.js e help.js per lo stesso motivo di
 // help.js: ciclo di vita diverso (cambia solo quando cambia l'elenco degli
@@ -54,6 +55,20 @@ function rigaErede(id) {
   if (!flussoErede) return "";
   return `
         <div class="riga3 continua">la storia continua in <a class="continua" href="/?c=${encodeURIComponent(flussoErede.id)}">${esc(flussoErede.emoji)} ${esc(flussoErede.name)} →</a></div>`;
+}
+
+/**
+ * Riga «canale in corso — vai a …», gemella di `rigaErede` per un canale
+ * ANCORA attivo (feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio):
+ * stesso markup/token (`riga3 continua`), mutuamente esclusiva con
+ * `rigaErede` — un canale attivo non ha mai un erede. Con id non risolvibile
+ * da `getChannel` (dato incoerente) nessuna riga, mai un link rotto.
+ */
+function rigaInCorso(id) {
+  const channel = getChannel(id);
+  if (!channel) return "";
+  return `
+        <div class="riga3 continua">canale in corso — vai a <a class="continua" href="/?c=${encodeURIComponent(channel.id)}">${esc(channel.emoji)} ${esc(channel.name)} →</a></div>`;
 }
 
 /**
@@ -197,14 +212,17 @@ function elencoGiorni(id, date, dataCorrente = null) {
 }
 
 /**
- * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array già
- * filtrato (nessun canale attivo) e ordinato da chi chiama, forma
- * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome }]` — stessa
- * forma di `listChannelsWithArchive` (storage.js) una volta appiattita la Map
- * in voci con `id`, arricchita da `cartaDiIdentita` (handlers.js). `date`
- * (dalla più recente alla più vecchia), `elementNome` e `conceptNome` sono
- * opzionali: se assenti l'elenco espandibile / la riga del soggetto non
- * vengono emessi (chiamata legacy).
+ * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array
+ * ordinato da chi chiama, forma
+ * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome, attivo }]` —
+ * stessa forma di `listChannelsWithArchive` (storage.js) una volta appiattita
+ * la Map in voci con `id`, arricchita da `cartaDiIdentita` (handlers.js) e
+ * `attivo` (feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio: `id`
+ * è in `ACTIVE_CHANNELS`). Nonostante il nome, l'elenco comprende ora anche i
+ * canali ancora attivi che hanno giorni in archivio, non solo quelli
+ * storici. `date` (dalla più recente alla più vecchia), `elementNome` e
+ * `conceptNome` sono opzionali: se assenti l'elenco espandibile / la riga del
+ * soggetto non vengono emessi (chiamata legacy).
  */
 function renderElenco(storici) {
   if (!Array.isArray(storici) || storici.length === 0) {
@@ -212,7 +230,7 @@ function renderElenco(storici) {
   }
   const righe = storici
     .map((c) => {
-      const riga3 = rigaErede(c.id);
+      const riga3 = c.attivo ? rigaInCorso(c.id) : rigaErede(c.id);
       const elencoGiorniCard = elencoGiorni(c.id, c.date);
       const copertina = c.ultima
         ? `
@@ -341,18 +359,18 @@ export function renderArchiviPage(storici, origin = null, dataOggi = null) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>ArtiPop — archivi storici</title>
-<meta name="description" content="I canali storici di ArtiPop non più attivi, con i loro giorni in archivio." />
+<title>ArtiPop — archivi</title>
+<meta name="description" content="Tutti i canali di ArtiPop con giorni in archivio, in corso e non, con i loro giorni consultabili." />
 ${INSTALL_TAGS}
-${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi storici", "I canali storici di ArtiPop non più attivi, con i loro giorni in archivio.", null, "/archivi") : ""}
+${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "Tutti i canali di ArtiPop con giorni in archivio, in corso e non, con i loro giorni consultabili.", null, "/archivi") : ""}
 <style>${BASE_STYLE}${ARCHIVI_STYLE}</style>
 </head>
 <body>
 <main>
   <header>
     <a class="back" href="/">← torna ad ArtiPop</a>
-    <h1>Archivi storici</h1>
-    <p class="sub">I canali non più attivi restano tutti consultabili: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>
+    <h1>Archivi</h1>
+    <p class="sub">Tutti i canali con giorni in archivio, in corso e non: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>
   </header>
   ${corpo}
   <footer>

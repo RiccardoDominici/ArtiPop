@@ -23,7 +23,7 @@ describe("renderArchiviPage: anteprima social", () => {
     const title = html.match(/<title>([^<]*)<\/title>/)[1];
     const description = estraiMeta(html, "description");
 
-    expect(estraiMeta(html, "og:title")).toContain("archivi storici");
+    expect(estraiMeta(html, "og:title")).toContain("archivi");
     expect(estraiMeta(html, "og:title")).toBe(title);
     expect(estraiMeta(html, "og:description")).toBe(description);
     expect(estraiMeta(html, "og:url")).toBe(`${ORIGIN}/archivi`);

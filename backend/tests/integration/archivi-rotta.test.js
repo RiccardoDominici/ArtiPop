@@ -1,7 +1,10 @@
 // feat-gli-archivi-storici-si-riaprono-dal-sito: /archivi elenca i canali
-// storici (chiavi archive:<canale>:<data> in KV) esclusi quelli attivi.
-// Stesso schema di aiuto-stato-canali.test.js: KV preseminato, rotta
-// pubblica (nessuna auth), una lettura KV fallita non deve MAI diventare 500.
+// con giorni in archivio (chiavi archive:<canale>:<data> in KV), storici e
+// attivi (feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio: un
+// canale attivo con giorni in archivio compare anch'esso, marcato «canale
+// in corso»). Stesso schema di aiuto-stato-canali.test.js: KV preseminato,
+// rotta pubblica (nessuna auth), una lettura KV fallita non deve MAI
+// diventare 500.
 import { describe, it, expect } from "vitest";
 import { ACTIVE_CHANNELS } from "../../src/channels.js";
 import { makeEnv, makeKV, callWorker } from "../helpers/fakeEnv.js";
@@ -9,7 +12,7 @@ import { makeEnv, makeKV, callWorker } from "../helpers/fakeEnv.js";
 const ORIGIN = "https://artipop.test";
 
 describe("GET /archivi", () => {
-  it("200 text/html, elenca island (storico) ma NON il canale attivo", async () => {
+  it("200 text/html, elenca island (storico) ed ENTRAMBI col canale attivo marcato «canale in corso»", async () => {
     const env = makeEnv();
     await env.KV.put("archive:island:2025-01-01", "1");
     await env.KV.put("archive:island:2025-01-02", "1");
@@ -23,7 +26,9 @@ describe("GET /archivi", () => {
     expect(html).toContain("island");
     expect(html).toContain("/archivi/island?date=2025-01-02");
     expect(html).toContain("/archivi/island?date=2025-01-01");
-    expect(html).not.toContain(`/archivi/${ACTIVE_CHANNELS[0].id}?date=2025-01-01`);
+    expect(html).toContain(`/archivi/${ACTIVE_CHANNELS[0].id}?date=2025-01-01`);
+    expect(html).toContain("canale in corso");
+    expect(html).toContain(`/?c=${ACTIVE_CHANNELS[0].id}`);
   });
 
   it("senza chiave admin: comunque 200 (rotta pubblica, nessuna auth)", async () => {
