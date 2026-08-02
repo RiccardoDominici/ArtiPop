@@ -63,12 +63,25 @@ function rigaErede(id) {
  * stesso markup/token (`riga3 continua`), mutuamente esclusiva con
  * `rigaErede` — un canale attivo non ha mai un erede. Con id non risolvibile
  * da `getChannel` (dato incoerente) nessuna riga, mai un link rotto.
+ *
+ * feat-dal-giorno-d-archivio-si-continua-nel-viaggio: con una `data`
+ * `AAAA-MM-GG` valida (la pagina del giorno la passa), il link porta la home
+ * proprio su quel giorno (`/?c=<id>&d=<data>`, la home la legge in
+ * page.js `sharedChannelId`/`sharedDateParam`) e il testo lo dice esplicito
+ * («continua da questo giorno»). Senza `data` (chiamata dall'elenco
+ * `/archivi`, dove non esiste un giorno singolo) il comportamento resta
+ * quello di sempre: href `/?c=<id>`, testo «vai a …».
  */
-function rigaInCorso(id) {
+function rigaInCorso(id, data = null) {
   const channel = getChannel(id);
   if (!channel) return "";
+  const dataValida = typeof data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data);
+  const href = dataValida
+    ? `/?c=${encodeURIComponent(channel.id)}&amp;d=${encodeURIComponent(data)}`
+    : `/?c=${encodeURIComponent(channel.id)}`;
+  const testo = dataValida ? "canale in corso — continua da questo giorno" : "canale in corso — vai a";
   return `
-        <div class="riga3 continua">canale in corso — vai a <a class="continua" href="/?c=${encodeURIComponent(channel.id)}">${esc(channel.emoji)} ${esc(channel.name)} →</a></div>`;
+        <div class="riga3 continua">${testo} <a class="continua" href="${href}">${esc(channel.emoji)} ${esc(channel.name)} →</a></div>`;
 }
 
 /**
@@ -438,7 +451,10 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
   const rigaRacc = rigaRacconto(soggetto?.testoTappa);
   const elencoGiorniGiorno = elencoGiorni(id, date, data);
-  const riga3 = rigaErede(id);
+  // La riga erede non porta mai `&d=`: la data appartiene all'archivio del
+  // canale storico, non a quello dell'erede — passarla porterebbe la home
+  // su un giorno che il canale erede non ha.
+  const riga3 = rigaErede(id) || rigaInCorso(id, data);
 
   const titolo = `ArtiPop — ${esc(id)}, ${esc(data)}`;
   const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(id)}.`;
