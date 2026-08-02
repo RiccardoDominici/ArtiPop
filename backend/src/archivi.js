@@ -54,6 +54,16 @@ function rigaSoggetto(elementNome, conceptNome) {
 }
 
 /**
+ * Riga del racconto (testo della tappa) della pagina di un giorno d'archivio:
+ * emessa solo se il testo è una stringa non vuota, mai un paragrafo vuoto.
+ */
+function rigaRacconto(testoTappa) {
+  if (typeof testoTappa !== "string" || testoTappa.trim() === "") return "";
+  return `
+        <p class="racconto">${esc(testoTappa)}</p>`;
+}
+
+/**
  * Blocco `<details class="giorni">` con l'elenco di tutti i giorni di un
  * canale, condiviso fra l'elenco (`renderElenco`) e la pagina di un singolo
  * giorno (`renderGiornoArchivio`): stesso summary «tutti i N giorn(o|i)»,
@@ -187,6 +197,7 @@ const ARCHIVI_STYLE = `
 
 /** Regole specifiche della pagina di un giorno (foto grande, barra precedente/successivo). */
 const GIORNO_STYLE = `
+  .racconto { color: #f2f3f8; margin: 12px 0 0; }
   figure.foto { margin: 24px 0 0; }
   figure.foto img {
     display: block; width: 100%; max-width: 420px; margin: 0 auto;
@@ -271,6 +282,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
     : "";
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
+  const rigaRacc = rigaRacconto(soggetto?.testoTappa);
   const elencoGiorniGiorno = elencoGiorni(id, date, data);
   const riga3 = rigaErede(id);
 
@@ -294,7 +306,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
     <a class="back" href="/archivi">← tutti gli archivi</a>
     <h1>${esc(id)}</h1>
     <p class="sub">${esc(data)}</p>
-  </header>${rigaSogg}
+  </header>${rigaSogg}${rigaRacc}
   <figure class="foto">
     <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
   </figure>
