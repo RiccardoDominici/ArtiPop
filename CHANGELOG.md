@@ -16,6 +16,14 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-l-archivio-completo-del-canale-a-un-tocco
+- `page.js` guadagna il comando ghost `#archlink` dentro `.journey`, subito dopo la didascalia
+  "Solo questa settimana…": punta a `/archivi/<canale mostrato>`, l'archivio permanente (tutti i
+  giorni, mese per mese) che dal ciclo 130 esiste anche per i canali attivi ma dalla home non
+  era raggiungibile. Segue lo stesso canale di `#feedlink` (stesso aggiornamento in
+  `updateChrome`, `encodeURIComponent(ch.id)`). Nessuna rotta nuova, nessun `fetch` in più: link
+  statico risolto dal server-render.
+
 ## 2026-08-02 — feat-un-solo-indirizzo-ufficiale-per-ogni-pagina
 - `head.js` guadagna `canonicalTag(origin, percorso)`, funzione pura (stessa guardia di
   `feedLinkTag`: stringa vuota senza `origin`) che compone `<link rel="canonical">`.
