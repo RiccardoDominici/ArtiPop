@@ -1126,8 +1126,7 @@ export default {
         const attivi = new Set(ACTIVE_CHANNELS.map((c) => c.id));
         const mappa = await listChannelsWithArchive(env);
         storici = [...mappa]
-          .filter(([id]) => !attivi.has(id))
-          .map(([id, info]) => ({ id, ...info }))
+          .map(([id, info]) => ({ id, ...info, attivo: attivi.has(id) }))
           .sort((a, b) => (a.ultima < b.ultima ? 1 : a.ultima > b.ultima ? -1 : 0));
       } catch (err) {
         console.error(`[archivi] scansione KV non disponibile: ${err.message}`);
