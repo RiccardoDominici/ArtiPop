@@ -25,6 +25,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
   al render), zero JS aggiunto (contratto §2.2 «nessun `<script>`, nessuna `fetch(`» intatto).
   Miniature decorative (`alt=""`), il nome accessibile del link resta il testo.
 
+## 2026-08-02 — feat-riscopri-un-giorno-a-caso-dall-archivio
+- Nuovo comando «un giorno a caso» nella barra della pagina di un giorno d'archivio
+  (`/archivi/<id>?date=casuale`): pesca a sorte una data fra quelle già in archivio per il
+  canale e redirige (302, `Cache-Control: no-store`) — così chi non sa che data cercare ha un
+  modo per esplorare un canale storico, invece di doverne conoscere già una. Emesso solo con
+  almeno 2 giorni in archivio: con un giorno solo porterebbe sempre alla pagina già aperta.
+  Nuova funzione pura `scegliDataACaso` in `rotazione.js`, accanto a `scegliDataRotazione` (che
+  resta invariata e deterministica per la Shortcut): qui `Math.random()` è lecito perché la
+  risposta è un redirect HTML mai cacheato, non un'immagine `/w/`. Zero letture KV in più (si
+  riusa la lista di date già caricata dal ramo `/archivi/<id>`), zero JS aggiunto.
+
 ## 2026-08-02 — feat-l-aiuto-spiega-come-salvare-e-condividere-un-giorno
 - La FAQ «Che fine fanno gli sfondi vecchi?» in `help.js` si arricchisce con la spiegazione dei
   tre gesti già esistenti sul sito per salvare o condividere il giorno che si sta guardando (anche

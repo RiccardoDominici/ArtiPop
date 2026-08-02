@@ -279,6 +279,11 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   `<link rel="alternate" type="application/rss+xml" href="<origin>/feed/<id>.xml">` (`feedLinkTag`
   di `head.js`, stessa funzione già usata dalla home) — emessa solo se `origin` è disponibile, come
   `canonicalTag`/`metaAnteprima`: mai un `href` vuoto o assente in modo incoerente.
+- Un giorno a caso (proposta ai sensi di §7, feat-riscopri-un-giorno-a-caso-dall-archivio): nella
+  stessa barra di navigazione, dopo «segui col lettore di feed», un `<a class="salva">un giorno a
+  caso</a>` verso `/archivi/<id>?date=casuale` — stesso token `.salva` (colore `#8fd3ff`, area di
+  tocco ≥44px) dei link accanto, nessun colore o dimensione nuovi. Emesso solo se l'archivio ha
+  almeno 2 giorni: con un giorno solo porterebbe sempre alla pagina già aperta, un link inutile.
 - Elenco «tutti i N giorni»: stesso componente `<details class="giorni">` di §2.1, raggruppato per
   mese negli stessi `<details class="mese">` (stesso summary «{mese} {anno} — N giorn(o|i)», stessi
   link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine dalla più recente alla più

@@ -22,3 +22,21 @@ export function scegliDataRotazione(date, giornoKey) {
   const indice = Math.floor(day / 86400000) % date.length;
   return date[indice];
 }
+
+/**
+ * Sceglie una data a caso dall'archivio, per il comando «un giorno a caso»
+ * della pagina `/archivi/<id>`. Qui, a differenza di `scegliDataRotazione`,
+ * `Math.random()` è lecito: la risposta è un redirect HTML `no-store` (mai
+ * cacheato) e non un'immagine `/w/` che una Shortcut potrebbe ritentare —
+ * niente si rompe se due tocchi consecutivi pescano date diverse.
+ *
+ * @param {string[]} date - date `YYYY-MM-DD` come le restituisce `listArchiveDates`.
+ * @param {number} [r] - numero in [0,1), iniettabile per rendere i test deterministici.
+ * @returns {string|null} una data dell'array, o `null` su input degeneri (mai un'eccezione).
+ */
+export function scegliDataACaso(date, r = Math.random()) {
+  if (!Array.isArray(date) || date.length === 0) return null;
+  if (typeof r !== "number" || !Number.isFinite(r) || r < 0 || r >= 1) return null;
+  const indice = Math.floor(r * date.length);
+  return date[indice];
+}

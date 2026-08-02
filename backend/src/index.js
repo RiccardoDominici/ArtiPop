@@ -64,7 +64,7 @@ function conServiceWorker(html) {
 }
 import { renderFeed } from "./feed.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
-import { scegliDataRotazione } from "./rotazione.js";
+import { scegliDataRotazione, scegliDataACaso } from "./rotazione.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
 // index.js resta il router, handlers.js sa come si genera un giorno. Vedi la
@@ -1190,6 +1190,27 @@ export default {
       } catch (err) {
         console.error(`[archivi/${id}] date non disponibili: ${err.message}`);
         date = [];
+      }
+
+      // feat-riscopri-un-giorno-a-caso-dall-archivio: ?date=casuale pesca una
+      // data a sorte fra quelle già lette sopra (nessuna scansione KV in
+      // più) e redirige 302, PRIMA della validazione della data richiesta —
+      // "casuale" non è mai una data valida in listArchiveDates. Il redirect
+      // è no-store: se fosse cacheato il comando pescherebbe sempre lo
+      // stesso giorno. Archivio vuoto o scelta impossibile → si prosegue nel
+      // ramo esistente che rende il 404 HTML, mai un errore grezzo.
+      if (url.searchParams.get("date") === "casuale") {
+        const scelta = scegliDataACaso(date);
+        if (scelta) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              location: `/archivi/${encodeURIComponent(id)}?date=${encodeURIComponent(scelta)}`,
+              "cache-control": "no-store",
+              ...SECURITY_HEADERS,
+            },
+          });
+        }
       }
 
       // Senza ?date= si apre il giorno più recente (come "Riapri l'ultimo
