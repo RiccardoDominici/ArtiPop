@@ -3,7 +3,7 @@
 // mano, sulla falsariga di archivi.js (stesso escape minimo, stesso stile).
 
 /** Escape XML minimo per il testo dinamico interpolato (concept, tagline, id…). */
-function escXml(s) {
+export function escXml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;",
   })[c]);

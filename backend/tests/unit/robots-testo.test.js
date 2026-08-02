@@ -63,3 +63,23 @@ describe("renderRobots", () => {
     }
   });
 });
+
+describe("renderRobots con origin (feat-i-motori-di-ricerca-trovano-anche-gli-archivi)", () => {
+  it("con origin appende la riga Sitemap con l'origin ricevuto", () => {
+    const corpo = renderRobots("https://esempio.test");
+    const righe = corpo.split("\n").filter((riga) => riga.length > 0);
+    expect(righe).toContain("Sitemap: https://esempio.test/sitemap.xml");
+  });
+
+  it("senza origin il corpo è identico a quello di oggi, nessuna riga Sitemap", () => {
+    const corpo = renderRobots();
+    expect(corpo).toBe(
+      [
+        "User-agent: *",
+        "Allow: /",
+        ...ROTTE_DI_SERVIZIO.map((path) => `Disallow: ${path}`),
+      ].join("\n") + "\n"
+    );
+    expect(corpo).not.toContain("Sitemap:");
+  });
+});

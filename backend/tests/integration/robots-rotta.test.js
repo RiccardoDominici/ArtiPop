@@ -24,7 +24,7 @@ describe("GET /robots.txt", () => {
     const res = await callWorker(env, "/robots.txt");
     const corpo = await res.text();
 
-    expect(corpo).toBe(renderRobots());
+    expect(corpo).toBe(renderRobots("https://artipop.test"));
   });
 
   it("non legge il KV: risponde 200 anche con un binding KV che lancia se interrogato", async () => {

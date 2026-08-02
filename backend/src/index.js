@@ -50,6 +50,7 @@ import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderP
 import { renderArchiviPage, renderGiornoArchivio, renderArchivioNonTrovato } from "./archivi.js";
 import { renderManifest, iconaSvg } from "./manifest.js";
 import { renderRobots } from "./robots.js";
+import { renderSitemap } from "./sitemap.js";
 import { SW_REGISTER_TAG } from "./head.js";
 import { serviceWorkerJs } from "./sw.js";
 
@@ -931,9 +932,35 @@ export default {
     // lettura come manifest/icona qui sotto — nessuna chiave admin, nessun
     // accesso al KV.
     if (path === "/robots.txt" && request.method === "GET") {
-      return new Response(renderRobots(), {
+      return new Response(renderRobots(url.origin), {
         headers: {
           "content-type": "text/plain; charset=utf-8",
+          "cache-control": "public, max-age=3600",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
+
+    // feat-i-motori-di-ricerca-trovano-anche-gli-archivi: rotta pubblica di
+    // sola lettura come /robots.txt qui sopra — stessa scansione KV di
+    // /archivi, senza l'arricchimento col soggetto (non serve al sitemap,
+    // principio 4). Try/catch PROPRIO: una scansione fallita non deve mai
+    // rompere il documento, solo lasciarlo con le sole voci fisse.
+    if (path === "/sitemap.xml" && request.method === "GET") {
+      let storici = null;
+      try {
+        const attivi = new Set(ACTIVE_CHANNELS.map((c) => c.id));
+        const mappa = await listChannelsWithArchive(env);
+        storici = [...mappa]
+          .filter(([id]) => !attivi.has(id))
+          .map(([id, info]) => ({ id, ...info }));
+      } catch (err) {
+        console.error(`[sitemap.xml] scansione KV non disponibile: ${err.message}`);
+        storici = null;
+      }
+      return new Response(renderSitemap(url.origin, storici), {
+        headers: {
+          "content-type": "application/xml; charset=utf-8",
           "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
         },

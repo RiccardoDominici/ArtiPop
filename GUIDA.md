@@ -274,7 +274,8 @@ usano il sito e lo strumento di tuning in sola lettura.
 | `GET /archivi/<id>[?date=]` *(pubblico)* | pagina HTML di un giorno d'archivio: wallpaper, data, canale e comandi «giorno precedente / successivo» per sfogliare senza tornare a `/archivi`; senza `?date=` mostra il giorno più recente; `?date=` malformata o non in archivio, o id sconosciuto → HTML 404 con link a `/archivi`, mai JSON |
 | `GET /feed/<flusso>.xml` *(pubblico)* | feed RSS 2.0 degli ultimi 20 giorni d'archivio (accetta alias storici); un `<item>` per giorno con titolo, link, `pubDate` ed enclosure verso `/w/<flusso>?date=`; flusso inesistente → 404 con corpo XML, mai JSON |
 | `GET /feed.xml` *(pubblico)* | feed RSS 2.0 aggregato: gli ultimi giorni di tutti i canali attivi in un solo feed, ordinati dal più recente, ogni `<item>` col nome del canale nel titolo e link/enclosure verso il proprio canale |
-| `GET /robots.txt` *(pubblico)* | testo semplice per i crawler: apre le pagine di lettura (`/`, `/aiuto`, `/archivi`, `/archivi/<id>`, `/w/...`) e chiude le stanze di servizio (`/tuning`, `/lab/`, `/catalogo`, `/note`, `/api/`, `/health`, `/backfill`, `/regen-day`, `/run-all`, `/test-metrics`, `/test-size`) |
+| `GET /robots.txt` *(pubblico)* | testo semplice per i crawler: apre le pagine di lettura (`/`, `/aiuto`, `/archivi`, `/archivi/<id>`, `/w/...`) e chiude le stanze di servizio (`/tuning`, `/lab/`, `/catalogo`, `/note`, `/api/`, `/health`, `/backfill`, `/regen-day`, `/run-all`, `/test-metrics`, `/test-size`); annuncia `/sitemap.xml` con una riga `Sitemap:` |
+| `GET /sitemap.xml` *(pubblico)* | XML sitemaps.org 0.9: `/`, `/aiuto`, `/archivi` e una `<url>` per ogni canale storico con archivio, con `<lastmod>` pari alla data del suo ultimo giorno |
 
 ## 2.5 Come sono fatti i canali
 
