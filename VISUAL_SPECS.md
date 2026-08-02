@@ -177,8 +177,10 @@ o componente nuovo.
   ancora attivo — proposta ai sensi di §7, feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-
   archivio), bordo `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `14px` — stesso
   trattamento visivo delle voci `<details>` di §2, senza l'accordion (qui non c'è contenuto da
-  comprimere). Riga superiore: id canale in `#f2f3f8` a sinistra, conteggio giorni in `#9aa3b8` a
-  destra. Riga inferiore: intervallo date in `#9aa3b8` — ciascuna in forma estesa italiana ("31
+  comprimere). Riga superiore: nome del canale in `#f2f3f8` a sinistra — proposta ai sensi di §7,
+  feat-l-archivio-chiama-i-canali-col-loro-nome: il nome vero (`displayName(id)` di
+  backend/src/channels.js, es. «Natura») per un canale ancora attivo, l'id invariato per uno
+  storico — conteggio giorni in `#9aa3b8` a destra. Riga inferiore: intervallo date in `#9aa3b8` — ciascuna in forma estesa italiana ("31
   gennaio 2026") dentro un `<time datetime="YYYY-MM-DD">` (proposta ai sensi di §7, feat-le-date-d-
   archivio-si-leggono-in-italiano; con chiave non valida resta il testo grezzo, senza `<time>`) —,
   link "Riapri l'ultimo giorno →" (verso `/archivi/<id>?date=<ultima>`,
@@ -241,8 +243,11 @@ sottosezione fissa solo la composizione. Stesso `--bg #0a0b10`, `--text #f2f3f8`
 link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<head>`
 (`INSTALL_TAGS`, `metaAnteprima`).
 - Intestazione: link `.back` "← tutti gli archivi" verso `/archivi` — stesso stile del link `.back`
-  di §2.1 verso `/`. `<h1>` con l'id del canale storico, sotto un `<p class="sub">` con la data del
-  giorno mostrato — stessi token di `h1`/`.sub` già in uso in §2/§2.1. La data è in forma estesa
+  di §2.1 verso `/`. `<h1>` e `<title>` col nome del canale — proposta ai sensi di §7,
+  feat-l-archivio-chiama-i-canali-col-loro-nome: il nome vero (`displayName(id)`) per un canale
+  ancora attivo, l'id invariato per uno storico, stessa risoluzione di §2.1 — sotto un
+  `<p class="sub">` con la data del giorno mostrato — stessi token di `h1`/`.sub` già in uso in
+  §2/§2.1. La data è in forma estesa
   italiana ("2 agosto 2026") dentro un `<time datetime="YYYY-MM-DD">` (proposta ai sensi di §7,
   feat-le-date-d-archivio-si-leggono-in-italiano; con chiave non valida resta il testo grezzo,
   senza `<time>`), coerente con l'anteprima social dello stesso giorno (`dataEstesaItaliana`,

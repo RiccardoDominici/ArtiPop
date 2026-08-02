@@ -85,6 +85,18 @@ export function getChannel(id) {
 }
 
 /**
+ * Nome da mostrare all'utente per un id di flusso: il nome vero (`name`) se
+ * l'id è un flusso attivo, l'id ricevuto invariato altrimenti (canale
+ * storico o id sconosciuto — l'id resta la loro unica identità, stessa
+ * convenzione di `/api/channels?all=1`). Non lancia mai, non ritorna mai
+ * `null` o stringa vuota: sempre un testo mostrabile.
+ */
+export function displayName(id) {
+  const channel = getChannel(id);
+  return channel && channel.active ? channel.name : id;
+}
+
+/**
  * Risolve un id in un flusso reale, seguendo gli alias storici.
  * Ritorna { channel, isLegacy, requestedId } — `isLegacy` serve a chi deve
  * decidere in quale archivio andare a pescare.

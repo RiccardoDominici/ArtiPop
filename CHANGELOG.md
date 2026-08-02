@@ -1831,3 +1831,25 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Nuovo `backend/tests/unit/archivi-giorno-continua.test.js`: canale attivo → link con `&d=` e
   testo «continua da questo giorno»; canale storico con erede → sola riga erede senza `&d=`; id
   ignoto → nessun link `/?c=`; elenco `/archivi` invariato.
+
+## 2026-08-02 — feat-l-archivio-chiama-i-canali-col-loro-nome
+- Le pagine d'archivio (`/archivi` e `/archivi/<id>`) chiamavano ogni canale col suo id tecnico
+  (`natura`, `citta`, `quiete`) invece del nome vero (Natura, Città, Quiete): la card, l'`<h1>`
+  e `<title>` della pagina del giorno, la meta description, l'anteprima condivisa e gli
+  aria-label che citano il canale mostravano/leggevano l'id grezzo — un dettaglio implementativo
+  esposto all'utente. Un tentativo precedente (ciclo 142) aveva provato ad aggiungere una riga
+  tagline visiva; qui zero componenti nuovi, cambia solo il testo dentro i token già esistenti.
+- Nuovo `displayName(id)` esportato da `backend/src/channels.js`: risolve col nome vero
+  (`channel.name`) per un canale ancora attivo, l'id invariato per uno storico o sconosciuto —
+  mai `null`, mai stringa vuota, coerente con la stessa convenzione già in uso su
+  `/api/channels?all=1`.
+- `backend/src/archivi.js` usa `displayName` ovunque il canale compare come testo per l'utente:
+  `.nome` della card, aria-label di «Salva», «Riapri l'ultimo giorno», «un giorno a caso» e
+  «Apri a grandezza piena…», l'`alt` dell'immagine del giorno, `<h1>`, `<title>`, meta
+  description e i parametri testuali di `metaAnteprima`. Gli `href` e i parametri di query
+  restano sempre sull'id tecnico: cambia solo ciò che si legge, mai dove porta il link.
+- `VISUAL_SPECS.md` §2.1 e §2.2 aggiornati: la riga superiore della card e l'`<h1>`/`<title>`
+  della pagina del giorno documentano ora la risoluzione nome-vero/id-storico.
+- Nuovo `backend/tests/unit/archivi-nome-canale.test.js`: canale attivo → nome vero in card,
+  h1, title, description e aria-label; canale storico e id sconosciuto → id invariato ovunque,
+  nessun crash; href sempre sull'id tecnico anche quando il testo mostra il nome.
