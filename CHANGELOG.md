@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-l-archivio-chiama-i-canali-col-loro-nome
+- La card di `/archivi` e il `<h1>` di `/archivi/<id>` mostrano ora il nome vero del canale
+  ATTIVO («Natura», «Città», «Quiete», con la tagline in card) invece dell'id tecnico minuscolo,
+  come fa già la home — `archivi.js` non importava nulla da `channels.js` e mostrava l'id nudo
+  anche per i tre canali portati in archivio dal ciclo
+  feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio. Nuova funzione pura `canaleNoto(id)`
+  che consulta `CHANNELS` già in memoria: nessuna lettura KV in più, nessun JS aggiunto. I canali
+  storici (island, bloom, studio, neon…), senza `name`, restano come oggi. `<title>`,
+  `description` e canonical restano sull'id grezzo: fetta verticale dichiarata, cambia solo il
+  corpo visibile.
+
 ## 2026-08-02 — feat-il-giorno-d-archivio-mostra-dove-porta-il-passo-avanti
 - I comandi «← giorno precedente» / «giorno successivo →» nella pagina di un giorno d'archivio
   portano ora anche una miniatura `60×128` del wallpaper di quel giorno, sopra il testo: si vede

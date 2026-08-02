@@ -72,6 +72,17 @@ function rigaInCorso(id) {
 }
 
 /**
+ * Nome vero e tagline di un canale ATTIVO (feat-l-archivio-chiama-i-canali-col-loro-nome),
+ * o `null` per un id storico/sconosciuto — quei canali un nome non ce l'hanno, e l'id resta
+ * la loro unica identità (stessa convenzione di `/api/channels?all=1`, index.js:730-737).
+ */
+function canaleNoto(id) {
+  const channel = getChannel(id);
+  if (!channel || !channel.active) return null;
+  return { name: channel.name, tagline: channel.tagline };
+}
+
+/**
  * Riga del soggetto (`elementNome · conceptNome`), condivisa fra le card
  * dell'elenco e la pagina di un giorno: emessa solo se almeno uno dei due
  * nomi è disponibile.
@@ -240,10 +251,16 @@ function renderElenco(storici) {
         ? `<a class="salva" href="/w/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}&amp;dl=1" aria-label="Salva l'ultimo wallpaper di ${esc(c.id)}">Salva</a>`
         : "";
       const soggetto = rigaSoggetto(c.elementNome, c.conceptNome);
+      const canale = canaleNoto(c.id);
+      const nomeCard = canale ? canale.name : c.id;
+      const rigaTagline = canale?.tagline
+        ? `
+        <div class="soggetto">${esc(canale.tagline)}</div>`
+        : "";
       return `
       <li>${copertina}
         <div class="contenuto">
-        <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${soggetto}
+        <div class="riga1"><span class="nome">${esc(nomeCard)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${rigaTagline}${soggetto}
         <div class="riga2">
           <span class="intervallo">${rigaData(c.prima)} → ${rigaData(c.ultima)}</span>
           <a class="riapri" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(c.id)}">Riapri l'ultimo giorno →</a>${salva}
@@ -434,6 +451,8 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
       ? `<a class="salva" href="/archivi/${encId}?date=casuale" aria-label="Apri un giorno a caso dell'archivio di ${esc(id)}">un giorno a caso</a>`
       : "";
 
+  const canale = canaleNoto(id);
+  const nomePagina = canale ? canale.name : id;
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
   const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
   const rigaRacc = rigaRacconto(soggetto?.testoTappa);
@@ -462,7 +481,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
 <main>
   <header>
     <a class="back" href="/archivi">← tutti gli archivi</a>
-    <h1>${esc(id)}</h1>
+    <h1>${esc(nomePagina)}</h1>
     <p class="sub">${rigaData(data)}</p>
   </header>${rigaSogg}${rigaPos}${rigaRacc}
   <figure class="foto">
