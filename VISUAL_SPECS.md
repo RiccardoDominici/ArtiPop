@@ -262,6 +262,16 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   Il comando assente al bordo dell'archivio (giorno più vecchio o più recente) non viene emesso:
   mai un link disabilitato o morto. Accanto, un `<a class="salva">Salva</a>` verso
   `/w/<id>?date=<data>&dl=1` — stesso trattamento del link "Salva" di §2.1.
+- Miniature dei giorni adiacenti (proposta ai sensi di §7, feat-il-giorno-d-archivio-mostra-dove-porta-il-passo-avanti):
+  ciascuno dei due comandi «← giorno precedente» / «giorno successivo →» porta, sopra il testo, una
+  `<img class="mini" src="/w/<id>?date=<data adiacente>">` — stesso token `.copertina` `60×128` di
+  §2.1 (`object-fit:cover`, raggio `10px`, bordo `rgba(255,255,255,.10)`), nessun colore, dimensione
+  o componente nuovi. `alt=""`, `loading="lazy"`, `decoding="async"`: la miniatura è decorativa, il
+  nome accessibile del link resta il testo. Il link diventa `display:inline-flex;
+  flex-direction:column; gap:6px; align-items:center`, conservando l'area di tocco ≥44px richiesta
+  sopra. Stessa guardia del comando che la contiene: al bordo dell'archivio (giorno più vecchio o
+  più recente) il comando assente non viene emesso, e con esso la sua miniatura — mai un `src` vuoto
+  o riferito a una data non in archivio.
 - Segui col lettore di feed (proposta ai sensi di §7, feat-dall-archivio-si-segue-il-canale-col-lettore-di-feed):
   nella stessa barra di navigazione, un `<a class="salva">segui col lettore di feed</a>` verso
   `/feed/<id>.xml` — stesso token `.salva` (colore `#8fd3ff`, area di tocco ≥44px) del link "Salva"
