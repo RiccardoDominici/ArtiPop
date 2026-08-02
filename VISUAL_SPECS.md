@@ -220,6 +220,13 @@ o componente nuovo.
   `YYYY-MM-DD` confluiscono nell'ultimo gruppo «altri giorni», mai scartate. Presente solo
   quando la scansione ha raccolto le date del canale (chiamata legacy o `date` vuoto: nessun
   `<details>`, card identica a quella dei cicli 80-81).
+  Ogni voce di giorno (proposta ai sensi di §7, feat-l-archivio-del-mese-si-sfoglia-a-colpo-d-occhio)
+  porta, dentro lo stesso link/testo `aria-current`, una miniatura `44×94` + data + `↓`:
+  `<img class="minigiorno" src="/w/<id>?date=<data>">` — stessi token `.copertina`/`.mini` di questa
+  sezione (`object-fit:cover`, raggio `8px`, bordo `rgba(255,255,255,.10)`, sfondo
+  `rgba(255,255,255,.03)`), nessun colore o dimensione fuori da quelli già dichiarati in §2.1.
+  `alt=""`, `loading="lazy"`, `decoding="async"`: la miniatura è decorativa e sta dentro l'area
+  toccabile già esistente, il nome accessibile della voce resta la sola data.
 - Componente aggiuntivo «miniatura di copertina» (proposta ai sensi di §7): a sinistra di ogni
   card, un `<a class="copertina">` con dentro `<img>` `60×128`, `object-fit:cover`, raggio `10px`,
   bordo `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)` — stessi token del bordo/raggio
