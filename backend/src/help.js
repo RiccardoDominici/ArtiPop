@@ -135,8 +135,10 @@ const FAQ = [
     q: "Posso cambiare canale?",
     a: `Sì: apri la Shortcut e sostituisci l'URL nell'azione "Ottieni contenuto da URL" con
       quello di un altro canale (${ACTIVE_CHANNELS.map((c) => `<code>/w/${c.id}</code>`).join(", ")},
-      oppure <code>/w/random</code> per averne uno a sorpresa ogni giorno). Oppure scarica
-      direttamente la Shortcut dell'altro canale dalla home.
+      oppure <code>/w/random</code> per averne uno a sorpresa ogni giorno). Aggiungi
+      <code>?date=casuale</code> a un indirizzo per pescare invece un giorno a caso da tutto
+      l'archivio di quel canale. Oppure scarica direttamente la Shortcut dell'altro canale
+      dalla home.
       <br><br>
       Se preferisci seguire un canale con un lettore di feed invece della Shortcut, iscriviti a
       <code>/feed/&lt;canale&gt;.xml</code> (es. <code>/feed/natura.xml</code>): un nuovo

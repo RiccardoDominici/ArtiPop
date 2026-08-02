@@ -64,6 +64,7 @@ function conServiceWorker(html) {
 }
 import { renderFeed } from "./feed.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
+import { scegliDataRotazione } from "./rotazione.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
 // fanOutAll, regenDay, la ricostruzione storica dell'archivio) vive qui:
 // index.js resta il router, handlers.js sa come si genera un giorno. Vedi la
@@ -572,7 +573,19 @@ export default {
       }
 
       const dateParam = url.searchParams.get("date");
-      const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : null;
+      let date = null;
+      let dateEsplicita = false;
+      if (dateParam === "casuale") {
+        // ?date=casuale: sfondo a rotazione da tutto l'archivio del canale,
+        // deterministico per la giornata (v. rotazione.js). Nessuna data
+        // trovata (archivio vuoto/assente) → si prosegue senza data e si
+        // ricade sul percorso "canale vuoto" già esistente più sotto.
+        const archivio = await listArchiveDates(env, requested, 400);
+        date = scegliDataRotazione(archivio, todayKey());
+      } else if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+        date = dateParam;
+        dateEsplicita = true;
+      }
       const vParam = url.searchParams.get("v");
       const v = vParam && /^\d{4}-\d{2}-\d{2}$/.test(vParam) ? vParam : null;
       const dl = url.searchParams.get("dl") === "1";
@@ -615,7 +628,7 @@ export default {
       // cachea per sempre; il sito manda ?v=<data del meta> per distinguersi
       // dalla Shortcut, che chiama lo stesso indirizzo senza query e deve
       // sempre ricevere il file fresco (mai una cache tra lei e il worker).
-      const cacheControl = date
+      const cacheControl = dateEsplicita
         ? "public, max-age=604800, immutable"
         : v
           ? "public, max-age=3600"

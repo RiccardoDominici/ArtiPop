@@ -1746,3 +1746,26 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   marcato «canale in corso», invece di essere escluso). Messaggio dell'elenco vuoto lasciato
   invariato ("Nessun archivio storico da mostrare.") per non uscire dai file dichiarati nel piano
   (`archivi-accessibile.test.js`/`archivi-salva.test.js` lo asseriscono e non erano fra i `FILE:`).
+
+## 2026-08-02 — feat-lo-sfondo-di-oggi-puo-venire-da-tutto-l-archivio
+- `GET /w/<flusso>?date=casuale`: pesca un giorno a caso da tutto l'archivio del canale invece
+  del solo giorno odierno — l'archivio (mesi di wallpaper per canale, `listArchiveDates` già
+  scritto) era raggiungibile solo da un browser; la Shortcut, il momento d'uso principale, può
+  ora chiederlo con un solo valore di query, senza una generazione AI in più.
+- Nuovo modulo puro `backend/src/rotazione.js` (`scegliDataRotazione`): sceglie la data
+  deterministicamente dalla chiave del giorno (stesso schema già in uso per `/w/random`), non
+  `Math.random` — un valore che cambia a ogni richiesta renderebbe la risposta non cacheabile e
+  farebbe cambiare lo sfondo a ogni retry della Shortcut. Su input degeneri (array vuoto,
+  non-array, data malformata) restituisce `null` senza mai lanciare.
+- `index.js`: `?date=casuale` è riconosciuto prima della validazione stretta del formato data;
+  se l'archivio è vuoto o assente si ricade sul percorso "canale vuoto" già esistente (placeholder
+  200, mai JSON — ROADMAP M4). `cache-control` distingue ora la data *esplicita* (`?date=<data>`,
+  invariata: `public, max-age=604800, immutable`) dalla data *sorteggiata*, che non è byte-stabile
+  per sempre e resta `no-store, must-revalidate` come la chiamata senza query.
+- `help.js`: la voce già dedicata a `/w/random` menziona anche `?date=casuale`, poche parole nel
+  paragrafo esistente — nessun componente/token nuovo (`VISUAL_SPECS.md` §2). `GUIDA.md`
+  aggiornato nella tabella "Uso quotidiano" e nella riga della tabella endpoint.
+- Nuovi `backend/tests/unit/rotazione-archivio.test.js` (funzione pura: input degeneri,
+  determinismo, rotazione che avanza sui giorni) e `backend/tests/integration/w-casuale.test.js`
+  (200 con data d'archivio valorizzata e `no-store`, determinismo entro la giornata, canale senza
+  archivio → placeholder 200, `?date=<data esatta>` invariato — nessuna regressione).
