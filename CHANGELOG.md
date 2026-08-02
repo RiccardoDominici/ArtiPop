@@ -16,6 +16,22 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-riscopri-un-giorno-a-caso
+- Nuovo comando ghost `#dayrand` ("🎲 un giorno a caso") nella fila dei comandi di "Il viaggio
+  finora": con centinaia di giorni in archivio, chi non sa cosa rivedere oggi non aveva nessun
+  modo di farsi sorprendere — le frecce muovono di un giorno alla volta, `#dayPick` richiede di
+  sapere già quale data cercare.
+- Nuova funzione pura `scegliGiornoACaso(date, dataCorrente, sorteggio)` in `page.js`: pesca una
+  data diversa da quella mostrata dall'archivio noto del canale (sorteggio iniettabile, default
+  `Math.random`, `null` sugli input degenerati). Il click riusa `goToArc` — lo stesso percorso di
+  salto di `#dayPick`, `#arclist` e dell'elenco dei preferiti, nessuna seconda implementazione.
+- `renderJourney` mostra `#dayrand` con lo stesso `hasJourney` degli altri comandi, IN AND con
+  l'archivio noto (arcsCache appiattito) che conta almeno 2 date: con una sola data conosciuta
+  non c'è nessun altro giorno da riscoprire.
+- VISUAL_SPECS §1.4: paragrafo nuovo per `#dayrand`, nessun colore/token/misura nuovo (pill
+  `.btn.ghost` già canonica). Baseline `home-mobile.png`/`home-desktop.png` rigenerate contro il
+  dev server locale (wrangler dev, KV locale) — cambio visivo dichiarato dal piano.
+
 ## 2026-08-01 — feat-l-aiuto-resta-leggibile-anche-se-non-l-hai-mai-aperto
 - Il service worker conserva `/aiuto` già alla propria installazione (`PRECACHE` in
   `backend/src/sw.js`, ascoltatore `install` in `event.waitUntil`): prima si poteva rivedere una

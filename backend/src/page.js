@@ -463,6 +463,11 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            segnare. Etichetta e aria-pressed seguono lo stato del giorno
            mostrato (v. renderJourney/updateDayNav). -->
       <button class="btn ghost" id="dayfav" aria-pressed="false" hidden>☆ segna preferito</button>
+      <!-- feat-riscopri-un-giorno-a-caso: stesso hasJourney degli altri
+           comandi, IN AND con l'archivio noto (arcsCache, fallback
+           archiveCache) che ha almeno 2 date — con una sola data nota non
+           c'è nessun altro giorno da riscoprire (v. renderJourney). -->
+      <button class="btn ghost" id="dayrand" hidden>🎲 un giorno a caso</button>
       <!-- feat-torna-a-oggi-da-qualunque-giorno: nessun percorso di ritorno
            diretto esisteva prima di questo ciclo — stepDay muove di un
            giorno, goToNextArc di un arco: chi è sceso di più passi doveva
@@ -585,6 +590,7 @@ const dayopenEl = document.getElementById("dayopen");
 const daysaveEl = document.getElementById("daysave");
 const dayShareImgEl = document.getElementById("dayshareimg");
 const dayFavEl = document.getElementById("dayfav");
+const dayRandEl = document.getElementById("dayrand");
 const favPickEl = document.getElementById("favpick");
 const favListEl = document.getElementById("favlist");
 const dayTodayEl = document.getElementById("daytoday");
@@ -1123,6 +1129,18 @@ function computeArcs(dates, cap) {
   return arcs;
 }
 
+// feat-riscopri-un-giorno-a-caso: pesca una data diversa da quella mostrata
+// dall'elenco delle date d'archivio note. Pura e testata: sorteggio
+// iniettabile (default Math.random), mai la data corrente, null sugli input
+// degenerati (elenco vuoto, elenco con la sola data corrente, non-array).
+function scegliGiornoACaso(date, dataCorrente, sorteggio = Math.random) {
+  if (!Array.isArray(date)) return null;
+  const candidati = date.filter((d) => d !== dataCorrente);
+  if (!candidati.length) return null;
+  const i = Math.min(Math.floor(sorteggio() * candidati.length), candidati.length - 1);
+  return candidati[i];
+}
+
 async function loadArchive(chId) {
   jmsgEl.hidden = false;
   jmsgEl.textContent = "carico l'archivio…";
@@ -1213,6 +1231,13 @@ function renderJourney(chId) {
   dayFavEl.hidden = !hasJourney;
   playEl.hidden = !hasJourney;
   jmsgEl.hidden = hasJourney;
+  // feat-riscopri-un-giorno-a-caso: l'archivio noto (arcsCache appiattito,
+  // fallback la finestra corrente) può contenere più date di quelle già
+  // sfogliate ora — è quell'elenco intero a decidere se c'è un altro giorno
+  // da riscoprire, non solo hasJourney.
+  const knownDates = (arcsCache[chId] || []).flat();
+  const knownCount = knownDates.length ? knownDates.length : dates.length;
+  dayRandEl.hidden = !hasJourney || knownCount < 2;
   updateArcNav(chId);
   if (!hasJourney) {
     jmsgEl.textContent = "il viaggio inizia oggi ✨";
@@ -1563,6 +1588,26 @@ dayPickEl.addEventListener("change", () => {
   if (arcIdx === -1) {
     toast("nessun wallpaper per quel giorno");
     dayPickEl.value = previewDate ?? TODAY;
+    return;
+  }
+  goToArc(chId, arcIdx, d);
+});
+
+// feat-riscopri-un-giorno-a-caso: pesca una data a caso dall'archivio noto
+// del canale mostrato (arcsCache appiattito, fallback archiveCache) e salta
+// lì, riusando goToArc — lo stesso percorso di #dayPick, #arclist e
+// dell'elenco dei preferiti, nessuna seconda implementazione del salto.
+// Se non c'è nessun altro giorno, o l'arco della data estratta non si
+// trova più, si avvisa e la vista non cambia: mai uno schermo nero.
+dayRandEl.addEventListener("click", () => {
+  const chId = CHANNELS[order[0]].id;
+  const arcs = arcsCache[chId] || [];
+  const known = arcs.flat();
+  const date = known.length ? known : (archiveCache[chId] || []);
+  const d = scegliGiornoACaso(date, previewDate ?? TODAY);
+  const arcIdx = d === null ? -1 : arcs.findIndex((arc) => arc.includes(d));
+  if (d === null || arcIdx === -1) {
+    toast("nessun altro giorno da riaprire");
     return;
   }
   goToArc(chId, arcIdx, d);
