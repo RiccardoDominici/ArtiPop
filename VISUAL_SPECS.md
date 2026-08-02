@@ -206,9 +206,15 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   giorno mostrato — stessi token di `h1`/`.sub` già in uso in §2/§2.1.
 - Riga del soggetto: stesso `<div class="soggetto">` di §2.1 (stessi token, stessa guardia —
   presente solo se almeno un nome è disponibile), subito sotto l'intestazione.
+- Riga della posizione: stesso `<div class="soggetto">` di §2.1/sopra (stessi token, stessa guardia),
+  col testo «arco N · giorno M · tappa K» composto dalle sole voci disponibili (`Number.isFinite`,
+  non un test di verità: 0 è un valore valido, non un'assenza) — i giorni ricostruiti di
+  `handlers.js` hanno `arco/giornoNellArco/tappa: null`, quindi nessuna riga vuota — subito dopo la
+  riga del soggetto e prima della riga del racconto. Nessun token nuovo: riusa `<div class="soggetto">`
+  già esistente, nessuna regola CSS, colore o dimensione aggiunti.
 - Riga del racconto: `<p class="racconto">` col testo della tappa in `#f2f3f8` (stesso `--text`),
   emessa solo se il testo è disponibile — i giorni ricostruiti di `handlers.js` hanno
-  `testoTappa: null`, quindi nessun paragrafo vuoto — subito dopo la riga del soggetto e prima
+  `testoTappa: null`, quindi nessun paragrafo vuoto — subito dopo la riga della posizione e prima
   della `<figure>`. Nessun `font-size` nuovo: stessa dimensione di corpo già in uso.
 - Immagine: `<figure>` con `<img src="/w/<id>?date=<data>">`, `alt` descrittivo (canale + data),
   `loading="lazy"`, `decoding="async"`. Più grande della miniatura di copertina di §2.1 (non

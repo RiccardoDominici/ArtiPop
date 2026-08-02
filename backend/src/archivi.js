@@ -64,6 +64,31 @@ function rigaRacconto(testoTappa) {
 }
 
 /**
+ * Riga della posizione nella storia («arco N · giorno M · tappa K») della
+ * pagina di un giorno d'archivio: stesso pattern di guardia ed escaping di
+ * `rigaSoggetto`/`rigaRacconto`, emessa solo con le voci disponibili
+ * (`Number.isFinite`, non un test di verità: 0 è un valore valido, non
+ * un'assenza). Stringa vuota se nessuno dei tre campi è disponibile — i
+ * giorni ricostruiti/assenti di `handlers.js` (`arco/giornoNellArco/tappa:
+ * null`) non producono alcun markup.
+ *
+ * CONFINE base-zero/base-uno (storage.js:84-98): nella carta d'identità
+ * `giornoNellArco` e `tappa` sono GIÀ base-uno (`dayInArc + 1`, `stage + 1`)
+ * e si mostrano tali qui sotto, mentre `arco` è l'`arcIndex` GREZZO
+ * base-zero e va convertito con `arco + 1` — è l'unico punto in cui è facile
+ * sbagliare.
+ */
+function rigaPosizione(arco, giornoNellArco, tappa) {
+  const voci = [];
+  if (Number.isFinite(arco)) voci.push(`arco ${arco + 1}`);
+  if (Number.isFinite(giornoNellArco)) voci.push(`giorno ${giornoNellArco}`);
+  if (Number.isFinite(tappa)) voci.push(`tappa ${tappa}`);
+  if (voci.length === 0) return "";
+  return `
+        <div class="soggetto">${voci.join(" · ")}</div>`;
+}
+
+/**
  * Blocco `<details class="giorni">` con l'elenco di tutti i giorni di un
  * canale, condiviso fra l'elenco (`renderElenco`) e la pagina di un singolo
  * giorno (`renderGiornoArchivio`): stesso summary «tutti i N giorn(o|i)»,
@@ -282,6 +307,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
     : "";
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
+  const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
   const rigaRacc = rigaRacconto(soggetto?.testoTappa);
   const elencoGiorniGiorno = elencoGiorni(id, date, data);
   const riga3 = rigaErede(id);
@@ -306,7 +332,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
     <a class="back" href="/archivi">← tutti gli archivi</a>
     <h1>${esc(id)}</h1>
     <p class="sub">${esc(data)}</p>
-  </header>${rigaSogg}${rigaRacc}
+  </header>${rigaSogg}${rigaPos}${rigaRacc}
   <figure class="foto">
     <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
   </figure>

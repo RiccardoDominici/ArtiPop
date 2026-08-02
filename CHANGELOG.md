@@ -16,6 +16,21 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-il-giorno-d-archivio-dice-a-che-punto-della-storia-sei
+- `rigaPosizione(arco, giornoNellArco, tappa)` in `archivi.js`, accanto a `rigaSoggetto()` e
+  `rigaRacconto()`: restituisce `<div class="soggetto">` con «arco N · giorno M · tappa K» (solo le
+  voci disponibili, `Number.isFinite` e non un test di verità perché 0 è un giorno/arco valido), o
+  stringa vuota se nessuna delle tre è disponibile.
+- Conversione base-zero → base-uno solo per `arco` (`arco + 1`): `giornoNellArco` e `tappa` arrivano
+  già base-uno dalla carta d'identità (`storage.js:84-98`), `arco` no — l'unico punto in cui era
+  facile sbagliare, documentato in un commento sopra la funzione.
+- `renderGiornoArchivio` inserisce la riga subito dopo il soggetto e prima del racconto: prima dove
+  sei nella storia, poi cosa succede. I tre campi arrivavano già dalla carta d'identità passata a
+  `soggetto` e venivano buttati via, esattamente come `testoTappa` prima del ciclo 120 — zero letture
+  KV in più, zero JS, zero fetch, nessuna modifica a `index.js`.
+- `VISUAL_SPECS.md` §2.2: voce «Riga della posizione», stesso `<div class="soggetto">` già in uso,
+  nessun token nuovo.
+
 ## 2026-08-02 — feat-il-giorno-d-archivio-racconta-la-sua-tappa
 - `rigaRacconto(testoTappa)` in `archivi.js`, accanto a `rigaSoggetto()`: restituisce
   `<p class="racconto">` col testo della tappa (sfuggito con `esc()`), o stringa vuota se il testo
