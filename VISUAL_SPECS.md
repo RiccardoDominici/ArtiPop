@@ -94,6 +94,19 @@ mostrato — nessun colore, token o misura nuovi. `#dayfav` invisibile insieme a
 del giorno quando non c'è un viaggio da sfogliare; `#favpick`/`#favlist` invisibili quando il
 canale mostrato non ha alcun giorno segnato.
 
+Componente aggiuntivo «miniatura di riga» (proposta ai sensi di §7,
+feat-i-preferiti-si-riconoscono-a-colpo-d-occhio): in ogni riga `.arcrow` dell'elenco `#favlist`,
+prima dei due `<span>` di testo, un `<img class="favmini">` `30×64` — esattamente metà della
+`.copertina` `60×128` di §2.1, stesso rapporto 15:32 del wallpaper — `object-fit:cover`, raggio
+`10px`, bordo `rgba(255,255,255,.10)`: stessi token già fissati per `.copertina`, nessun colore
+nuovo. `alt=""` (decorativa: il nome accessibile della riga resta il testo data + concept),
+`loading="lazy"`, `decoding="async"`. La riga passa a `display:flex; align-items:center;
+gap:.6rem` per accostare miniatura e testo, conservando l'area di tocco ≥44px già richiesta per
+`.arcrow`. Presente solo quando l'indirizzo dell'immagine è disponibile: senza, la riga resta di
+solo testo come oggi, mai un `<img src="">`. La riga «↗ copia il link dei tuoi preferiti» non è
+un giorno e non riceve miniatura. Componente proposto, pannello `#favlist` chiuso di default:
+le baseline `home-mobile.png`/`home-desktop.png` non cambiano.
+
 Un giorno a caso (`#dayrand`, feat-riscopri-un-giorno-a-caso — proposta ai sensi di §7):
 comando ghost `#dayrand` ("🎲 un giorno a caso") nella fila dei comandi del pannello, accanto
 a "segna preferito" — stessa pill `.btn.ghost` già canonica, nessun colore, token o misura
