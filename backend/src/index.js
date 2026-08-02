@@ -1247,8 +1247,27 @@ export default {
         console.error(`[archivi/${id}] soggetto non disponibile: ${err.message}`);
       }
 
+      // feat-quel-giorno-negli-altri-canali: quali altri canali attivi hanno
+      // questa stessa data in archivio, in un try/catch PROPRIO (stesso
+      // schema del soggetto sopra): un errore qui lascia la pagina senza
+      // blocco, mai un 500.
+      let altriCanali = [];
+      try {
+        const altri = ACTIVE_CHANNELS.filter((c) => c.id !== id);
+        const risultati = await Promise.all(
+          altri.map(async (c) => ({
+            id: c.id,
+            date: await listArchiveDates(env, c.id, 400),
+          })),
+        );
+        altriCanali = risultati.filter((r) => r.date.includes(data)).map((r) => r.id);
+      } catch (err) {
+        console.error(`[archivi/${id}] altri canali non disponibili: ${err.message}`);
+        altriCanali = [];
+      }
+
       return new Response(
-        conServiceWorker(renderGiornoArchivio({ id, data, date, soggetto, origin: url.origin })),
+        conServiceWorker(renderGiornoArchivio({ id, data, date, soggetto, origin: url.origin, altriCanali })),
         {
           headers: {
             "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",

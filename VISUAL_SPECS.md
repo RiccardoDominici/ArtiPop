@@ -270,6 +270,18 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   <data>») così lo screen reader non legge due volte l'`alt`, e un focus visibile (`outline: 2px
   solid #8fd3ff`, stesso colore link già in uso). Nessun token nuovo: nessuna dimensione, colore o
   componente oltre a quelli già presenti in §2/§2.1.
+- Quel giorno negli altri canali (proposta ai sensi di §7, feat-quel-giorno-negli-altri-canali):
+  subito dopo la `<figure>` e prima della barra di navigazione, un `<nav class="altri-canali">` —
+  presente solo se almeno un altro canale attivo ha la stessa data in archivio, assente del tutto
+  altrimenti (mai un contenitore vuoto). Un titoletto `<p class="sub">Quel giorno negli altri
+  canali</p>` (stesso token `.sub` di intestazione/§2.1), poi un link per ciascun altro canale:
+  `<a href="/archivi/<altroId>?date=<data>">` con, sopra il testo dell'id del canale, la stessa
+  miniatura `.mini` `60×128` (`object-fit:cover`, raggio `10px`, bordo `rgba(255,255,255,.10)`) già
+  usata dalle miniature precedente/successivo sotto, `alt=""`, `loading="lazy"`, `decoding="async"`.
+  Link in `#8fd3ff` (stesso colore link), `display:inline-flex; flex-direction:column; gap:6px;
+  align-items:center`, area di tocco ≥44px — stesso schema dei link precedente/successivo. Nessun
+  colore o dimensione nuovi oltre al contenitore stesso (`display:flex; flex-wrap:wrap;
+  justify-content:center`), puramente server-side, nessun JavaScript.
 - Barra di navigazione: `<nav>` con «← giorno precedente» / «giorno successivo →» in `#8fd3ff`,
   area di tocco ≥44px (`display:inline-flex; align-items:center`) come gli altri link di §2/§2.1.
   Il comando assente al bordo dell'archivio (giorno più vecchio o più recente) non viene emesso:
