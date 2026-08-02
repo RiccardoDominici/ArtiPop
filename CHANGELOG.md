@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-l-aiuto-spiega-come-salvare-e-condividere-un-giorno
+- La FAQ «Che fine fanno gli sfondi vecchi?» in `help.js` si arricchisce con la spiegazione dei
+  tre gesti già esistenti sul sito per salvare o condividere il giorno che si sta guardando (anche
+  passato o d'archivio): salvataggio dell'immagine con nome file leggibile, copia del link esatto
+  del giorno, condivisione diretta dell'immagine dove il browser lo permette. Nessuna voce FAQ
+  nuova — arricchita quella esistente, stesso schema già usato per feed/archivi, per non rompere i
+  test di conteggio voci hardcoded nelle altre suite (lo stesso motivo per cui il piano opus del
+  ciclo 135, con una voce nuova, era finito FALLITO(EXEC) sulle baseline).
+
 ## 2026-08-02 — feat-dall-archivio-si-segue-il-canale-col-lettore-di-feed
 - `archivi.js` guadagna, nella pagina di un giorno d'archivio, l'autodiscovery `<link
   rel="alternate" type="application/rss+xml">` nel `<head>` (`feedLinkTag`, riusata da `head.js`) e
