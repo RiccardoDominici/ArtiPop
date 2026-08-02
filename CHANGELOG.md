@@ -16,6 +16,14 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-dall-archivio-si-segue-il-canale-col-lettore-di-feed
+- `archivi.js` guadagna, nella pagina di un giorno d'archivio, l'autodiscovery `<link
+  rel="alternate" type="application/rss+xml">` nel `<head>` (`feedLinkTag`, riusata da `head.js`) e
+  un comando visibile «segui col lettore di feed» nella barra precedente/successivo/Salva, entrambi
+  verso `/feed/<id>.xml`: chi atterra sull'archivio (motori di ricerca inclusi, dai cicli 127/129)
+  non doveva più passare dalla home per abbonarsi. Nessuna lettura KV in più, nessun `<script>`
+  aggiunto — pagina server-rendered come prima.
+
 ## 2026-08-02 — feat-l-archivio-completo-del-canale-a-un-tocco
 - `page.js` guadagna il comando ghost `#archlink` dentro `.journey`, subito dopo la didascalia
   "Solo questa settimana…": punta a `/archivi/<canale mostrato>`, l'archivio permanente (tutti i

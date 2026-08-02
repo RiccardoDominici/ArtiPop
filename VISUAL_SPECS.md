@@ -262,6 +262,13 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   Il comando assente al bordo dell'archivio (giorno più vecchio o più recente) non viene emesso:
   mai un link disabilitato o morto. Accanto, un `<a class="salva">Salva</a>` verso
   `/w/<id>?date=<data>&dl=1` — stesso trattamento del link "Salva" di §2.1.
+- Segui col lettore di feed (proposta ai sensi di §7, feat-dall-archivio-si-segue-il-canale-col-lettore-di-feed):
+  nella stessa barra di navigazione, un `<a class="salva">segui col lettore di feed</a>` verso
+  `/feed/<id>.xml` — stesso token `.salva` (colore `#8fd3ff`, area di tocco ≥44px) del link "Salva"
+  accanto, nessun colore o dimensione nuovi. Nel `<head>`, accanto a `canonicalTag`, l'autodiscovery
+  `<link rel="alternate" type="application/rss+xml" href="<origin>/feed/<id>.xml">` (`feedLinkTag`
+  di `head.js`, stessa funzione già usata dalla home) — emessa solo se `origin` è disponibile, come
+  `canonicalTag`/`metaAnteprima`: mai un `href` vuoto o assente in modo incoerente.
 - Elenco «tutti i N giorni»: stesso componente `<details class="giorni">` di §2.1, raggruppato per
   mese negli stessi `<details class="mese">` (stesso summary «{mese} {anno} — N giorn(o|i)», stessi
   link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine dalla più recente alla più
