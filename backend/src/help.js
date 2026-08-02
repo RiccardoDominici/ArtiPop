@@ -168,7 +168,15 @@ const FAQ = [
       telefono non la vede.
       Per portarla con te, il pannello offre un <strong>link di trasferimento</strong> che
       raccoglie tutte le date preferite del canale: aprilo sull'altro dispositivo e i preferiti
-      si aggiungono a quelli già presenti, senza duplicati.`,
+      si aggiungono a quelli già presenti, senza duplicati.
+      <br><br>
+      Per salvare o condividere il giorno che stai guardando (anche uno di questi passati o
+      d'archivio) hai tre pulsanti: <strong>«salva l'immagine»</strong> scarica il file con un
+      nome leggibile, non una sigla a caso; <strong>«copia link»</strong> copia l'indirizzo
+      esatto di quel giorno, lo stesso indirizzo diretto di cui sopra, così chi lo apre vede
+      proprio quel giorno; dove il browser lo permette, <strong>«condividi l'immagine»</strong>
+      manda direttamente il file, utile per passarlo in chat senza prima salvarlo e
+      riallegarlo a mano.`,
   },
   {
     q: "A che ora viene generato lo sfondo del giorno?",
