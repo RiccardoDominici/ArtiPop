@@ -19,9 +19,9 @@ describe("GET /archivi", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     const html = await res.text();
     expect(html).toContain("island");
-    expect(html).toContain("/w/island?date=2025-01-02");
-    expect(html).toContain("/w/island?date=2025-01-01");
-    expect(html).not.toContain(`/w/${ACTIVE_CHANNELS[0].id}?date=2025-01-01`);
+    expect(html).toContain("/archivi/island?date=2025-01-02");
+    expect(html).toContain("/archivi/island?date=2025-01-01");
+    expect(html).not.toContain(`/archivi/${ACTIVE_CHANNELS[0].id}?date=2025-01-01`);
   });
 
   it("senza chiave admin: comunque 200 (rotta pubblica, nessuna auth)", async () => {
@@ -95,5 +95,109 @@ describe("GET /archivi", () => {
     const html = await res.text();
     expect(html).toContain("horizon");
     expect(html).not.toContain('class="soggetto"');
+  });
+});
+
+// feat-il-giorno-d-archivio-si-apre-dentro-il-sito: /archivi/<id> apre UN
+// giorno dentro il sito invece del binario grezzo di /w/, con la barra
+// precedente/successivo per sfogliare l'archivio senza tornare indietro.
+describe("GET /archivi/<id>", () => {
+  it("200 text/html con la data più recente quando ?date= non è specificata", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put("archive:island:2025-01-03", "1");
+
+    const res = await callWorker(env, "/archivi/island");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    const html = await res.text();
+    expect(html).toContain("2025-01-03");
+    expect(html).toContain('<img src="/w/island?date=2025-01-03"');
+  });
+
+  it("?date= esplicita: mostra quel giorno, con precedente e successivo corretti", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put("archive:island:2025-01-03", "1");
+
+    const res = await callWorker(env, "/archivi/island?date=2025-01-02");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("2025-01-02");
+    expect(html).toContain('<img src="/w/island?date=2025-01-02"');
+    expect(html).toContain('href="/archivi/island?date=2025-01-01"');
+    expect(html).toContain('href="/archivi/island?date=2025-01-03"');
+  });
+
+  it("?date= malformata: HTML 404 con link a /archivi, mai JSON", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+
+    const res = await callWorker(env, "/archivi/island?date=non-una-data");
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain('href="/archivi"');
+  });
+
+  it("?date= inesistente nell'archivio del canale: HTML 404 con link a /archivi", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+
+    const res = await callWorker(env, "/archivi/island?date=2025-06-15");
+    expect(res.status).toBe(404);
+    const html = await res.text();
+    expect(html).toContain('href="/archivi"');
+  });
+
+  it("canale sconosciuto (mai avuto un archivio): HTML 404, mai JSON", async () => {
+    const env = makeEnv();
+
+    const res = await callWorker(env, "/archivi/nonesiste");
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).not.toContain('"ok":false');
+    expect(html).toContain('href="/archivi"');
+  });
+
+  it("KV che lancia durante la lettura delle date: pagina leggibile, mai un 500 grezzo", async () => {
+    const kv = makeKV();
+    const env = makeEnv({
+      KV: { ...kv, async list() { throw new Error("KV.list non disponibile (simulato)"); } },
+    });
+
+    const res = await callWorker(env, "/archivi/island");
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    const html = await res.text();
+    expect(html).not.toContain("KV.list non disponibile");
+    expect(html).not.toContain("Error");
+  });
+
+  it("carta d'identità del giorno mostrato: la pagina riporta i nomi di quel giorno", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put(
+      "giorno:island:2025-01-02",
+      JSON.stringify({ data: "2025-01-02", canale: "island", conceptNome: "Costruzione", elementNome: "Isola" })
+    );
+
+    const res = await callWorker(env, "/archivi/island?date=2025-01-02");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<div class="soggetto">Isola · Costruzione</div>');
+  });
+
+  it("header di sicurezza presenti come sulle altre pagine HTML pubbliche", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+
+    const res = await callWorker(env, "/archivi/island");
+    expect(res.headers.get("x-frame-options")).toBeTruthy();
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
   });
 });

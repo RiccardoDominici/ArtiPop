@@ -11,17 +11,17 @@ const ESEMPIO = [
 ];
 
 describe("renderArchiviPage(storici)", () => {
-  it("con una lista di esempio: nome, giorni, intervallo e link /w/<id>?date=<ultima> per ogni canale", () => {
+  it("con una lista di esempio: nome, giorni, intervallo e link /archivi/<id>?date=<ultima> per ogni canale", () => {
     const html = renderArchiviPage(ESEMPIO);
     expect(html).toContain("island");
     expect(html).toContain("12 giorni");
     expect(html).toContain("2025-01-01 → 2025-01-12");
-    expect(html).toContain('/w/island?date=2025-01-12');
+    expect(html).toContain('href="/archivi/island?date=2025-01-12"');
 
     expect(html).toContain("bloom");
     expect(html).toContain("3 giorni");
     expect(html).toContain("2025-02-01 → 2025-02-03");
-    expect(html).toContain('/w/bloom?date=2025-02-03');
+    expect(html).toContain('href="/archivi/bloom?date=2025-02-03"');
   });
 
   it("nessuno <script> e nessuna fetch( nell'HTML: pagina server-rendered senza JS", () => {
