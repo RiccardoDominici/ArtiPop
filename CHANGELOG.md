@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-l-archivio-del-mese-si-sfoglia-a-colpo-d-occhio
+- Ogni voce di giorno nell'elenco per mese di `/archivi` (`<details class="mese">`) porta ora una
+  miniatura `44×94` del wallpaper di quella data, dentro il link già esistente: si riconosce a
+  occhio il giorno da riaprire invece di leggere una colonna di sole date. `src` è
+  `/w/<id>?date=<data>`, già byte-stabile e cacheata `immutable`, quindi zero letture KV in più.
+  Le voci vivono dentro `<details>` chiusi (`.giorni` → `.mese`): nessun browser scarica le
+  immagini di un mese che l'utente non apre. Miniatura decorativa (`alt=""`, `loading="lazy"`,
+  `decoding="async"`): il nome accessibile della voce resta la sola data, invariato per lo screen
+  reader. Riuso dei token già in VISUAL_SPECS §2.1 (`object-fit:cover`, bordo, sfondo) — nessun
+  colore o dimensione nuovi.
+
 ## 2026-08-02 — feat-il-giorno-d-archivio-mostra-dove-porta-il-passo-avanti
 - I comandi «← giorno precedente» / «giorno successivo →» nella pagina di un giorno d'archivio
   portano ora anche una miniatura `60×128` del wallpaper di quel giorno, sopra il testo: si vede

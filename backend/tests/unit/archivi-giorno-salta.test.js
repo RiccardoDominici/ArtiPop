@@ -20,14 +20,18 @@ describe("renderGiornoArchivio — elenco di tutti i giorni", () => {
   it("la data mostrata compare nell'elenco ma non come link verso se stessa, marcata aria-current=\"page\"", () => {
     const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
     expect(html).not.toContain('href="/archivi/island?date=2025-01-02"');
-    expect(html).toContain('<span aria-current="page">2025-01-02</span>');
+    expect(html).toContain(
+      '<span aria-current="page"><img class="minigiorno" src="/w/island?date=2025-01-02" alt="" loading="lazy" decoding="async" width="44" height="94" />2025-01-02</span>',
+    );
   });
 
   it("con un solo giorno in archivio: singolare «tutti i 1 giorno», nessun link verso l'unica data", () => {
     const html = renderGiornoArchivio({ id: "bloom", data: "2025-02-01", date: ["2025-02-01"] });
     expect(html).toContain("tutti i 1 giorno");
     expect(html).not.toContain('href="/archivi/bloom?date=2025-02-01"');
-    expect(html).toContain('<span aria-current="page">2025-02-01</span>');
+    expect(html).toContain(
+      '<span aria-current="page"><img class="minigiorno" src="/w/bloom?date=2025-02-01" alt="" loading="lazy" decoding="async" width="44" height="94" />2025-02-01</span>',
+    );
   });
 
   it("con date vuoto o assente: nessun <details class=\"giorni\">, pagina comunque valida", () => {

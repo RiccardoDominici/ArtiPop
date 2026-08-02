@@ -104,7 +104,9 @@ describe("elencoGiorni — raggruppamento per mese (renderGiornoArchivio)", () =
     const iFineGruppo = html.indexOf("</details>", iOpen);
     const blocco = html.slice(iOpen, iFineGruppo);
     expect(blocco).toContain("luglio 2026");
-    expect(blocco).toContain('<span aria-current="page">2026-07-15</span>');
+    expect(blocco).toContain(
+      '<span aria-current="page"><img class="minigiorno" src="/w/island?date=2026-07-15" alt="" loading="lazy" decoding="async" width="44" height="94" />2026-07-15</span>',
+    );
     expect(blocco).toContain('href="/w/island?date=2026-07-15&amp;dl=1"');
     expect(html).not.toContain('href="/archivi/island?date=2026-07-15"');
   });

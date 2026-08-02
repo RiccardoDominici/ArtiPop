@@ -157,10 +157,11 @@ function etichettaMese(dataKey) {
 
 /** Riga `<li>` di una singola data dentro `elencoGiorni`: stesso link/aria-current/↓ di sempre. */
 function vocegiorno(id, d, dataCorrente) {
+  const miniatura = `<img class="minigiorno" src="/w/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}" alt="" loading="lazy" decoding="async" width="44" height="94" />`;
   const voce =
     d === dataCorrente
-      ? `<span aria-current="page">${esc(d)}</span>`
-      : `<a href="/archivi/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}">${esc(d)}</a>`;
+      ? `<span aria-current="page">${miniatura}${esc(d)}</span>`
+      : `<a href="/archivi/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}">${miniatura}${esc(d)}</a>`;
   return `<li>${voce}<a class="salva-giorno" href="/w/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`;
 }
 
@@ -301,8 +302,12 @@ const BASE_STYLE = `
   details.mese summary { color: #9aa3b8; font-size: .88rem; cursor: pointer; }
   details.giorni ul.date { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
   details.giorni ul.date li { display: flex; align-items: center; gap: 6px; }
-  details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
-  details.giorni ul.date [aria-current] { color: #f2f3f8; font-weight: 600; font-size: .88rem; display: inline-flex; align-items: center; min-height: 44px; }
+  details.giorni ul.date a { color: #8fd3ff; font-size: .88rem; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+  details.giorni ul.date [aria-current] { color: #f2f3f8; font-weight: 600; font-size: .88rem; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+  .minigiorno {
+    width: 44px; height: 94px; object-fit: cover; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); flex: none;
+  }
   a.salva, a.salva-giorno {
     color: #8fd3ff; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
     text-decoration: none; font-weight: 600; flex-shrink: 0;
