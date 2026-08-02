@@ -1798,3 +1798,15 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   determinismo, rotazione che avanza sui giorni) e `backend/tests/integration/w-casuale.test.js`
   (200 con data d'archivio valorizzata e `no-store`, determinismo entro la giornata, canale senza
   archivio → placeholder 200, `?date=<data esatta>` invariato — nessuna regressione).
+
+## 2026-08-02 — feat-i-preferiti-si-riconoscono-a-colpo-d-occhio
+- Ogni riga del pannello «i tuoi preferiti» mostra ora la miniatura `30×64` del wallpaper del
+  giorno segnato, accanto a data e nome del concept: chi ha messo da parte più giorni li
+  riconosce per l'immagine, non deve riaprirli uno per uno per ricordare cosa fossero. Miniatura
+  `.favmini`, metà esatta della `.copertina` `60×128` già in VISUAL_SPECS §2.1 (stesso rapporto
+  15:32, stesso raggio `10px`, stesso bordo `rgba(255,255,255,.10)`) — nessun colore nuovo.
+  `src` prodotta dalla stessa `srcFor` già usata dal viaggio, mai una seconda costruzione di URL;
+  senza indirizzo utilizzabile la riga resta di solo testo come oggi. Miniatura decorativa
+  (`alt=""`), il nome accessibile della riga resta "data + concept". La riga «↗ copia il link»
+  non è un giorno e non riceve miniatura. Il pannello resta chiuso di default: le baseline
+  `home-mobile.png`/`home-desktop.png` non cambiano.

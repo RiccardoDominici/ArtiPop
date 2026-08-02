@@ -322,6 +322,15 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .arcrow .arcdate { display: block; font-size: .74rem; font-weight: 650; text-transform: capitalize; }
   .arcrow .arctext { display: block; font-size: .8rem; line-height: 1.4; }
   .arcrow.on { color: var(--text); }
+  /* feat-i-preferiti-si-riconoscono-a-colpo-d-occhio: solo le righe con
+     miniatura passano a riga orizzontale — le altre .arcrow (tappe, archi)
+     restano invariate. .arctxt tiene arcdate/arctext impilati come oggi. */
+  .arcrow:has(.favmini) { display: flex; align-items: center; gap: .6rem; }
+  .arcrow .favmini {
+    width: 30px; height: 64px; object-fit: cover; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.10); flex: none;
+  }
+  .arcrow .arctxt { display: block; min-width: 0; }
 
   /* ---------- ripiego senza JavaScript (invisibile col JS attivo) ---------- */
   .ns { margin-top: 1.6rem; text-align: center; color: var(--text); }
@@ -1513,14 +1522,29 @@ function renderFavList(chId) {
     row.type = "button";
     row.className = "arcrow" + (d === date ? " on" : "");
     row.dataset.date = d;
+    // Miniatura di riga: stessa src del viaggio (srcFor), mai una seconda
+    // costruzione di URL. Senza indirizzo utilizzabile, riga di solo testo.
+    const miniSrc = srcFor(chId, d, d === TODAY);
+    if (miniSrc) {
+      const mini = document.createElement("img");
+      mini.className = "favmini";
+      mini.src = miniSrc;
+      mini.alt = "";
+      mini.loading = "lazy";
+      mini.decoding = "async";
+      row.appendChild(mini);
+    }
+    const textWrap = document.createElement("span");
+    textWrap.className = "arctxt";
     const label = document.createElement("span");
     label.className = "arcdate";
     label.textContent = formatDayLabel(d);
     const text = document.createElement("span");
     text.className = "arctext";
     text.textContent = (g && g.conceptNome) || "giorno preferito";
-    row.appendChild(label);
-    row.appendChild(text);
+    textWrap.appendChild(label);
+    textWrap.appendChild(text);
+    row.appendChild(textWrap);
     row.addEventListener("click", () => {
       const arcs = arcsCache[chId] || [];
       const arcIdx = arcs.findIndex((arc) => arc.includes(d));
