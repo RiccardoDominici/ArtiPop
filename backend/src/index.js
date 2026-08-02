@@ -1157,7 +1157,7 @@ export default {
       // ?date= che non ci sta dentro. Sempre una pagina HTML leggibile con
       // link a /archivi (principio 3), mai JSON, mai un 500 grezzo.
       if (!data) {
-        return new Response(conServiceWorker(renderArchivioNonTrovato(id)), {
+        return new Response(conServiceWorker(renderArchivioNonTrovato(id, date)), {
           status: 404,
           headers: archivioHeaders404,
         });

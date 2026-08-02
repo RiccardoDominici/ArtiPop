@@ -16,6 +16,19 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-un-giorno-d-archivio-sbagliato-mostra-quelli-giusti
+- `renderArchivioNonTrovato(id, date)`: secondo parametro opzionale e retrocompatibile con le date
+  d'archivio reali del canale. Quando `?date=` in un link non è in archivio (vecchio bookmark, link
+  condiviso e copiato male, giorno mai esistito), la pagina 404 elenca ora i giorni che il canale ha
+  davvero con lo stesso `<details class="giorni">` già usato dall'elenco e dalla pagina del giorno,
+  invece di lasciare l'utente in un vicolo cieco col solo link a «Tutti gli archivi».
+- `.sub` distingue le due formulazioni (canale senza archivio / giorno fuori dall'archivio) invece
+  della frase precedente con «o» che copriva entrambi i casi al ribasso.
+- `index.js`: il ramo 404 di `/archivi/<id>` passa `date` (già letto sopra, nessuna lettura KV in
+  più) a `renderArchivioNonTrovato`.
+- `VISUAL_SPECS.md` §2.2 esteso, ai sensi di §7: nessun colore, componente o dimensione nuovi
+  rispetto a §2/§2.1, riuso integrale di `elencoGiorni`.
+
 ## 2026-08-02 — feat-dal-giorno-d-archivio-si-salta-a-qualunque-data
 - `archivi.js`: estratta `elencoGiorni(id, date, dataCorrente)`, condivisa fra `renderElenco` (che
   la usava già, inline) e `renderGiornoArchivio` — dalla pagina di un giorno si salta ora a

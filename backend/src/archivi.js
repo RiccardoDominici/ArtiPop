@@ -316,8 +316,20 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
  * o `?date=` non presente in archivio. Mai JSON, mai la pagina d'errore
  * grezza di Cloudflare (principio 3) — stesso trattamento di
  * `renderShortcutMancante` (help.js) per un'altra rotta pubblica.
+ *
+ * `date` (opzionale, retrocompatibile): le date d'archivio reali del canale,
+ * dalla più recente alla più vecchia (stessa forma di `listArchiveDates`).
+ * Se non vuoto, la pagina elenca quei giorni con lo stesso
+ * `<details class="giorni">` di `elencoGiorni` (nessun `dataCorrente`: nessun
+ * giorno dell'elenco è quello mostrato) invece di lasciare l'utente senza
+ * uscita — feat-un-giorno-d-archivio-sbagliato-mostra-quelli-giusti.
  */
-export function renderArchivioNonTrovato(id) {
+export function renderArchivioNonTrovato(id, date = []) {
+  const haGiorni = Array.isArray(date) && date.length > 0;
+  const sub = haGiorni
+    ? `«${esc(id)}» ha un archivio, ma il giorno richiesto non ne fa parte — questi sono i giorni che ${esc(id)} ha davvero:`
+    : `«${esc(id)}» non ha un archivio consultabile.`;
+  const elenco = haGiorni ? elencoGiorni(id, date) : "";
   return `<!doctype html>
 <html lang="it">
 <head>
@@ -331,8 +343,8 @@ ${INSTALL_TAGS}
 <main>
   <header>
     <h1>Questo giorno non c'è</h1>
-    <p class="sub">«${esc(id)}» non ha un archivio consultabile, o il giorno richiesto non ne fa parte.</p>
-  </header>
+    <p class="sub">${sub}</p>
+  </header>${elenco}
   <footer>
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a>
   </footer>
