@@ -223,9 +223,14 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
 - Riga erede: quando il canale ha un erede attivo, la stessa riga «la storia continua in …» di
   §2.1 (stessi token, stessa guardia), sotto l'elenco dei giorni.
 - Nessun `<script>`, nessuna `fetch(` nell'HTML servito — stesso contratto di §2.1.
-- Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente): messaggio umano
-  in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON, mai la pagina
-  d'errore generica di Cloudflare (principio 3 di CLAUDE.md).
+- Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente in archivio):
+  messaggio umano in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON,
+  mai la pagina d'errore generica di Cloudflare (principio 3 di CLAUDE.md). Quando il canale ha
+  almeno un giorno in archivio, la pagina emette in più lo stesso `<details class="giorni">` di
+  §2.1 (stesso summary, stessi link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso
+  ordine dalla più recente alla più vecchia), senza alcuna voce marcata `aria-current="page"`
+  (nessun giorno dell'elenco è quello mostrato). Con archivio vuoto o id sconosciuto la pagina
+  resta al solo messaggio, nessun `<details>` con zero voci. Nessun `<script>`.
 
 ## 3. Tuning tool (sorgente: tuning/tool.css, tuning/index.html)
 

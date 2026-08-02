@@ -157,17 +157,23 @@ describe("GET /archivi/<id>", () => {
     expect(html).toContain('href="/archivi"');
   });
 
-  it("?date= inesistente nell'archivio del canale: HTML 404 con link a /archivi", async () => {
+  it("?date= inesistente nell'archivio del canale: HTML 404 con link a /archivi e ai giorni realmente disponibili", async () => {
+    // feat-un-giorno-d-archivio-sbagliato-mostra-quelli-giusti
     const env = makeEnv();
     await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
 
     const res = await callWorker(env, "/archivi/island?date=2025-06-15");
     expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8");
     const html = await res.text();
     expect(html).toContain('href="/archivi"');
+    expect(html).toContain('<details class="giorni">');
+    expect(html).toContain('<a href="/archivi/island?date=2025-01-02">');
+    expect(html).toContain('<a href="/archivi/island?date=2025-01-01">');
   });
 
-  it("canale sconosciuto (mai avuto un archivio): HTML 404, mai JSON", async () => {
+  it("canale sconosciuto (mai avuto un archivio): HTML 404, mai JSON, senza elenco di giorni", async () => {
     const env = makeEnv();
 
     const res = await callWorker(env, "/archivi/nonesiste");
@@ -176,6 +182,7 @@ describe("GET /archivi/<id>", () => {
     const html = await res.text();
     expect(html).not.toContain('"ok":false');
     expect(html).toContain('href="/archivi"');
+    expect(html).not.toContain('<details class="giorni">');
   });
 
   it("KV che lancia durante la lettura delle date: pagina leggibile, mai un 500 grezzo", async () => {
