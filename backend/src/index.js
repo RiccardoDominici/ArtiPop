@@ -49,6 +49,7 @@ import { renderPage } from "./page.js";
 import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
 import { renderArchiviPage, renderGiornoArchivio, renderArchivioNonTrovato } from "./archivi.js";
 import { renderManifest, iconaSvg } from "./manifest.js";
+import { renderRobots } from "./robots.js";
 import { SW_REGISTER_TAG } from "./head.js";
 import { serviceWorkerJs } from "./sw.js";
 
@@ -921,6 +922,19 @@ export default {
       return new Response(conServiceWorker(renderHelpPage(stato, url.origin, todayKey())), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
+
+    // feat-il-sito-si-fa-trovare-solo-dove-serve: rotta pubblica di sola
+    // lettura come manifest/icona qui sotto — nessuna chiave admin, nessun
+    // accesso al KV.
+    if (path === "/robots.txt" && request.method === "GET") {
+      return new Response(renderRobots(), {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
         },
       });

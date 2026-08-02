@@ -1623,3 +1623,18 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
 - Test estesi in `feed-render.test.js` e `feed-rotta.test.js`: comportamento nuovo per
   `canale.storico`, non-regressione byte-per-byte per i feed dei flussi attivi e per il feed
   aggregato.
+
+## 2026-08-02 — feat-il-sito-si-fa-trovare-solo-dove-serve
+- Nuova rotta pubblica `GET /robots.txt` (`backend/src/robots.js`, falsariga di `manifest.js`):
+  `Allow: /` per le pagine di lettura (`/`, `/aiuto`, `/archivi`, `/archivi/<id>`, `/w/...`) e una
+  `Disallow` per ciascuna delle 11 rotte di servizio (`/tuning`, `/lab/`, `/catalogo`, `/note`,
+  `/api/`, `/health`, `/backfill`, `/regen-day`, `/run-all`, `/test-metrics`, `/test-size`). Prima
+  d'ora non esisteva alcun `robots.txt`: un crawler poteva indicizzare anche le stanze di servizio,
+  portando un lettore su un 401 invece che su un contenuto.
+  `/w/` resta volutamente aperto: `head.js` lo usa come `og:image` per l'anteprima dei link
+  condivisi, bloccarlo l'avrebbe rotta.
+- Nuovi `backend/tests/unit/robots-testo.test.js` e `backend/tests/integration/robots-rotta.test.js`:
+  contenuto di `renderRobots()` (una sola `User-agent: *`, `Allow: /`, le 11 `Disallow`, nessun
+  blocco su `/w/`, coerenza dei path con le rotte realmente presenti in `index.js`) e la rotta
+  end-to-end (200, `text/plain`, zero letture KV).
+- `GUIDA.md`: nuova riga nella tabella delle rotte pubbliche per `GET /robots.txt`.
