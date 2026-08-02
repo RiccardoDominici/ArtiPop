@@ -1810,3 +1810,24 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   (`alt=""`), il nome accessibile della riga resta "data + concept". La riga «↗ copia il link»
   non è un giorno e non riceve miniatura. Il pannello resta chiuso di default: le baseline
   `home-mobile.png`/`home-desktop.png` non cambiano.
+
+## 2026-08-02 — feat-dal-giorno-d-archivio-si-continua-nel-viaggio
+- La pagina di un giorno d'archivio di un canale ANCORA ATTIVO mostrava, in fondo, la stessa riga
+  `riga3` calcolata solo con `rigaErede(id)` — vuota per costruzione per un canale attivo (nessun
+  alias in `LEGACY_ALIASES`). Chi arrivava lì da `/archivi`, dal feed o da un link condiviso non
+  aveva modo di tornare al canale vivo su quel giorno preciso: doveva rientrare in home e
+  ricercare la data a mano, perdendo l'accesso a preferiti/storia dell'arco/condivisione/tastiera.
+- `renderGiornoArchivio` calcola ora `riga3` come `rigaErede(id) || rigaInCorso(id, data)`: le due
+  righe restano mutuamente esclusive (un canale attivo non ha mai erede). `rigaInCorso` accetta
+  una `data` opzionale — con una stringa `AAAA-MM-GG` valida il link diventa
+  `/?c=<id>&d=<data>` (la home già sa aprirsi su quel giorno via `sharedChannelId`/
+  `sharedDateParam` in `page.js`) e il testo diventa «canale in corso — continua da questo
+  giorno»; senza `data` (chiamata dall'elenco `/archivi`, dove non esiste un giorno singolo) il
+  comportamento resta identico a prima, `href="/?c=<id>"` e testo «vai a …» — zero regressioni
+  sull'elenco. La riga erede resta invece SENZA `&d=`: la data appartiene all'archivio del canale
+  storico, non a quello dell'erede.
+- Zero componenti/colori nuovi: stesso token `.riga3.continua`, stesso link `#8fd3ff` della riga
+  erede (`VISUAL_SPECS.md` §2.2 aggiornato). Zero JS: `archivi.js` resta senza `<script>`.
+- Nuovo `backend/tests/unit/archivi-giorno-continua.test.js`: canale attivo → link con `&d=` e
+  testo «continua da questo giorno»; canale storico con erede → sola riga erede senza `&d=`; id
+  ignoto → nessun link `/?c=`; elenco `/archivi` invariato.

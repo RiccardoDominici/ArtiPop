@@ -307,6 +307,13 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   link di salvataggio `↓` della riga.
 - Riga erede: quando il canale ha un erede attivo, la stessa riga «la storia continua in …» di
   §2.1 (stessi token, stessa guardia), sotto l'elenco dei giorni.
+- Riga canale in corso (proposta ai sensi di §7, feat-dal-giorno-d-archivio-si-continua-nel-viaggio):
+  quando il canale è ancora attivo (e quindi senza erede — le due righe sono mutuamente esclusive),
+  al posto della riga erede una riga «canale in corso — continua da questo giorno» verso
+  `/?c=<id>&d=<data>`, con `<data>` quella del giorno mostrato — stessi token `.riga3.continua` e
+  colore link `#8fd3ff` della riga erede, nessun componente, colore o dimensione nuovi. Nell'elenco
+  `/archivi` (§2.1) la stessa riga resta invariata: href `/?c=<id>` senza `&d=`, testo «canale in
+  corso — vai a …», perché lì non esiste un giorno singolo da riprendere.
 - Nessun `<script>`, nessuna `fetch(` nell'HTML servito — stesso contratto di §2.1.
 - Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente in archivio):
   messaggio umano in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON,
