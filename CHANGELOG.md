@@ -1578,3 +1578,21 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   esistente, nessuna modifica a `archivi.js`/`page.js`/`help.js`.
 - Nessun elemento visibile aggiunto: `node scripts/visual-check.mjs` invariato, nessuna baseline
   da toccare.
+
+## 2026-08-02 — feat-il-wallpaper-d-archivio-si-apre-a-grandezza-piena
+- `renderGiornoArchivio` (`archivi.js`): l'`<img>` della `<figure class="foto">` è ora avvolta in
+  un `<a class="apri" href="/w/<id>?date=<data>" target="_blank" rel="noopener">` — stesso URL già
+  usato dal `src`, stessa coppia `target`/`rel` del bottone «apri l'immagine» della home
+  (`feat-apri-il-wallpaper-del-giorno-a-schermo-intero`, page.js). Sulla pagina di un giorno
+  d'archivio il wallpaper era l'unico motivo per aprirla ma non si poteva ingrandire: la home
+  aveva già questo gesto, l'archivio no.
+- `aria-label` descrittivo sull'`<a>` («Apri a grandezza piena il wallpaper di <id> del <data>»)
+  perché lo screen reader non legga due volte l'`alt` dell'immagine, invariata (`alt`,
+  `loading="lazy"`, `decoding="async"`).
+- `GIORNO_STYLE`: `figure.foto a.apri { display: block; }` perché l'ancora non alteri il layout
+  dell'immagine centrata, più una regola di focus visibile (`outline` in `#8fd3ff`, colore link
+  già in uso) per la navigazione da tastiera — nessun colore, dimensione o componente nuovo.
+- `VISUAL_SPECS.md` §2.2 aggiornato (voce «Immagine», proposta ai sensi di §7).
+- Nuovo `backend/tests/unit/archivi-apri-immagine.test.js`: struttura del link (posizione dentro
+  `<figure>`, `href`/`target`/`rel`), `aria-label` non vuoto, escaping su id/data con caratteri
+  speciali, contratto «zero `<script>`/`fetch(`» invariato, attributi dell'immagine invariati.
