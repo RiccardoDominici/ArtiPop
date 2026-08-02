@@ -8,7 +8,7 @@
 // limita a renderla — coerente con la guardia `fetches.length === 1` sulla
 // home, che questo modulo non tocca.
 
-import { INSTALL_TAGS, metaAnteprima } from "./head.js";
+import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana } from "./head.js";
 import { LEGACY_ALIASES, getChannel } from "./channels.js";
 
 /** Escape minimo per il testo dinamico inserito nell'HTML (id canale, date). */
@@ -16,6 +16,20 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[c]);
+}
+
+/**
+ * Data d'archivio in forma leggibile: `<time datetime="YYYY-MM-DD">2 agosto
+ * 2026</time>` (feat-le-date-d-archivio-si-leggono-in-italiano), riusata sia
+ * dall'intestazione del giorno (`renderGiornoArchivio`) sia dall'intervallo
+ * delle card (`renderElenco`). Con una chiave non valida ripiega sul testo
+ * grezzo già escapato, senza `<time>`: mai "Invalid Date" in pagina.
+ */
+function rigaData(dataKey) {
+  if (typeof dataKey !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dataKey)) {
+    return esc(dataKey);
+  }
+  return `<time datetime="${esc(dataKey)}">${esc(dataEstesaItaliana(dataKey))}</time>`;
 }
 
 /**
@@ -146,7 +160,7 @@ function renderElenco(storici) {
         <div class="contenuto">
         <div class="riga1"><span class="nome">${esc(c.id)}</span><span class="giorni">${c.giorni} giorn${c.giorni === 1 ? "o" : "i"}</span></div>${soggetto}
         <div class="riga2">
-          <span class="intervallo">${esc(c.prima)} → ${esc(c.ultima)}</span>
+          <span class="intervallo">${rigaData(c.prima)} → ${rigaData(c.ultima)}</span>
           <a class="riapri" href="/archivi/${encodeURIComponent(c.id)}?date=${encodeURIComponent(c.ultima)}" aria-label="Riapri l'ultimo giorno di ${esc(c.id)}">Riapri l'ultimo giorno →</a>${salva}
         </div>${elencoGiorniCard}${riga3}
         </div>
@@ -331,7 +345,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${id}, ${data}`, `Il giorno 
   <header>
     <a class="back" href="/archivi">← tutti gli archivi</a>
     <h1>${esc(id)}</h1>
-    <p class="sub">${esc(data)}</p>
+    <p class="sub">${rigaData(data)}</p>
   </header>${rigaSogg}${rigaPos}${rigaRacc}
   <figure class="foto">
     <img src="/w/${encId}?date=${encData}" alt="${esc(id)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />

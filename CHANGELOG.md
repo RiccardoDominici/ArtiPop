@@ -31,6 +31,21 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - `VISUAL_SPECS.md` §2.2: voce «Riga della posizione», stesso `<div class="soggetto">` già in uso,
   nessun token nuovo.
 
+## 2026-08-02 — feat-le-date-d-archivio-si-leggono-in-italiano
+- `dataEstesaItaliana` (`head.js`) esportata invece di restare privata: era già la funzione usata
+  dall'anteprima social di un giorno condiviso («ArtiPop — <canale>, 2 agosto 2026»), ma le pagine
+  d'archivio mostravano ancora la chiave grezza `2026-08-02` — incoerenza fra anteprima e pagina
+  aperta per lo stesso link.
+- `rigaData(dataKey)` in `archivi.js`: restituisce `<time datetime="...">` con la data in forma
+  estesa italiana; con una chiave non conforme a `YYYY-MM-DD` ripiega sul testo grezzo escapato,
+  mai `<time>` e mai «Invalid Date».
+- Usata nell'intestazione di `renderGiornoArchivio` (`<p class="sub">`) e nell'intervallo
+  `prima → ultima` di `renderElenco`: zero letture KV in più, zero JS, zero fetch, zero token
+  nuovi — solo il testo dentro elementi già specificati in `VISUAL_SPECS.md` §2.1/§2.2.
+- Restano in forma `YYYY-MM-DD` per scelta (fuori perimetro): `<title>`, `description`, `alt`
+  dell'immagine, link e voci del `<details class="giorni">` — identificatori/indice compatto, il
+  valore macchina resta comunque nel `datetime` del `<time>`.
+
 ## 2026-08-02 — feat-il-giorno-d-archivio-racconta-la-sua-tappa
 - `rigaRacconto(testoTappa)` in `archivi.js`, accanto a `rigaSoggetto()`: restituisce
   `<p class="racconto">` col testo della tappa (sfuggito con `esc()`), o stringa vuota se il testo

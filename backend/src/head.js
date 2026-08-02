@@ -64,7 +64,9 @@ export function feedLinkTag(feedUrl) {
 // Data YYYY-MM-DD → "28 luglio 2026". Mezzogiorno UTC fisso per non far
 // scivolare il giorno per via del fuso (vedi CONFIG.TIMEZONE altrove): qui
 // la data è già una chiave calendario, non un istante da localizzare.
-function dataEstesaItaliana(dataKey) {
+// Esportata perché condivisa anche dalle pagine d'archivio (archivi.js),
+// che la usano per mostrare la data in forma estesa invece della chiave grezza.
+export function dataEstesaItaliana(dataKey) {
   return new Intl.DateTimeFormat("it-IT", {
     day: "numeric",
     month: "long",

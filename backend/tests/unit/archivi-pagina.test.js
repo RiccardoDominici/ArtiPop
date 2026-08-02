@@ -15,12 +15,12 @@ describe("renderArchiviPage(storici)", () => {
     const html = renderArchiviPage(ESEMPIO);
     expect(html).toContain("island");
     expect(html).toContain("12 giorni");
-    expect(html).toContain("2025-01-01 → 2025-01-12");
+    expect(html).toContain('<time datetime="2025-01-01">1 gennaio 2025</time> → <time datetime="2025-01-12">12 gennaio 2025</time>');
     expect(html).toContain('href="/archivi/island?date=2025-01-12"');
 
     expect(html).toContain("bloom");
     expect(html).toContain("3 giorni");
-    expect(html).toContain("2025-02-01 → 2025-02-03");
+    expect(html).toContain('<time datetime="2025-02-01">1 febbraio 2025</time> → <time datetime="2025-02-03">3 febbraio 2025</time>');
     expect(html).toContain('href="/archivi/bloom?date=2025-02-03"');
   });
 
