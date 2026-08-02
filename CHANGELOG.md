@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-02 — feat-dal-giorno-d-archivio-si-salta-a-qualunque-data
+- `archivi.js`: estratta `elencoGiorni(id, date, dataCorrente)`, condivisa fra `renderElenco` (che
+  la usava già, inline) e `renderGiornoArchivio` — dalla pagina di un giorno si salta ora a
+  qualunque altra data del canale in un clic invece di sfogliare precedente/successivo N volte.
+- La voce del giorno mostrato nell'elenco è testo non cliccabile con `aria-current="page"` (mai un
+  link verso la pagina in cui si è già), mantenendo comunque il link di salvataggio `↓`.
+- CSS `details.giorni` spostato da `ARCHIVI_STYLE` a `BASE_STYLE` (condiviso dalle due pagine):
+  nessun token nuovo, solo la stessa regola resa visibile anche su `/archivi/<id>`.
+- `VISUAL_SPECS.md` §2.2 aggiornato con il bullet del componente, ai sensi di §7.
+
 ## 2026-08-02 — feat-il-giorno-d-archivio-si-apre-dentro-il-sito
 - Nuova pagina `/archivi/<id>[?date=]` (`renderGiornoArchivio` in `archivi.js`): mostra il
   wallpaper del giorno con data, canale e comandi «giorno precedente / successivo», invece dello
