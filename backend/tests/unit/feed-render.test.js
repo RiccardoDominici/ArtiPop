@@ -94,6 +94,49 @@ describe("renderFeed — voci con canale proprio (feed aggregato)", () => {
   });
 });
 
+// feat-il-feed-di-un-canale-storico-apre-il-giorno-in-archivio: quando il
+// canale è marcato storico, la voce non risolve più sulla home del flusso
+// erede (giorno inesistente lì) ma sull'archivio letto sotto l'id richiesto.
+describe("renderFeed — canale storico apre il giorno in archivio", () => {
+  const STORICO = { id: "island", name: "island", tagline: null, storico: true };
+
+  it("con canale.storico, link e guid puntano a /archivi/<id>?date=<data>, mai a /?c=…&d=", () => {
+    const voci = [{ data: "2026-06-15", conceptNome: "Crescita", elementNome: "Felce" }];
+    const xml = renderFeed({ canale: STORICO, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml).toContain("<link>https://artipop.test/archivi/island?date=2026-06-15</link>");
+    expect(xml).toContain('<guid isPermaLink="false">https://artipop.test/archivi/island?date=2026-06-15</guid>');
+    expect(xml).not.toContain("/?c=island&amp;d=");
+  });
+
+  it("con canale.storico, il <link> del <channel> è /archivi", () => {
+    const xml = renderFeed({ canale: STORICO, voci: [], origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml).toContain("<link>https://artipop.test/archivi</link>");
+  });
+
+  it("senza canale.storico (assente o falso), link/guid/<link> di canale restano byte-identici a oggi", () => {
+    const voci = [{ data: "2026-06-15", conceptNome: "Crescita", elementNome: "Felce" }];
+    const senzaFlag = renderFeed({ canale: CANALE, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    const conFlagFalso = renderFeed({ canale: { ...CANALE, storico: false }, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(senzaFlag).toContain("<link>https://artipop.test/?c=natura&amp;d=2026-06-15</link>");
+    expect(senzaFlag).toContain("<link>https://artipop.test/?c=natura</link>");
+    expect(conFlagFalso).toBe(senzaFlag);
+  });
+
+  it("con canale.storico, enclosure e <img> della description restano /w/<id>?date=<data>", () => {
+    const voci = [{ data: "2026-06-15", conceptNome: "Crescita", elementNome: "Felce" }];
+    const xml = renderFeed({ canale: STORICO, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml).toContain('<enclosure url="https://artipop.test/w/island?date=2026-06-15" type="image/png" />');
+    expect(xml).toContain('<img src="https://artipop.test/w/island?date=2026-06-15"');
+  });
+
+  it("voci con canaleId proprio (feed aggregato) continuano a usare canaleId nel link, invariato", () => {
+    const AGGREGATO = { id: "", name: "tutti i canali", tagline: "Tutti i canali di ArtiPop in un solo feed." };
+    const voci = [{ data: "2026-08-01", conceptNome: "Crescita", elementNome: "Felce", canaleNome: "Natura", canaleId: "natura" }];
+    const xml = renderFeed({ canale: AGGREGATO, voci, origin: "https://artipop.test", oggi: "2026-08-01" });
+    expect(xml).toContain("<link>https://artipop.test/?c=natura&amp;d=2026-08-01</link>");
+  });
+});
+
 // feat-il-feed-racconta-il-giorno: la description dell'item porta anche il
 // racconto della tappa e la posizione nell'arco, quando la carta d'identità
 // li ha (criteri 1-4 del piano).

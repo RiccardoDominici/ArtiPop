@@ -1059,7 +1059,7 @@ export default {
         // Canale storico: stessa convenzione di /api/channels?all=1(nome =
         // id), mai il nome del flusso erede che ha un'altra identità.
         const canale = isLegacy
-          ? { id: requestedId, name: requestedId, tagline: null }
+          ? { id: requestedId, name: requestedId, tagline: null, storico: true }
           : { id: channel.id, name: channel.name, tagline: channel.tagline };
         return new Response(renderFeed({ canale, voci, origin: url.origin, oggi: todayKey() }), {
           headers: feedHeaders,
