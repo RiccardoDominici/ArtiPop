@@ -726,24 +726,6 @@ function preferitiDi(chId) {
 function isPreferito(chId, date) {
   return preferitiDi(chId).includes(date);
 }
-// feat-i-preferiti-degli-altri-canali-non-si-perdono: voci degli ALTRI
-// canali (mai chId) che hanno almeno una data preferita valida, nell'ordine
-// in cui leggiPreferiti() le trova — non un ordinamento nuovo, solo un
-// filtro. Le date di ogni voce sono ordinate dal più recente al più vecchio
-// come preferitiDi. Stesso filtro dataValida di importaPreferiti: uno
-// storage scritto da una versione futura non deve produrre righe assurde.
-function preferitiAltrove(chId) {
-  const tutti = leggiPreferiti();
-  const risultato = [];
-  for (const id in tutti) {
-    if (id === chId) continue;
-    const date = (Array.isArray(tutti[id]) ? tutti[id] : []).filter(dataValida);
-    if (date.length === 0) continue;
-    date.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-    risultato.push({ id, giorni: date });
-  }
-  return risultato;
-}
 function togglePreferito(chId, date) {
   const tutti = leggiPreferiti();
   const attuali = Array.isArray(tutti[chId]) ? tutti[chId] : [];
@@ -1602,40 +1584,9 @@ function renderFavList(chId) {
     });
     favListEl.appendChild(copyRow);
   }
-  // feat-i-preferiti-degli-altri-canali-non-si-perdono: in coda al pannello,
-  // una riga per ciascun altro canale con giorni segnati — mai una
-  // miniatura, la riga non rappresenta un giorno singolo. Il click riapre il
-  // preferito più recente di quel canale: sulla home (stesso percorso di
-  // ?c=/?d= dei link condivisi) se il canale è ancora fra le card mostrate,
-  // in archivio altrimenti — un canale ritirato non torna mai fra le card.
-  const altrove = preferitiAltrove(chId);
-  for (const voce of altrove) {
-    const ch = CHANNELS.find((c) => c.id === voce.id);
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "arcrow";
-    const label = document.createElement("span");
-    label.className = "arcdate";
-    label.textContent = ch ? ch.emoji : "⤳";
-    const text = document.createElement("span");
-    text.className = "arctext";
-    const n = voce.giorni.length;
-    text.textContent = (ch ? ch.name : voce.id) + " — " + n + (n === 1 ? " giorno segnato" : " giorni segnati");
-    row.appendChild(label);
-    row.appendChild(text);
-    row.addEventListener("click", () => {
-      const piuRecente = voce.giorni[0];
-      if (ch) {
-        location.href = "/?c=" + encodeURIComponent(voce.id) + "&d=" + encodeURIComponent(piuRecente);
-      } else {
-        location.href = "/archivi/" + encodeURIComponent(voce.id) + "?date=" + encodeURIComponent(piuRecente);
-      }
-    });
-    favListEl.appendChild(row);
-  }
-  // Nessun preferito, né su questo canale né altrove: niente comando,
-  // niente elenco — stessa regola di #arcpick con meno di due archi.
-  favPickEl.hidden = preferiti.length === 0 && altrove.length === 0;
+  // Nessun preferito per questo canale: niente comando, niente elenco —
+  // stessa regola di #arcpick con meno di due archi.
+  favPickEl.hidden = preferiti.length === 0;
   favListEl.hidden = true;
 }
 favPickEl.addEventListener("click", () => {
