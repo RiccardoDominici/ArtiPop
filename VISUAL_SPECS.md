@@ -177,11 +177,8 @@ o componente nuovo.
   ancora attivo — proposta ai sensi di §7, feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-
   archivio), bordo `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `14px` — stesso
   trattamento visivo delle voci `<details>` di §2, senza l'accordion (qui non c'è contenuto da
-  comprimere). Riga superiore: nome del canale in `#f2f3f8` a sinistra — il `name` di
-  `CHANNELS` (backend/src/channels.js) per un canale ATTIVO (proposta ai sensi di §7,
-  feat-l-archivio-chiama-i-canali-col-loro-nome), l'id nudo per un canale storico, che un nome
-  non ce l'ha — conteggio giorni in `#9aa3b8` a destra. Riga inferiore: intervallo date in
-  `#9aa3b8` — ciascuna in forma estesa italiana ("31
+  comprimere). Riga superiore: id canale in `#f2f3f8` a sinistra, conteggio giorni in `#9aa3b8` a
+  destra. Riga inferiore: intervallo date in `#9aa3b8` — ciascuna in forma estesa italiana ("31
   gennaio 2026") dentro un `<time datetime="YYYY-MM-DD">` (proposta ai sensi di §7, feat-le-date-d-
   archivio-si-leggono-in-italiano; con chiave non valida resta il testo grezzo, senza `<time>`) —,
   link "Riapri l'ultimo giorno →" (verso `/archivi/<id>?date=<ultima>`,
@@ -236,12 +233,6 @@ o componente nuovo.
   separatore orfano. Presente solo quando almeno uno dei due nomi è disponibile (carta d'identità
   registrata in KV o ricostruzione onesta per i canali a tema fisso, `RICOSTRUZIONE_STORICA` in
   backend/src/handlers.js): card senza dati, nessuna riga del soggetto, mai un contenitore vuoto.
-- Componente aggiuntivo «tagline del canale attivo» (proposta ai sensi di §7,
-  feat-l-archivio-chiama-i-canali-col-loro-nome): per un canale ATTIVO, subito sotto riga1, la
-  `tagline` di `CHANNELS` in un `<div class="soggetto">` — stesso token già usato per la riga del
-  soggetto sopra, nessun colore o dimensione nuovi. Mutuamente esclusiva in posizione con la riga
-  del soggetto solo nell'ordine di emissione (tagline prima, se presente); un canale storico non
-  ha mai questa riga, non avendo `tagline`.
 
 ### 2.2 Pagina giorno d'archivio `/archivi/<id>` (sorgente: backend/src/archivi.js, proposta ai sensi di §7)
 
@@ -250,11 +241,8 @@ sottosezione fissa solo la composizione. Stesso `--bg #0a0b10`, `--text #f2f3f8`
 link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<head>`
 (`INSTALL_TAGS`, `metaAnteprima`).
 - Intestazione: link `.back` "← tutti gli archivi" verso `/archivi` — stesso stile del link `.back`
-  di §2.1 verso `/`. `<h1>` col nome del canale — il `name` di `CHANNELS` per un canale ATTIVO
-  (proposta ai sensi di §7, feat-l-archivio-chiama-i-canali-col-loro-nome), l'id nudo per un
-  canale storico — sotto un `<p class="sub">` con la data del giorno mostrato — stessi token di
-  `h1`/`.sub` già in uso in §2/§2.1. `<title>`, `description` e canonical restano sull'id grezzo
-  (fetta dichiarata: cambia solo il corpo visibile). La data è in forma estesa
+  di §2.1 verso `/`. `<h1>` con l'id del canale storico, sotto un `<p class="sub">` con la data del
+  giorno mostrato — stessi token di `h1`/`.sub` già in uso in §2/§2.1. La data è in forma estesa
   italiana ("2 agosto 2026") dentro un `<time datetime="YYYY-MM-DD">` (proposta ai sensi di §7,
   feat-le-date-d-archivio-si-leggono-in-italiano; con chiave non valida resta il testo grezzo,
   senza `<time>`), coerente con l'anteprima social dello stesso giorno (`dataEstesaItaliana`,
