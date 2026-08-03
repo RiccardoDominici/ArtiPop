@@ -59,12 +59,12 @@ describe("renderGiornoArchivio — riga della posizione", () => {
     expect(html).not.toContain("tappa 3 · ");
   });
 
-  it("l'HTML della pagina resta senza <script> e senza fetch( anche con posizione presente", () => {
+  it("l'HTML della pagina ha un solo <script>, quello delle scorciatoie da tastiera, e nessuna fetch( anche con posizione presente", () => {
     const html = renderGiornoArchivio({
       id: "island", data: "2025-01-02", date: DATE,
       soggetto: { arco: 1, giornoNellArco: 3, tappa: 2 },
     });
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
     expect(html).not.toContain("fetch(");
   });
 

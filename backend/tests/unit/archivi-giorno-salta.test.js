@@ -65,9 +65,9 @@ describe("renderGiornoArchivio — elenco di tutti i giorni", () => {
     expect(html).not.toContain("<y>\"");
   });
 
-  it("nessuno <script> né fetch( nell'HTML: contratto §2.2 invariato", () => {
+  it("un solo <script>, quello delle scorciatoie da tastiera, e nessuna fetch( nell'HTML: contratto §2.2 invariato", () => {
     const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
     expect(html).not.toContain("fetch(");
   });
 });

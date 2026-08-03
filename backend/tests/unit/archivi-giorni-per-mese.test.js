@@ -111,9 +111,9 @@ describe("elencoGiorni — raggruppamento per mese (renderGiornoArchivio)", () =
     expect(html).not.toContain('href="/archivi/island?date=2026-07-15"');
   });
 
-  it("nessuno <script> né fetch( nell'HTML anche con più mesi", () => {
+  it("un solo <script>, quello delle scorciatoie da tastiera, e nessuna fetch( nell'HTML anche con più mesi", () => {
     const html = renderGiornoArchivio({ id: "island", data: "2026-07-15", date: TRE_MESI });
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
     expect(html).not.toContain("fetch(");
   });
 });

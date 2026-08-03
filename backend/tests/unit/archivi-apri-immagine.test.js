@@ -54,9 +54,9 @@ describe("renderGiornoArchivio — apri il wallpaper a grandezza piena", () => {
     expect(ariaMatch[1]).not.toContain('"x');
   });
 
-  it("contratto invariato: nessuno <script> e nessuna fetch( nell'HTML del giorno d'archivio", () => {
+  it("contratto §2.2: un solo <script>, quello delle scorciatoie da tastiera, e nessuna fetch( nell'HTML del giorno d'archivio", () => {
     const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
     expect(html).not.toContain("fetch(");
   });
 
