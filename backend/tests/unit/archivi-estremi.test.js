@@ -75,9 +75,9 @@ describe("renderGiornoArchivio — salto agli estremi e posizione nell'archivio"
     expect(html).toContain("&lt;b&gt;x");
   });
 
-  it("guardia di contratto §2.2: nessuno script né fetch(", () => {
+  it("contratto §2.2: un solo <script>, quello delle scorciatoie da tastiera, nessuna fetch(", () => {
     const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
     expect(html).not.toContain("fetch(");
   });
 });

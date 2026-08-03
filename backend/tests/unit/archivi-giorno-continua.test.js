@@ -16,9 +16,9 @@ describe("renderGiornoArchivio — riga canale in corso (attivo, senza erede)", 
     expect(html).toContain("continua da questo giorno");
   });
 
-  it("la data finisce nell'href percent-encoded (encodeURIComponent) e resta senza <script>", () => {
+  it("la data finisce nell'href percent-encoded (encodeURIComponent) e l'unico <script> resta quello delle scorciatoie da tastiera", () => {
     const html = renderGiornoArchivio({ id: "natura", data: "2025-01-02", date: DATE });
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
     // formato AAAA-MM-GG: nessun carattere che richieda encoding oltre i normali,
     // ma il link deve comunque comparire integro e unico.
     const matches = html.match(/\/\?c=natura(&amp;d=2025-01-02)?/g) ?? [];

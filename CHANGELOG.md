@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-03 — feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera
+- La pagina di un giorno d'archivio (`/archivi/<id>?date=…`) risponde ora a `←`/`→` (giorno
+  precedente/successivo) e `Home`/`Fine` (primo/ultimo giorno): sfogliare molti giorni di fila da
+  computer costava un click mirato a ogni giorno, mentre la home aveva già la stessa navigazione da
+  tastiera (feat-sfoglia-il-viaggio-con-la-tastiera).
+- Un solo `keydown` che segue i link GIÀ presenti nel markup (`.precedente`, `.successivo`,
+  `.estremo` — quest'ultimo ora marcato `data-nav="primo"`/`"ultimo"` per non dipendere dall'ordine
+  dei nodi): zero elementi visibili aggiunti, zero rotte, zero dati nuovi. Stesse guardie della
+  home: ignora tasti modificatori (`meta`/`ctrl`/`alt`) e il fuoco in un campo di testo.
+- Il contratto §2.2 passa da «nessuno `<script>`» a «un solo `<script>`, quello delle scorciatoie»:
+  gli 11 test che presidiavano l'assenza di JS ora contano esattamente uno invece di zero. Nessuna
+  soglia abbassata, nessun test cancellato. Miglioramento progressivo: senza JS la pagina resta
+  identica.
+
 ## 2026-08-03 — feat-dal-giorno-d-archivio-si-salta-al-primo-e-all-ultimo
 - La barra «Sfoglia i giorni dell'archivio» della pagina `/archivi/<id>?date=…` porta ora «⇤ primo
   giorno» e «ultimo giorno ⇥»: su un canale con centinaia di giorni tornare all'inizio della storia

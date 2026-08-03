@@ -44,13 +44,13 @@ describe("renderGiornoArchivio — comando visibile per il feed", () => {
     expect(html).not.toContain('href="/feed/nome strano.xml"');
   });
 
-  it("nessuno <script> nell'HTML anche con il comando del feed presente", () => {
+  it("un solo <script>, quello delle scorciatoie da tastiera, nell'HTML anche con il comando del feed presente", () => {
     const html = renderGiornoArchivio({
       id: "island",
       data: "2025-01-02",
       date: DATE,
       origin: "https://artipop.example",
     });
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
   });
 });

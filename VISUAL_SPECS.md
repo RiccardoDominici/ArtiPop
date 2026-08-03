@@ -353,7 +353,19 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   colore link `#8fd3ff` della riga erede, nessun componente, colore o dimensione nuovi. Nell'elenco
   `/archivi` (§2.1) la stessa riga resta invariata: href `/?c=<id>` senza `&d=`, testo «canale in
   corso — vai a …», perché lì non esiste un giorno singolo da riprendere.
-- Nessun `<script>`, nessuna `fetch(` nell'HTML servito — stesso contratto di §2.1.
+- Scorciatoie da tastiera (proposta ai sensi di §7, feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera):
+  `←` e `→` seguono i link «giorno precedente» / «giorno successivo», `Home` e `End` i due
+  `<a class="estremo">` («⇤ primo giorno» / «ultimo giorno ⇥»), marcati `data-nav="primo"`/
+  `data-nav="ultimo"` perché lo script non dipenda dall'ordine dei nodi. **Nessun elemento visibile
+  aggiunto, nessun token, colore o dimensione nuovi: l'aspetto della pagina non cambia.**
+  Miglioramento progressivo: senza JavaScript la pagina resta identica e tutti i link restano
+  cliccabili; al bordo dell'archivio, dove il link non è emesso, il tasto non fa nulla. Lo script
+  non agisce con un modificatore premuto (`meta`/`ctrl`/`alt`) né col fuoco in un campo di testo
+  (`input`, `textarea`, `select`, `contenteditable`), e chiama `preventDefault()` solo quando
+  naviga davvero.
+- Un solo `<script>` inline nell'HTML servito, quello delle scorciatoie qui sopra, e nessuna
+  `fetch(`: la pagina resta server-rendered e non fa rete. §2.1 (`/archivi`) e la pagina d'errore
+  qui sotto restano senza alcuno `<script>`.
 - Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente in archivio):
   messaggio umano in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON,
   mai la pagina d'errore generica di Cloudflare (principio 3 di CLAUDE.md). Quando il canale ha

@@ -106,9 +106,9 @@ describe("renderGiornoArchivio: anteprima social", () => {
     expect(html).not.toContain("og:");
   });
 
-  it("l'HTML della pagina giorno resta senza <script>", () => {
+  it("l'HTML della pagina giorno ha un solo <script>, quello delle scorciatoie da tastiera", () => {
     const html = renderGiornoArchivio({ ...BASE, origin: ORIGIN });
 
-    expect(html).not.toContain("<script");
+    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
   });
 });
