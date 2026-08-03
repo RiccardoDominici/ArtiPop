@@ -16,6 +16,17 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-03 — feat-dal-giorno-d-archivio-si-salta-al-primo-e-all-ultimo
+- La barra «Sfoglia i giorni dell'archivio» della pagina `/archivi/<id>?date=…` porta ora «⇤ primo
+  giorno» e «ultimo giorno ⇥»: su un canale con centinaia di giorni tornare all'inizio della storia
+  costava decine di click o due aperture di `<details>`, era l'unico movimento di navigazione che
+  mancava.
+- Nuova riga «giorno N di M dell'archivio»: la pagina dice dove ti trovi, informazione che prima si
+  poteva solo dedurre contando le voci dell'elenco.
+- Interamente server-rendered (due `<a>` e un `<p>` in più, zero JS, zero rete): l'array `date` era
+  già in memoria nella funzione di render — nessuna rotta nuova, nessuna lettura KV in più, contratto
+  §2.2 «nessuno `<script>`, nessuna `fetch(`» invariato.
+
 ## 2026-08-02 — feat-l-archivio-del-mese-si-sfoglia-a-colpo-d-occhio
 - Ogni voce di giorno nell'elenco per mese di `/archivi` (`<details class="mese">`) porta ora una
   miniatura `44×94` del wallpaper di quella data, dentro il link già esistente: si riconosce a

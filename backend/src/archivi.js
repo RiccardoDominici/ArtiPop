@@ -131,6 +131,22 @@ function rigaPosizione(arco, giornoNellArco, tappa) {
 }
 
 /**
+ * Riga «giorno N di M dell'archivio» della pagina di un giorno d'archivio
+ * (feat-dal-giorno-d-archivio-si-salta-al-primo-e-all-ultimo): dice a che
+ * punto dell'archivio DEL CANALE ti trovi — da non confondere con
+ * `rigaPosizione`, che dice a che punto della STORIA (arco/tappa) sei.
+ * `idx` è l'indice del giorno mostrato dentro `date` (dalla più recente alla
+ * più vecchia), quindi N = totale - idx: il giorno cronologicamente più
+ * vecchio è N=1. Stringa vuota se il giorno non è nell'array (`idx < 0`) o
+ * l'archivio è vuoto: mai «giorno 0 di 0», mai un paragrafo vuoto.
+ */
+function rigaPosizioneArchivio(idx, totale) {
+  if (!Number.isFinite(idx) || idx < 0 || !Number.isFinite(totale) || totale <= 0) return "";
+  return `
+        <p class="posizione-archivio">giorno ${totale - idx} di ${totale} dell'archivio</p>`;
+}
+
+/**
  * Chiave e forma estesa italiana del mese di una data d'archivio, usate da
  * `elencoGiorni` per raggruppare — riusa `Intl.DateTimeFormat("it-IT", {
  * month: "long", year: "numeric", timeZone: "UTC" })` a mezzogiorno UTC,
@@ -365,6 +381,8 @@ const GIORNO_STYLE = `
     width: 60px; height: 128px; object-fit: cover; border-radius: 10px;
     border: 1px solid rgba(255,255,255,.10);
   }
+  nav.giorni-nav a.estremo { color: #8fd3ff; }
+  p.posizione-archivio { margin: 6px 0 0; font-size: .88rem; color: #9aa3b8; }
 `;
 
 /**
@@ -439,12 +457,28 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 
   const encId = encodeURIComponent(id);
   const encData = encodeURIComponent(data);
+  const nome = displayName(id);
 
   const linkPrecedente = precedente
     ? `<a class="precedente" href="/archivi/${encId}?date=${encodeURIComponent(precedente)}"><img class="mini" src="/w/${encId}?date=${encodeURIComponent(precedente)}" alt="" loading="lazy" decoding="async" width="60" height="128" />← giorno precedente</a>`
     : "";
   const linkSuccessivo = successivo
     ? `<a class="successivo" href="/archivi/${encId}?date=${encodeURIComponent(successivo)}"><img class="mini" src="/w/${encId}?date=${encodeURIComponent(successivo)}" alt="" loading="lazy" decoding="async" width="60" height="128" />giorno successivo →</a>`
+    : "";
+
+  // feat-dal-giorno-d-archivio-si-salta-al-primo-e-all-ultimo: `date` è
+  // ordinato dal più recente al più vecchio, quindi l'ultimo elemento è il
+  // giorno cronologicamente più vecchio e il primo è il più recente. Ogni
+  // link è omesso quando punterebbe al giorno già mostrato.
+  const totaleGiorni = Array.isArray(date) ? date.length : 0;
+  const piuVecchia = idx >= 0 && idx < totaleGiorni - 1 ? date[totaleGiorni - 1] : null;
+  const piuRecente = idx > 0 ? date[0] : null;
+
+  const linkPrimo = piuVecchia
+    ? `<a class="estremo" href="/archivi/${encId}?date=${encodeURIComponent(piuVecchia)}" aria-label="Vai al primo giorno dell'archivio di ${esc(nome)}, ${esc(piuVecchia)}">⇤ primo giorno</a>`
+    : "";
+  const linkUltimo = piuRecente
+    ? `<a class="estremo" href="/archivi/${encId}?date=${encodeURIComponent(piuRecente)}" aria-label="Vai all'ultimo giorno dell'archivio di ${esc(nome)}, ${esc(piuRecente)}">ultimo giorno ⇥</a>`
     : "";
 
   const linkACaso =
@@ -460,8 +494,8 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   // canale storico, non a quello dell'erede — passarla porterebbe la home
   // su un giorno che il canale erede non ha.
   const riga3 = rigaErede(id) || rigaInCorso(id, data);
+  const rigaPosArch = rigaPosizioneArchivio(idx, totaleGiorni);
 
-  const nome = displayName(id);
   const titolo = `ArtiPop — ${esc(nome)}, ${esc(data)}`;
   const descrizione = `Il giorno ${esc(data)} dell'archivio storico di ${esc(nome)}.`;
   const percorso = `/archivi/${encId}?date=${encData}`;
@@ -486,7 +520,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
     <a class="back" href="/archivi">← tutti gli archivi</a>
     <h1>${esc(nome)}</h1>
     <p class="sub">${rigaData(data)}</p>
-  </header>${rigaSogg}${rigaPos}${rigaRacc}
+  </header>${rigaSogg}${rigaPos}${rigaRacc}${rigaPosArch}
   <figure class="foto">
     <a class="apri" href="/w/${encId}?date=${encData}" target="_blank" rel="noopener" aria-label="Apri a grandezza piena il wallpaper di ${esc(nome)} del ${esc(data)}">
       <img src="/w/${encId}?date=${encData}" alt="${esc(nome)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
@@ -495,6 +529,8 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
   <nav class="giorni-nav" aria-label="Sfoglia i giorni dell'archivio">
     ${linkPrecedente}
     ${linkSuccessivo}
+    ${linkPrimo}
+    ${linkUltimo}
     <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
     <a class="salva" href="${feedPath}">segui col lettore di feed</a>${linkACaso}
   </nav>${elencoGiorniGiorno}${riga3}
