@@ -283,7 +283,8 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
 - Riga del racconto: `<p class="racconto">` col testo della tappa in `#f2f3f8` (stesso `--text`),
   emessa solo se il testo è disponibile — i giorni ricostruiti di `handlers.js` hanno
   `testoTappa: null`, quindi nessun paragrafo vuoto — subito dopo la riga della posizione e prima
-  della `<figure>`. Nessun `font-size` nuovo: stessa dimensione di corpo già in uso.
+  della riga di posizione nell'archivio. Nessun `font-size` nuovo: stessa dimensione di corpo già
+  in uso.
 - Immagine: `<figure>` con `<img src="/w/<id>?date=<data>">`, `alt` descrittivo (canale + data),
   `loading="lazy"`, `decoding="async"`. Più grande della miniatura di copertina di §2.1 (non
   `60×128`) ma contenuta: `max-width:420px`, centrata, stesso bordo `rgba(255,255,255,.10)` e
@@ -322,6 +323,19 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   caso</a>` verso `/archivi/<id>?date=casuale` — stesso token `.salva` (colore `#8fd3ff`, area di
   tocco ≥44px) dei link accanto, nessun colore o dimensione nuovi. Emesso solo se l'archivio ha
   almeno 2 giorni: con un giorno solo porterebbe sempre alla pagina già aperta, un link inutile.
+- Salto agli estremi e posizione nell'archivio (proposta ai sensi di §7,
+  feat-dal-giorno-d-archivio-si-salta-al-primo-e-all-ultimo): nella stessa barra di navigazione,
+  dopo «giorno successivo →», due `<a class="estremo">` — «⇤ primo giorno» verso la data più
+  vecchia e «ultimo giorno ⇥» verso la più recente dell'archivio del canale — colore `#8fd3ff` e
+  area di tocco ≥44px ereditati dalla regola `nav.giorni-nav a` già in uso, nessun colore,
+  dimensione o componente nuovi. `aria-label` esplicito che nomina canale e data di destinazione,
+  come gli altri link della pagina. Ciascun link è omesso quando punterebbe al giorno già mostrato
+  (sul giorno più recente niente «ultimo giorno», sul più vecchio niente «primo giorno», con un
+  solo giorno in archivio nessuno dei due): mai un link verso se stessi, stessa regola
+  dell'elenco dei giorni. Sotto la riga del racconto, un `<p class="posizione-archivio">` col testo
+  «giorno N di M dell'archivio» (M = giorni totali, N = 1 per il più vecchio) negli stessi token
+  `.riga3` (`.88rem`, `#9aa3b8`) — assente quando l'archivio è vuoto o il giorno mostrato non vi
+  appartiene, mai «giorno 0 di 0».
 - Elenco «tutti i N giorni»: stesso componente `<details class="giorni">` di §2.1, raggruppato per
   mese negli stessi `<details class="mese">` (stesso summary «{mese} {anno} — N giorn(o|i)», stessi
   link `/archivi/<id>?date=<data>` e di salvataggio `↓`, stesso ordine dalla più recente alla più
