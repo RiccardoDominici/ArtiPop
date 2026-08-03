@@ -1,6 +1,6 @@
 # CLAUDE.md — ArtiPop v3 (contesto di progetto, caricato ad ogni stadio)
 
-Vale per Planner, Executor e Verifier, IN AGGIUNTA a `ENGINE-CONTRACT.md` del motore
+Vale per Planner, Piano tecnico dell'executor, Executor e Verifier, IN AGGIUNTA a `ENGINE-CONTRACT.md` del motore
 (disciplina del contesto, strategia git, formato del registro, divieti strutturali —
 non ripetuta qui: quella è fissa per ogni progetto, questa è la parte che cambia).
 
@@ -34,9 +34,11 @@ Le variabili elencate in `SECRET_ENV_NAMES` di `loop.config` (oggi: `CLOUDFLARE_
 `CLOUDFLARE_ACCOUNT_ID`, `PREVIEW_ADMIN_KEY`, `ADMIN_KEY`) non vanno MAI stampate, loggate o
 committate — vale per planner, executor, verifier, senza eccezioni, env compresi.
 
-## Brainstorming (Planner, fase POLISH)
-Il planner incrocia tre liste (A×B×C, meccanismo descritto nel ruolo Planner del motore) per
-generare proposte non ovvie invece di girare sempre sulle stesse idee. Liste stabili fra i cicli:
+## Brainstorming (Planner, categoria FUNZIONALITA)
+Il metodo A×B×C (meccanismo descritto nel ruolo Planner del motore) si applica quando il
+ciclo è in categoria FUNZIONALITA (v. `docs/DESIGN-EVOLUZIONE-1.md` §3 del motore): il
+planner incrocia tre liste per generare proposte non ovvie invece di girare sempre sulle
+stesse idee. Liste stabili fra i cicli:
 
 - **A — persone e momenti d'uso**: chi imposta lo sfondo con la Shortcut al tramonto, chi apre
   il sito e sfoglia i canali, chi segue la storia narrativa di un arco, chi regola il tuning dei
@@ -46,3 +48,7 @@ generare proposte non ovvie invece di girare sempre sulle stesse idee. Liste sta
   le rotte `/api/*`, la pagina `/aiuto`, le Shortcut firmate
 - **C — forme di valore**: vedere/rivedere, confrontare due giorni, condividere, personalizzare,
   capire cosa succede, ricevere al momento giusto, esplorare l'archivio
+
+Nelle categorie OTTIMIZZAZIONE e INTERFACCIA il planner non usa queste liste: il grounding è
+generale, direttamente nel codice o nell'interfaccia reali con Grep mirati, non in un elenco
+precompilato.
