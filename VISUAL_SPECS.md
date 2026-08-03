@@ -152,6 +152,36 @@ rete (`navigator.onLine === false`), e sparisce da sola al ritorno della rete, s
 ricaricare la pagina; nessun colore o misura nuovi oltre `.hint` (`.78rem`, colore `--dim`).
 Invisibile nell'HTML servito (`hidden`) a chi è online e a chi ha JavaScript disattivato.
 
+Fila dei comandi (`.actions`, proposta ai sensi di §7, feat-i-comandi-del-viaggio-non-si-
+accavallano): contenitore canonico di ogni gruppo di pill `.btn` — `display:flex; gap:.6rem;
+flex-wrap:wrap; justify-content:center` — già in uso sotto il deck e, da questo ciclo, anche
+dentro `.journey`, dove i comandi erano figli diretti della sezione (elementi inline, senza gap
+né controllo dell'andata a capo: si accalcavano fino a toccarsi, §5.4, con area di tocco sotto
+i 44px, §5.5). Dentro `.journey` le file sono quattro, separate da `margin-top:.8rem` (stessa
+misura già usata da `.jhead`, `.dcap` e `.arcstory`): (1) archivio del canale — il solo
+`#archlink`, subito dopo la didascalia «Solo questa settimana…»; (2) navigazione nel viaggio —
+`#dayPick`, `#arcprev`, `#arcnext`, subito sotto `.daynav`; (3) comandi del giorno mostrato —
+`#dayshare`, `#dayopen`, `#daysave`, `#dayshareimg`, `#dayfav`, `#dayrand`, `#daytoday`;
+(4) pannelli — `#storytoggle`, `#arcpick`, `#favpick`, con i tre elenchi `.arcstory`
+(`#arcstory`, `#arclist`, `#favlist`) impilati subito sotto la fila, nello stesso ordine dei
+rispettivi comandi: un pannello aperto compare sotto la fila che lo comanda, come già oggi.
+Ogni pill `.btn` porta `min-height:44px` — misura già canonica in questa spec per `.arcrow` e
+per le voci `.ns-item a` — così l'area di tocco rispetta §5.5 anche dove l'etichetta è corta.
+Nessun colore, token o dimensione nuovi: cambia il contenitore, non le pill.
+Le pill (`.btn:not([hidden])`) sono `display:inline-flex` con contenuto centrato, per allineare
+verticalmente sia `<button>` sia `<a class="btn ...">` nella stessa fila; il `:not([hidden])`
+è la guardia obbligatoria che evita di rendere visibili i comandi ancora nascosti. Una fila
+`.journey .actions` senza alcun figlio visibile (`:not(:has(> :not([hidden])))`) collassa a
+`display:none`, così da non lasciare spazio vuoto prima che il JS tolga gli `hidden`.
+
+Blob ambient (aggiornamento ai sensi di §7, stesso ciclo): i due `.blob` cambiano colore
+insieme al canale in cima **senza dissolvenza** (via la `transition: background 1.2s`). La
+dissolvenza obbligava il browser a ricalcolare per 1,2 s un `blur(90px)` su due superfici da
+65vmax proprio mentre la card vola via, e rendeva scattoso il cambio canale: principio 1
+(utilizzabilità) prima del principio 2. Il passaggio graduale resta dove non costa nulla —
+`h1` con gradient-clip e pill `.btn` conservano la loro `transition: background 1.2s ease`.
+Geometria, opacità e token dei blob restano identici.
+
 ### 1.5 Modalità colore
 Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
 

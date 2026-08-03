@@ -164,7 +164,12 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .blob {
     position: absolute; width: 65vmax; height: 65vmax; border-radius: 50%;
     filter: blur(90px); opacity: .32;
-    transition: background 1.2s ease;
+    /* Nessuna transizione sul colore: interpolare il background per 1.2s
+       obbligava il browser a ricalcolare un blur(90px) su 65vmax × 2 per ~70
+       fotogrammi, proprio mentre la card vola via — il cambio canale scattava
+       lì. Il colore ora cambia in un solo passaggio (un rasterize, non 70).
+       La gradualità resta dove non costa niente: h1 e .btn conservano la loro
+       transition su background (VISUAL_SPECS §1.4). */
   }
   .blob.b1 { background: var(--a1); top: -25vmax; left: -15vmax; animation: drift1 26s ease-in-out infinite alternate; }
   .blob.b2 { background: var(--a2); bottom: -30vmax; right: -18vmax; animation: drift2 32s ease-in-out infinite alternate; }
@@ -265,6 +270,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .btn {
     border: 0; border-radius: 999px; padding: .72rem 1.25rem;
     font-size: .88rem; font-weight: 650; cursor: pointer;
+    min-height: 44px; /* §5.5: con .88rem di testo + .72rem di padding la pill si fermava a ~40px */
     transition: transform .15s ease, filter .2s ease, background 1.2s ease;
   }
   .btn:active { transform: scale(.96); }
@@ -272,6 +278,15 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .btn.primary:hover { filter: brightness(1.12); }
   .btn.ghost { background: var(--card); border: 1px solid var(--card-border); color: var(--text); backdrop-filter: blur(14px); }
   .btn.ghost:hover { background: rgba(255,255,255,.11); }
+  /* min-height:44px centra il testo nei <button>, ma le pill <a class="btn ...">
+     (#archlink, #dayopen, #daysave, ecc.) restano inline e lasciano il testo
+     ancorato in alto: ~2px di sfasamento verticale fra pill adiacenti. Il
+     :not([hidden]) è OBBLIGATORIO: le regole dell'autore battono lo style
+     dell'user agent [hidden]{display:none} a prescindere dalla specificità
+     (origine prima di specificità in cascata), quindi una .btn{display:...}
+     senza questa guardia renderebbe visibili anche i comandi del viaggio
+     che devono restare nascosti finché il JS non toglie l'attributo. */
+  .btn:not([hidden]) { display: inline-flex; align-items: center; justify-content: center; }
 
   /* ---------- galleria/viaggio: sfogliata dentro l'anteprima ---------- */
   section.journey { margin-top: 1.6rem; text-align: center; }
@@ -284,6 +299,19 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   }
   .playbtn:hover { background: rgba(255,255,255,.12); }
   .playbtn.playing { background: linear-gradient(100deg, var(--a1), var(--a2)); border-color: transparent; color: #fff; }
+  /* Le file di comandi del viaggio riusano .actions (la fila canonica sotto
+     il deck): prima erano pill inline figlie dirette della sezione — nessun
+     gap, andate a capo incontrollate, si toccavano (VISUAL_SPECS §5.4/§5.5).
+     Qui serve solo lo stacco verticale FRA una fila e l'altra: .8rem è la
+     stessa misura già usata da .jhead, .dcap e .arcstory, nessuna misura nuova. */
+  .journey .actions { margin-top: .8rem; }
+  /* Una fila con tutti i comandi hidden (prima che il JS giri, o quando
+     l'archivio non è sfogliabile) non deve occupare spazio: senza questa
+     regola resterebbe un flex container vuoto con margin-top:.8rem, ~2.4rem
+     di vuoto morto sommando le quattro file. :has() è supportato dai browser
+     evergreen; dove non lo è il degrado è solo estetico (spazio in più),
+     nessuna funzione persa. */
+  .journey .actions:not(:has(> :not([hidden]))) { display: none; }
   /* Niente più striscia di miniature (era ridondante: il mockup già scorre
      l'archivio col timelapse). Al suo posto, solo i comandi per sfogliare
      l'anteprima giorno per giorno e capire a che punto del viaggio si è. */
@@ -428,12 +456,18 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            giorni, un solo concept), non l'intero archivio permanente — che
            attraversa più concept e mischierebbe storie diverse. -->
       <p class="hint">Solo questa settimana, giorno per giorno — ↔ scorri o usa le frecce.</p>
-      <!-- Il viaggio qui sopra mostra solo l'arco/settimana in corso (vedi
-           didascalia sopra); l'archivio permanente del canale — tutti i
-           giorni, mese per mese — vive su /archivi/<id> dal ciclo 130.
-           #archlink ci porta con un tocco e segue lo stesso ciclo di vita
-           di #feedlink: stesso canale in cima alla pila, stesso aggiornamento. -->
-      <a class="btn ghost" id="archlink" href="/archivi/${esc(feedChannelId)}">tutti i giorni di questo canale</a>
+      <!-- fila 1 — archivio del canale: prima queste pill erano figlie dirette
+           di .journey (nessun gap, andavano a capo incontrollate e si
+           toccavano, VISUAL_SPECS §5.4/§5.5) — .actions è il contenitore
+           canonico già in uso sotto il deck, qui riusato senza CSS nuovo. -->
+      <div class="actions">
+        <!-- Il viaggio qui sopra mostra solo l'arco/settimana in corso (vedi
+             didascalia sopra); l'archivio permanente del canale — tutti i
+             giorni, mese per mese — vive su /archivi/<id> dal ciclo 130.
+             #archlink ci porta con un tocco e segue lo stesso ciclo di vita
+             di #feedlink: stesso canale in cima alla pila, stesso aggiornamento. -->
+        <a class="btn ghost" id="archlink" href="/archivi/${esc(feedChannelId)}">tutti i giorni di questo canale</a>
+      </div>
       <!-- Niente più miniature: l'archivio si guarda nel mockup qui sopra.
            Qui restano solo data del fotogramma, posizione nel viaggio e le
            frecce giorno prec./succ. — senza, si perderebbe ogni riferimento
@@ -450,77 +484,93 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
         </div>
         <button class="dayctrl" id="daynext" aria-label="Giorno successivo dell'archivio">›</button>
       </div>
-      <!-- feat-salta-al-giorno-che-cerchi: con centinaia di giorni in archivio,
-           le frecce e il dito muovono un giorno alla volta — per un giorno
-           preciso (il compleanno, il giorno che qualcuno ti ha condiviso)
-           serve un salto diretto. min/max/value seguono l'archivio del
-           canale mostrato (v. updateDayNav). -->
-      <input type="date" class="daypick" id="dayPick" hidden
-        aria-label="Vai a un giorno specifico dell'archivio">
-      <!-- feat-rivedi-l-arco-precedente: visibile solo quando, oltre alla
-           finestra mostrata, esiste almeno un arco (settimana/concept) più
-           vecchio scaricato da /api/archive ma non ancora raggiungibile. -->
-      <button class="btn ghost" id="arcprev" hidden>‹ arco precedente</button>
-      <!-- feat-torna-all-arco-in-corso: visibile solo dopo essere scesi in un
-           arco passato con #arcprev — senza questo comando la finestra
-           sull'arco vecchio sopravvive in archiveCache anche cambiando
-           canale (loadArchive ricostruisce solo se !archiveCache[chId]),
-           e l'utente resta bloccato nel passato fino al ricaricamento. -->
-      <button class="btn ghost" id="arcnext" hidden>arco successivo ›</button>
-      <!-- feat-condividi-il-giorno-che-stai-guardando: segue sempre lo stato
-           di #daynav (stesso hasJourney in renderJourney) — niente da
-           condividere quando non c'è navigazione fra giorni. -->
-      <button class="btn ghost" id="dayshare" hidden>copia link</button>
-      <!-- feat-apri-il-wallpaper-del-giorno-a-schermo-intero: stesso hasJourney
-           di #dayshare — porta al file vero del giorno mostrato, alla sua
-           risoluzione piena (srcFor(), la stessa URL del crossfade). -->
-      <a class="btn ghost" id="dayopen" target="_blank" rel="noopener" hidden>apri l'immagine</a>
-      <!-- feat-salva-il-wallpaper-con-un-nome-che-si-capisce: stesso hasJourney
-           di #dayopen — stesso file, ma con ?dl=1 per farlo arrivare sul disco
-           con un nome parlante invece del blob "natura" senza estensione. -->
-      <a class="btn ghost" id="daysave" hidden>salva l'immagine</a>
-      <!-- feat-condividi-l-immagine-del-giorno: stesso hasJourney di #daysave,
-           IN AND con PUO_CONDIVIDERE_FILE (v. supportaCondivisioneFile) —
-           progressive enhancement: nascosto dove il browser non offre la
-           condivisione di file (compreso il Chromium headless di
-           visual-check), nessun comportamento diverso dal ripiego #dayshare
-           in quel caso. -->
-      <button class="btn ghost" id="dayshareimg" hidden>condividi l'immagine</button>
-      <!-- feat-segna-i-giorni-che-ti-piacciono: stesso hasJourney di
-           #dayshare/#dayopen — nessun giorno da sfogliare, nessun giorno da
-           segnare. Etichetta e aria-pressed seguono lo stato del giorno
-           mostrato (v. renderJourney/updateDayNav). -->
-      <button class="btn ghost" id="dayfav" aria-pressed="false" hidden>☆ segna preferito</button>
-      <!-- feat-riscopri-un-giorno-a-caso: stesso hasJourney degli altri
-           comandi, IN AND con l'archivio noto (arcsCache, fallback
-           archiveCache) che ha almeno 2 date — con una sola data nota non
-           c'è nessun altro giorno da riscoprire (v. renderJourney). -->
-      <button class="btn ghost" id="dayrand" hidden>🎲 un giorno a caso</button>
-      <!-- feat-torna-a-oggi-da-qualunque-giorno: nessun percorso di ritorno
-           diretto esisteva prima di questo ciclo — stepDay muove di un
-           giorno, goToNextArc di un arco: chi è sceso di più passi doveva
-           martellare le frecce. Nascosto quando si guarda già oggi
-           nell'arco in corso (v. updateDayNav). -->
-      <button class="btn ghost" id="daytoday" hidden>torna a oggi</button>
+      <!-- fila 2 — navigazione nel viaggio: salto a una data e cambio d'arco. -->
+      <div class="actions">
+        <!-- feat-salta-al-giorno-che-cerchi: con centinaia di giorni in archivio,
+             le frecce e il dito muovono un giorno alla volta — per un giorno
+             preciso (il compleanno, il giorno che qualcuno ti ha condiviso)
+             serve un salto diretto. min/max/value seguono l'archivio del
+             canale mostrato (v. updateDayNav). -->
+        <input type="date" class="daypick" id="dayPick" hidden
+          aria-label="Vai a un giorno specifico dell'archivio">
+        <!-- feat-rivedi-l-arco-precedente: visibile solo quando, oltre alla
+             finestra mostrata, esiste almeno un arco (settimana/concept) più
+             vecchio scaricato da /api/archive ma non ancora raggiungibile. -->
+        <button class="btn ghost" id="arcprev" hidden>‹ arco precedente</button>
+        <!-- feat-torna-all-arco-in-corso: visibile solo dopo essere scesi in un
+             arco passato con #arcprev — senza questo comando la finestra
+             sull'arco vecchio sopravvive in archiveCache anche cambiando
+             canale (loadArchive ricostruisce solo se !archiveCache[chId]),
+             e l'utente resta bloccato nel passato fino al ricaricamento. -->
+        <button class="btn ghost" id="arcnext" hidden>arco successivo ›</button>
+      </div>
+      <!-- fila 3 — comandi del giorno mostrato. -->
+      <div class="actions">
+        <!-- feat-condividi-il-giorno-che-stai-guardando: segue sempre lo stato
+             di #daynav (stesso hasJourney in renderJourney) — niente da
+             condividere quando non c'è navigazione fra giorni. -->
+        <button class="btn ghost" id="dayshare" hidden>copia link</button>
+        <!-- feat-apri-il-wallpaper-del-giorno-a-schermo-intero: stesso hasJourney
+             di #dayshare — porta al file vero del giorno mostrato, alla sua
+             risoluzione piena (srcFor(), la stessa URL del crossfade). -->
+        <a class="btn ghost" id="dayopen" target="_blank" rel="noopener" hidden>apri l'immagine</a>
+        <!-- feat-salva-il-wallpaper-con-un-nome-che-si-capisce: stesso hasJourney
+             di #dayopen — stesso file, ma con ?dl=1 per farlo arrivare sul disco
+             con un nome parlante invece del blob "natura" senza estensione. -->
+        <a class="btn ghost" id="daysave" hidden>salva l'immagine</a>
+        <!-- feat-condividi-l-immagine-del-giorno: stesso hasJourney di #daysave,
+             IN AND con PUO_CONDIVIDERE_FILE (v. supportaCondivisioneFile) —
+             progressive enhancement: nascosto dove il browser non offre la
+             condivisione di file (compreso il Chromium headless di
+             visual-check), nessun comportamento diverso dal ripiego #dayshare
+             in quel caso. -->
+        <button class="btn ghost" id="dayshareimg" hidden>condividi l'immagine</button>
+        <!-- feat-segna-i-giorni-che-ti-piacciono: stesso hasJourney di
+             #dayshare/#dayopen — nessun giorno da sfogliare, nessun giorno da
+             segnare. Etichetta e aria-pressed seguono lo stato del giorno
+             mostrato (v. renderJourney/updateDayNav). -->
+        <button class="btn ghost" id="dayfav" aria-pressed="false" hidden>☆ segna preferito</button>
+        <!-- feat-riscopri-un-giorno-a-caso: stesso hasJourney degli altri
+             comandi, IN AND con l'archivio noto (arcsCache, fallback
+             archiveCache) che ha almeno 2 date — con una sola data nota non
+             c'è nessun altro giorno da riscoprire (v. renderJourney). -->
+        <button class="btn ghost" id="dayrand" hidden>🎲 un giorno a caso</button>
+        <!-- feat-torna-a-oggi-da-qualunque-giorno: nessun percorso di ritorno
+             diretto esisteva prima di questo ciclo — stepDay muove di un
+             giorno, goToNextArc di un arco: chi è sceso di più passi doveva
+             martellare le frecce. Nascosto quando si guarda già oggi
+             nell'arco in corso (v. updateDayNav). -->
+        <button class="btn ghost" id="daytoday" hidden>torna a oggi</button>
+      </div>
       <p class="dcap" id="dcap" hidden></p>
-      <!-- feat-leggi-la-storia-dell-arco: chiuso di default (la home non deve
-           allungarsi per chi non lo apre); comando e blocco compaiono solo
-           quando renderArcStory trova almeno una tappa con testoTappa. -->
-      <button class="btn ghost" id="storytoggle" hidden>leggi la storia</button>
+      <!-- fila 4 — pannelli: i tre comandi che aprono un elenco. I tre
+           .arcstory sotto non sono più adiacenti al proprio toggle nel DOM
+           (deviazione dichiarata in VISUAL_SPECS §1.4): dentro .actions,
+           flex-wrap, un pannello .arcstory con max-width:26rem finirebbe
+           accanto a una pill invece che su una riga propria. Impilati subito
+           sotto la fila, nello stesso ordine dei comandi, l'esito visivo resta
+           identico a oggi — un pannello aperto compare sotto la fila che lo
+           comanda. -->
+      <div class="actions">
+        <!-- feat-leggi-la-storia-dell-arco: chiuso di default (la home non deve
+             allungarsi per chi non lo apre); comando e blocco compaiono solo
+             quando renderArcStory trova almeno una tappa con testoTappa. -->
+        <button class="btn ghost" id="storytoggle" hidden>leggi la storia</button>
+        <!-- feat-scegli-l-arco-dall-elenco: unico modo, oggi, di raggiungere un
+             arco lontano nell'archivio era martellare #arcprev un arco alla
+             volta. Visibile solo con più di un arco (updateArcNav) — con un
+             solo arco il salto non ha senso. Riusa .arcstory/.arcrow (stessa
+             forma dell'elenco-tappe, VISUAL_SPECS §1.4): il componente cambia
+             contenuto, non forma. -->
+        <button class="btn ghost" id="arcpick" hidden>scegli l'arco</button>
+        <!-- feat-segna-i-giorni-che-ti-piacciono: visibile solo quando il
+             canale mostrato ha almeno un preferito (v. renderFavList). Riusa
+             .arcstory/.arcrow, stessa forma di elenco-tappe ed elenco-archi:
+             cambia il contenuto, non la forma. Chiuso di default come #arcpick. -->
+        <button class="btn ghost" id="favpick" hidden>i tuoi preferiti</button>
+      </div>
       <div class="arcstory" id="arcstory" hidden></div>
-      <!-- feat-scegli-l-arco-dall-elenco: unico modo, oggi, di raggiungere un
-           arco lontano nell'archivio era martellare #arcprev un arco alla
-           volta. Visibile solo con più di un arco (updateArcNav) — con un
-           solo arco il salto non ha senso. Riusa .arcstory/.arcrow (stessa
-           forma dell'elenco-tappe, VISUAL_SPECS §1.4): il componente cambia
-           contenuto, non forma. -->
-      <button class="btn ghost" id="arcpick" hidden>scegli l'arco</button>
       <div class="arcstory" id="arclist" hidden></div>
-      <!-- feat-segna-i-giorni-che-ti-piacciono: visibile solo quando il
-           canale mostrato ha almeno un preferito (v. renderFavList). Riusa
-           .arcstory/.arcrow, stessa forma di elenco-tappe ed elenco-archi:
-           cambia il contenuto, non la forma. Chiuso di default come #arcpick. -->
-      <button class="btn ghost" id="favpick" hidden>i tuoi preferiti</button>
       <div class="arcstory" id="favlist" hidden></div>
     </section>
   </div>
@@ -992,7 +1042,12 @@ function buildDeck() {
   for (let i = order.length - 1; i >= 0; i--) {
     const ch = CHANNELS[order[i]];
     const el = document.createElement("article");
-    el.className = "card " + (i === 0 ? "top" : "behind");
+    // "animated" fin dalla nascita (ma il primo paint non transiziona,
+    // perché la classe è già presente all'appendChild): da qui in poi
+    // rotateDeck può ruotare il mazzo SENZA ricostruirlo, e le card dietro
+    // devono scivolare verso la nuova posizione invece di saltarci — v.
+    // rotateDeck per il perché la ricostruzione andava evitata.
+    el.className = "card animated " + (i === 0 ? "top" : "behind");
     el.dataset.channel = ch.id;
     el.innerHTML = cardHTML(ch);
     applyStackTransform(el, i);
@@ -1009,6 +1064,30 @@ function applyStackTransform(el, depth) {
   el.style.transform = \`translateY(\${d * 14}px) scale(\${1 - d * 0.045})\`;
   el.style.opacity = depth > 2 ? 0 : 1;
   el.style.zIndex = 10 - depth;
+}
+
+/* La card che lascia la cima può essere ferma su un giorno d'archivio
+   (previewDay le ha riscritto src e alt). Finché la rotazione ricostruiva il
+   deck da zero, buildDeck riportava ogni card a oggi da sé (cardHTML parte
+   sempre da ch.date); ora i nodi sopravvivono nel DOM (v. rotateDeck) e va
+   fatto a mano — in USCITA dalla cima, non al rientro: le card dietro sono
+   comunque visibili nella pila, e mostrerebbero il fotogramma di una
+   vecchia esplorazione se non si riportassero subito a oggi. Stessa URL e
+   stesso alt di cardHTML(): stringa identica quando già a oggi, quindi
+   nessuna richiesta di rete e nessuna decodifica in più in quel caso. */
+function ripristinaOggi(card) {
+  const ch = CHANNELS.find((c) => c.id === card.dataset.channel);
+  const wall = card.querySelector(".wall");
+  if (!ch || !wall) return;
+  // NON srcFor(): per un canale inRitardo produrrebbe "?v=TODAY" invece di
+  // "?v=<ch.date>" — l'URL che cardHTML ha davvero assegnato, e un download
+  // in più per un file che il worker già serve sotto un altro indirizzo.
+  const src = "/w/" + ch.id + "?v=" + ch.date;
+  if (wall.getAttribute("src") !== src) {
+    wall.src = src;
+    wall.alt = descrizioneWallpaper(ch, ch.date, !ch.inRitardo);
+  }
+  wall.style.opacity = "";
 }
 
 /* Aggiorna colori ambient, dots, hint e galleria per il canale in cima. */
@@ -1040,43 +1119,108 @@ function updateChrome() {
 
 /* ---------- drag stile Tinder ---------- */
 let drag = null;
+// I listener si agganciano UNA VOLTA SOLA a ogni card, alla costruzione del
+// mazzo (buildDeck, mai da rotateDeck). Finché la rotazione ricostruiva il
+// DOM da zero i nodi erano sempre nuovi, e riagganciare ad ogni giro era
+// corretto; ora i nodi sopravvivono (v. rotateDeck), e riagganciare
+// significherebbe accumulare un listener in più per ogni sfogliata — dopo
+// dieci swipe la stessa card reagirebbe dieci volte a un solo tocco. La
+// guardia dataset.drag impedisce il doppio aggancio sullo stesso nodo; le
+// card dietro non ricevono comunque eventi (.card.behind { pointer-events:
+// none }), ma dentro pointerdown si ricontrolla anche "top" — seconda rete
+// per il caso in cui una card cambi ruolo mentre il dito è ancora giù.
 function attachDrag() {
   const top = deckEl.querySelector(".card.top");
-  if (!top) return;
-  top.addEventListener("pointerdown", (e) => {
+  if (!top) return; // mazzo vuoto: niente da agganciare
+  for (const card of deckEl.children) agganciaDrag(card);
+}
+
+function agganciaDrag(el) {
+  if (el.dataset.drag) return; // già agganciata: mai due volte sullo stesso nodo
+  el.dataset.drag = "1";
+  el.addEventListener("pointerdown", (e) => {
+    if (!el.classList.contains("top")) return;
+    if (el.dataset.involo) return; // già in volo verso rotateDeck (v. flyOut): ignora un secondo tocco sulla stessa card
     if (e.target.closest("button, a")) return;
-    drag = { el: top, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0 };
-    top.classList.remove("animated");
-    top.setPointerCapture(e.pointerId);
+    drag = { el, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, pointerId: e.pointerId };
+    el.classList.remove("animated");
+    el.setPointerCapture(e.pointerId);
   });
-  top.addEventListener("pointermove", (e) => {
-    if (!drag) return;
+  el.addEventListener("pointermove", (e) => {
+    if (!drag || drag.el !== el) return;
     drag.dx = e.clientX - drag.x0;
     drag.dy = e.clientY - drag.y0;
     drag.el.style.transform =
       \`translate(\${drag.dx}px, \${drag.dy * 0.25}px) rotate(\${drag.dx * 0.055}deg)\`;
   });
   const end = () => {
-    if (!drag) return;
-    const { el, dx } = drag;
+    if (!drag || drag.el !== el) return;
+    const { el: card, dx } = drag;
     drag = null;
     const threshold = Math.min(120, deckEl.offsetWidth * 0.34);
-    el.classList.add("animated");
-    if (Math.abs(dx) > threshold) flyOut(el, Math.sign(dx));
-    else el.style.transform = "";
+    card.classList.add("animated");
+    if (Math.abs(dx) > threshold) flyOut(card, Math.sign(dx));
+    else card.style.transform = ""; // depth 0 = trasformazione identità
   };
-  top.addEventListener("pointerup", end);
-  top.addEventListener("pointercancel", end);
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
 }
 
 /* La card vola fuori, poi torna in fondo al mazzo. */
 function flyOut(el, dir) {
+  // Idempotente per card: la classe "top" resta finché rotateDeck non gira
+  // (280ms), quindi un secondo advance/swipe ravvicinato sulla STESSA card
+  // (doppio click su #next, doppia freccia, auto-repeat di ArrowRight, un
+  // secondo tocco che ruba la pointer capture) chiamerebbe flyOut due volte:
+  // due rotateDeck in coda avanzano order[] di due posti ma il DOM di uno
+  // solo (il prepend del secondo giro è un no-op), disallineando
+  // permanentemente order[0] dalla card visibile in cima. La guardia
+  // dataset.involo rende il secondo flyOut un no-op finché rotateDeck non
+  // lo ripulisce.
+  if (el.dataset.involo) return;
+  el.dataset.involo = "1";
   el.style.transform = \`translate(\${dir * (deckEl.offsetWidth + 220)}px, -30px) rotate(\${dir * 22}deg)\`;
   el.style.opacity = 0;
-  setTimeout(() => {
-    order.push(order.shift());
-    buildDeck();
-  }, 280);
+  setTimeout(() => rotateDeck(el), 280);
+}
+
+/* Ruota il mazzo RIORDINANDO i nodi già in pagina, mai ricostruendoli. Prima
+   qui si chiamava buildDeck(), che azzerava deckEl.innerHTML: ogni
+   <img class="wall"> (PNG 960×2048) tornava nel DOM da zero e veniva
+   ridecodificata mentre l'animazione di volo era ancora in corso e veniva
+   troncata a metà — la causa principale per cui il cambio canale scattava.
+   Riordinando, le immagini non vengono mai ricreate: le card che restano
+   scivolano nella nuova posizione (classe .animated, transizione di sola
+   transform — lavoro del compositore, non del thread principale). */
+function rotateDeck(el) {
+  delete el.dataset.involo; // la card può tornare a ricevere un nuovo volo (v. guardia in flyOut)
+  if (drag && drag.el === el) {
+    // Un secondo tocco aveva preso la pointer capture sulla card ancora in
+    // volo (bypassando .card.behind { pointer-events: none }): rilasciarla
+    // e annullare il drag PRIMA di spostare la card in fondo alla pila,
+    // altrimenti il dito continuerebbe a trascinare la card di fondo sopra
+    // il mazzo.
+    try { el.releasePointerCapture(drag.pointerId); } catch {}
+    drag = null;
+  }
+  order.push(order.shift());
+  stopPlayback();            // il timelapse del canale che se ne va non deve proseguire sulla nuova cima
+  pendingPreviewSrc = null;  // scarta un'immagine d'archivio in arrivo per la card che lascia la cima
+  el.classList.remove("animated"); // il rientro in fondo alla pila è un salto, non un volo di ritorno
+  ripristinaOggi(el);
+  deckEl.prepend(el);        // il fondo della pila è il PRIMO figlio (v. buildDeck, che renderizza dal fondo)
+  const cards = [...deckEl.children]; // dal fondo alla cima, stesso ordine di buildDeck
+  cards.forEach((card, i) => {
+    const depth = cards.length - 1 - i;
+    card.classList.toggle("top", depth === 0);
+    card.classList.toggle("behind", depth !== 0);
+    applyStackTransform(card, depth);
+  });
+  void el.offsetWidth;          // reflow: fissa la posizione di partenza della card rientrata...
+  el.classList.add("animated"); // ...così al giro dopo scivolerà come le altre invece di saltare
+  autoplayDaRotazione = true;   // v. startPlayback: il timelapse riparte con un attimo di respiro
+  updateChrome();
+  tickClock();
 }
 
 function advance(dir) {
@@ -1871,8 +2015,24 @@ function previewDay(chId, date, isToday) {
   const src = srcFor(chId, date, isToday);
   pendingPreviewSrc = src;
   const pre = new Image();
+  // Il file del giorno è 960×2048: assegnarlo a top.src senza averlo prima
+  // decodificato sposta la decodifica sul thread principale, dentro il paint
+  // successivo — a 900ms di cadenza durante il timelapse si vede come scatto,
+  // e sommata all'animazione del deck (rotateDeck) è il colpo di grazia.
+  // decoding="async" è solo un suggerimento al browser (nessuna garanzia).
+  // pre.decode() invece la garantisce, MA la sua promise dipende dagli stessi
+  // dati che fanno scattare "load" (la decodifica parte dopo il fetch): nel
+  // percorso comune "load" arriva prima che decode() risolva, quindi è
+  // onload — non decode() — ad applicare il fotogramma qui sotto. decode()
+  // resta comunque utile: se risolve per primo (cache calda, decodifica
+  // già pronta) applica subito senza aspettare "load", e in ogni caso il
+  // browser tiene comunque traccia della richiesta di decodifica async.
+  pre.decoding = "async";
+  let applicato = false; // decode() e onload possono risolvere entrambi: si applica una volta sola
   pre.onload = () => {
     if (pendingPreviewSrc !== src) return; // l'utente ha già cambiato giorno: non sovrascrivere
+    if (applicato) return; // già mostrato dal percorso decode() qui sotto
+    applicato = true;
     top.src = src;
     // feat-il-viaggio-si-racconta-anche-a-chi-non-vede: senza questo, l'alt
     // resta quello statico di cardHTML() ("wallpaper di oggi") anche
@@ -1894,6 +2054,11 @@ function previewDay(chId, date, isToday) {
     toast("questo giorno non si carica — controlla la connessione");
   };
   pre.src = src;
+  // Ripiego esplicito: dove decode() non esiste o rifiuta (browser vecchi,
+  // immagine corrotta), resta onload — che il browser chiama comunque anche
+  // senza decode riuscito. Mai un fotogramma perso, mai un errore in console
+  // (l'immagine mancante è già gestita da pre.onerror sopra).
+  if (pre.decode) pre.decode().then(() => pre.onload()).catch(() => {});
   updateDayNav(chId);
   precaricaAdiacenti(chId, date); // i prossimi due passi (avanti/indietro) sono già in cache al ritorno
 }
@@ -1902,6 +2067,14 @@ function previewDay(chId, date, isToday) {
 const prefersStill = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let playTimer = null;
 let playing = false;
+// Ritardo di cortesia prima del primo fotogramma quando il timelapse parte
+// da solo dopo un cambio di canale (mai quando lo si chiede col tasto ▶):
+// chi sfoglia due o tre card di fila non deve pagare il download del canale
+// che sta già lasciando. Il timer è playTimer, quindi stopPlayback() — che
+// rotateDeck chiama a ogni giro — lo annulla: se l'utente sfoglia ancora,
+// non parte nulla finché non si ferma su una card.
+const RITARDO_AUTOPLAY_MS = 700;
+let autoplayDaRotazione = false;
 
 function stopPlayback() {
   playing = false;
@@ -1917,8 +2090,20 @@ function startPlayback() {
   playing = true;
   playEl.classList.add("playing");
   playEl.textContent = "⏸ pausa";
-  // Preload di tutti i frame: dopo il primo giro il loop è fluido (cache immutabile).
-  dates.forEach((d) => { const im = new Image(); im.src = srcFor(chId, d, d === TODAY); });
+  // NIENTE preload dell'intero arco: era una raffica di N richieste e N
+  // decodifiche ad ogni cambio canale (rotateDeck), il singolo costo più
+  // alto del cambio card. Si precarica solo il PRIMO fotogramma — altrimenti
+  // il timelapse partirebbe su un mockup vuoto, previewDay porta l'opacità a
+  // 0 in attesa; gli altri arrivano uno alla volta da previewDay →
+  // precaricaAdiacenti, che durante la riproduzione precarica sempre il
+  // fotogramma successivo e riusa il Set "precaricati" — nessuna immagine
+  // chiesta due volte, nemmeno al secondo giro o rientrando sullo stesso canale.
+  const primo = srcFor(chId, dates[0], dates[0] === TODAY);
+  if (!precaricati.has(primo)) {
+    precaricati.add(primo);
+    const im = new Image();
+    im.src = primo;
+  }
   let i = 0;
   const step = () => {
     if (!playing || CHANNELS[order[0]].id !== chId) { stopPlayback(); return; } // card cambiata
@@ -1928,10 +2113,22 @@ function startPlayback() {
     i = (i + 1) % dates.length; // loop infinito, come una GIF
     playTimer = setTimeout(step, isLast ? 2000 : 900); // su "oggi" si ferma un po' di più
   };
-  step();
+  // Il respiro sopra si applica solo all'autoplay partito da rotateDeck: col
+  // tasto ▶ l'utente ha già scelto di guardare, il primo fotogramma parte subito.
+  const ritardo = autoplayDaRotazione ? RITARDO_AUTOPLAY_MS : 0;
+  autoplayDaRotazione = false;
+  if (ritardo) playTimer = setTimeout(step, ritardo);
+  else step();
 }
 
-playEl.addEventListener("click", () => (playing ? stopPlayback() : startPlayback()));
+playEl.addEventListener("click", () => {
+  // Azzera il flag prima della richiesta esplicita: il ritardo di RITARDO_AUTOPLAY_MS
+  // è pensato solo per l'autoplay che riparte da rotateDeck, mai per il click su ▶ —
+  // altrimenti un flag rimasto true (autoplay saltato per prefers-reduced-motion,
+  // canale con <2 date, o archivio non disponibile) farebbe pagare il ritardo anche qui.
+  autoplayDaRotazione = false;
+  playing ? stopPlayback() : startPlayback();
+});
 
 attachJourneySwipe();
 buildDeck();
