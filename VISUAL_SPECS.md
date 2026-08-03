@@ -173,6 +173,9 @@ verticalmente sia `<button>` sia `<a class="btn ...">` nella stessa fila; il `:n
 è la guardia obbligatoria che evita di rendere visibili i comandi ancora nascosti. Una fila
 `.journey .actions` senza alcun figlio visibile (`:not(:has(> :not([hidden])))`) collassa a
 `display:none`, così da non lasciare spazio vuoto prima che il JS tolga gli `hidden`.
+`.daynav` e `.arcstory` portano la regola esplicita `[hidden]{display:none}`, perché il loro
+display autore flex/grid vincerebbe sullo stile UA e li mostrerebbe anche da nascosti — è ciò
+che teneva i pannelli sempre aperti.
 
 Blob ambient (aggiornamento ai sensi di §7, stesso ciclo): i due `.blob` cambiano colore
 insieme al canale in cima **senza dissolvenza** (via la `transition: background 1.2s`). La

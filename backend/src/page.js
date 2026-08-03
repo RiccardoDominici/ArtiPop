@@ -341,6 +341,15 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
      per il testo secondario, il testo pieno per la tappa corrente — stessa
      coppia già usata da .stale per la nota di freschezza. */
   .arcstory { margin: .8rem auto 0; max-width: 26rem; text-align: left; display: grid; gap: .2rem; }
+  /* .daynav è flex e .arcstory è grid per l'autore: come per .btn qui sopra,
+     le regole dell'autore battono lo style dell'user agent [hidden]{display:none}
+     a prescindere dalla specificità (origine prima di specificità in cascata).
+     Senza questa regola esplicita #daynav resta visibile a HTML anche con
+     l'attributo hidden (frecce del giorno orfane quando l'archivio non è
+     sfogliabile) e i tre pannelli #arcstory/#arclist/#favlist restano sempre
+     aperti una volta popolati — i toggle non chiudono nulla visivamente.
+     Difetto verificato su screenshot reali, sia in anteprima che in produzione. */
+  .daynav[hidden], .arcstory[hidden] { display: none; }
   .arcrow {
     display: block; width: 100%; min-height: 44px; padding: .5rem .2rem;
     border: 0; border-top: 1px solid var(--card-border); background: none;
