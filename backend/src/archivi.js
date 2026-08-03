@@ -4,10 +4,12 @@
 //
 // Sta in un modulo separato da page.js e help.js per lo stesso motivo di
 // help.js: ciclo di vita diverso (cambia solo quando cambia l'elenco degli
-// archivi, mai insieme al deck della home). Nessun JavaScript, nessuna
-// `fetch`: la lista arriva già pronta da chi chiama (index.js), la pagina si
-// limita a renderla — coerente con la guardia `fetches.length === 1` sulla
-// home, che questo modulo non tocca.
+// archivi, mai insieme al deck della home). Nessuna `fetch`: la lista arriva
+// già pronta da chi chiama (index.js), la pagina si limita a renderla —
+// coerente con la guardia `fetches.length === 1` sulla home, che questo
+// modulo non tocca. L'elenco `/archivi` e la pagina d'errore restano senza
+// JavaScript; la pagina di un giorno (`renderGiornoArchivio`) ha invece il
+// solo `<script>` delle scorciatoie da tastiera (v. `TASTIERA_SCRIPT` sotto).
 
 import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag, feedLinkTag } from "./head.js";
 import { LEGACY_ALIASES, getChannel, displayName } from "./channels.js";
@@ -386,6 +388,38 @@ const GIORNO_STYLE = `
 `;
 
 /**
+ * feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera: scorciatoie da
+ * tastiera per la pagina di un giorno d'archivio — segue i link GIÀ presenti
+ * nel markup (`.precedente`, `.successivo`, `.estremo[data-nav]`), nessun
+ * elemento visibile aggiunto. Contenuto letterale e statico, nessuna
+ * interpolazione: nessuna superficie d'iniezione.
+ */
+const TASTIERA_SCRIPT = `
+<script>
+(function () {
+  var MAPPA = {
+    ArrowLeft: "a.precedente",
+    ArrowRight: "a.successivo",
+    Home: 'a.estremo[data-nav="primo"]',
+    End: 'a.estremo[data-nav="ultimo"]'
+  };
+  window.addEventListener("keydown", function (e) {
+    var sel = MAPPA[e.key];
+    if (!sel) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    var tag = t && t.tagName ? String(t.tagName).toLowerCase() : "";
+    if (t && t.isContentEditable) return;
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    var a = document.querySelector(sel);
+    if (!a || !a.href) return;
+    e.preventDefault();
+    window.location.href = a.href;
+  });
+})();
+</script>`;
+
+/**
  * Pagina `/archivi` completa (HTML autoconsistente, nessuna risorsa esterna,
  * nessuno `<script>`). `storici`: array come sopra, `[]` se non ce ne sono,
  * `null` se la scansione KV è fallita — in entrambi i casi la pagina resta
@@ -429,8 +463,9 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * Pagina di un giorno d'archivio (`/archivi/<id>?date=<data>`): il wallpaper
  * con intestazione (canale + data), soggetto se disponibile, e la barra
  * precedente/successivo per sfogliare l'archivio senza tornare a `/archivi`
- * ogni volta. Server-rendered come `renderArchiviPage`: nessuno `<script>`,
- * nessuna `fetch`.
+ * ogni volta. Server-rendered, nessuna `fetch`: l'unico `<script>` è quello
+ * delle scorciatoie da tastiera (feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera,
+ * `TASTIERA_SCRIPT`).
  *
  * `date`: array di TUTTE le date del canale, dalla più recente alla più
  * vecchia (stessa forma di `storici[].date` sopra) — serve solo a calcolare
@@ -475,10 +510,10 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   const piuRecente = idx > 0 ? date[0] : null;
 
   const linkPrimo = piuVecchia
-    ? `<a class="estremo" href="/archivi/${encId}?date=${encodeURIComponent(piuVecchia)}" aria-label="Vai al primo giorno dell'archivio di ${esc(nome)}, ${esc(piuVecchia)}">⇤ primo giorno</a>`
+    ? `<a class="estremo" href="/archivi/${encId}?date=${encodeURIComponent(piuVecchia)}" data-nav="primo" aria-label="Vai al primo giorno dell'archivio di ${esc(nome)}, ${esc(piuVecchia)}">⇤ primo giorno</a>`
     : "";
   const linkUltimo = piuRecente
-    ? `<a class="estremo" href="/archivi/${encId}?date=${encodeURIComponent(piuRecente)}" aria-label="Vai all'ultimo giorno dell'archivio di ${esc(nome)}, ${esc(piuRecente)}">ultimo giorno ⇥</a>`
+    ? `<a class="estremo" href="/archivi/${encId}?date=${encodeURIComponent(piuRecente)}" data-nav="ultimo" aria-label="Vai all'ultimo giorno dell'archivio di ${esc(nome)}, ${esc(piuRecente)}">ultimo giorno ⇥</a>`
     : "";
 
   const linkACaso =
@@ -538,6 +573,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
   </footer>
 </main>
+${TASTIERA_SCRIPT}
 </body>
 </html>`;
 }
