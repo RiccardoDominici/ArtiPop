@@ -257,6 +257,43 @@ function elencoGiorni(id, date, dataCorrente = null) {
  * `conceptNome` sono opzionali: se assenti l'elenco espandibile / la riga del
  * soggetto non vengono emessi (chiamata legacy).
  */
+/**
+ * feat-cerca-il-canale-fra-gli-archivi: sottoinsieme di `storici` il cui nome
+ * visibile (`displayName(id)`) o id grezzo contiene `cerca`, confronto
+ * case-insensitive dopo `trim()`. Pura, nessuna dipendenza dal DOM: il filtro
+ * è lato server proprio perché `/archivi` resta senza alcuno `<script>`
+ * (VISUAL_SPECS §2.1). Con `cerca` vuota/non stringa restituisce l'array
+ * ricevuto invariato (stessa identità: nessuna copia inutile), con `storici`
+ * non-array restituisce `storici` così com'è — il caso `null` lo gestisce già
+ * `renderArchiviPage`, questa funzione non lo duplica.
+ */
+function filtraStorici(storici, cerca) {
+  if (!Array.isArray(storici)) return storici;
+  const q = String(cerca ?? "").trim().toLowerCase();
+  if (q === "") return storici;
+  return storici.filter((c) => {
+    const nome = String(displayName(c.id) ?? "").toLowerCase();
+    const id = String(c.id ?? "").toLowerCase();
+    return nome.includes(q) || id.includes(q);
+  });
+}
+
+/**
+ * Campo di ricerca dell'elenco `/archivi`: `<form method="get">` puro HTML —
+ * nessun JavaScript, la navigazione la fa il browser (criterio: la pagina
+ * resta script-free). Emesso solo dal ramo con elenco disponibile: con
+ * `storici === null` la pagina resta il solo messaggio d'indisponibilità, un
+ * campo che non può filtrare nulla sarebbe un comando morto.
+ * `value` ripresenta la query cercata, sempre passata da `esc()`.
+ */
+function formCerca(cerca) {
+  return `
+    <form class="cerca" method="get" action="/archivi" role="search">
+      <input type="search" name="cerca" value="${esc(cerca)}" placeholder="Cerca un canale" aria-label="Cerca un canale per nome" autocomplete="off" />
+      <button type="submit">Cerca</button>
+    </form>`;
+}
+
 function renderElenco(storici) {
   if (!Array.isArray(storici) || storici.length === 0) {
     return `<p class="msg">Nessun archivio storico da mostrare.</p>`;
@@ -355,6 +392,21 @@ const ARCHIVI_STYLE = `
   a.riapri {
     display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
     text-decoration: none; font-weight: 600; flex-shrink: 0;
+  }
+  form.cerca { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; }
+  form.cerca input[type="search"] {
+    flex: 1; min-width: 0; min-height: 44px; padding: 0 12px;
+    border: 1px solid rgba(255,255,255,.10); border-radius: 10px;
+    background: rgba(255,255,255,.03); color: #f2f3f8; font: inherit;
+    -webkit-appearance: none; appearance: none;
+  }
+  form.cerca input[type="search"]::placeholder { color: #9aa3b8; }
+  form.cerca input[type="search"]:focus-visible { outline: 2px solid #8fd3ff; outline-offset: 2px; }
+  form.cerca button {
+    min-height: 44px; padding: 0 16px; flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,.10); border-radius: 10px;
+    background: rgba(255,255,255,.03); color: #8fd3ff;
+    font: inherit; font-weight: 600; cursor: pointer;
   }
 `;
 
@@ -517,15 +569,28 @@ const GIORNO_SCRIPT = `
 
 /**
  * Pagina `/archivi` completa (HTML autoconsistente, nessuna risorsa esterna,
- * nessuno `<script>`). `storici`: array come sopra, `[]` se non ce ne sono,
- * `null` se la scansione KV è fallita — in entrambi i casi la pagina resta
- * 200 e leggibile con un messaggio diverso (vedi CRITERI del piano).
+ * nessuno `<script>`: il filtro di ricerca è lato server). `storici`: array
+ * come sopra, `[]` se non ce ne sono, `null` se la scansione KV è fallita —
+ * in entrambi i casi la pagina resta 200 e leggibile con un messaggio
+ * diverso (vedi CRITERI del piano). `cerca` (feat-cerca-il-canale-fra-gli-archivi):
+ * testo cercato dal parametro `?cerca=`, filtra le card per nome visibile o
+ * id; con elenco disponibile ma nessuna corrispondenza mostra un messaggio
+ * dedicato invece dell'elenco.
  */
-export function renderArchiviPage(storici, origin = null, dataOggi = null) {
-  const corpo =
-    storici === null
-      ? `<p class="msg">Archivi momentaneamente non disponibili.</p>`
-      : renderElenco(storici);
+export function renderArchiviPage(storici, origin = null, dataOggi = null, cerca = "") {
+  const filtrati = filtraStorici(storici, cerca);
+  const cercaAttiva = String(cerca ?? "").trim() !== "";
+  let corpo;
+  if (storici === null) {
+    corpo = `<p class="msg">Archivi momentaneamente non disponibili.</p>`;
+  } else if (cercaAttiva && Array.isArray(filtrati) && filtrati.length === 0) {
+    // Risultato vuoto della ricerca: messaggio umano con la query escapata e
+    // la via d'uscita verso l'elenco completo — mai una pagina vuota (principio 3).
+    corpo = `<p class="msg">Nessun canale corrisponde a «${esc(cerca)}».</p>
+  <p class="msg"><a href="/archivi">Mostra tutti gli archivi</a></p>`;
+  } else {
+    corpo = renderElenco(filtrati);
+  }
 
   return `<!doctype html>
 <html lang="it">
@@ -544,7 +609,7 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
   <header>
     <a class="back" href="/">← torna ad ArtiPop</a>
     <h1>Archivi</h1>
-    <p class="sub">Tutti i canali con giorni in archivio, in corso e non: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>
+    <p class="sub">Tutti i canali con giorni in archivio, in corso e non: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>${storici === null ? "" : formCerca(cerca)}
   </header>
   ${corpo}
   <footer>

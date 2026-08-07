@@ -288,6 +288,20 @@ o componente nuovo.
   separatore orfano. Presente solo quando almeno uno dei due nomi è disponibile (carta d'identità
   registrata in KV o ricostruzione onesta per i canali a tema fisso, `RICOSTRUZIONE_STORICA` in
   backend/src/handlers.js): card senza dati, nessuna riga del soggetto, mai un contenitore vuoto.
+- Componente aggiuntivo «ricerca del canale» (proposta ai sensi di §7,
+  feat-cerca-il-canale-fra-gli-archivi): dentro `<header>`, sotto `.sub`, un
+  `<form class="cerca" method="get" action="/archivi" role="search">` con un
+  `<input type="search" name="cerca">` (placeholder «Cerca un canale», `aria-label`
+  «Cerca un canale per nome») e un `<button type="submit">Cerca</button>`. Il filtro è
+  **lato server**: il form ricarica `/archivi?cerca=<testo>` e la pagina resta senza alcuno
+  `<script>` e senza `fetch(` come già imposto sopra. Token: campo e bottone bordo
+  `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `10px`, testo `#f2f3f8`,
+  placeholder `#9aa3b8`, etichetta del bottone `#8fd3ff`, `min-height: 44px` entrambi — nessun
+  colore, dimensione o componente fuori da quelli già dichiarati in §2/§2.1. Presente solo con
+  l'elenco disponibile: con scansione fallita la pagina resta il solo messaggio di §2.1, senza
+  form. Nessuna corrispondenza: al posto dell'elenco due `.msg` in `#9aa3b8` — «Nessun canale
+  corrisponde a «{query}».» (query sempre escapata) e il link «Mostra tutti gli archivi» verso
+  `/archivi` in `#8fd3ff` — mai un contenitore vuoto.
 
 ### 2.2 Pagina giorno d'archivio `/archivi/<id>` (sorgente: backend/src/archivi.js, proposta ai sensi di §7)
 

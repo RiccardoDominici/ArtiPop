@@ -1161,7 +1161,8 @@ export default {
           console.error(`[archivi] soggetto non disponibile: ${err.message}`);
         }
       }
-      return new Response(conServiceWorker(renderArchiviPage(storici, url.origin, todayKey())), {
+      const cerca = url.searchParams.get("cerca") ?? "";
+      return new Response(conServiceWorker(renderArchiviPage(storici, url.origin, todayKey(), cerca)), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
