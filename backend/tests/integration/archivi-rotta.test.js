@@ -258,6 +258,60 @@ describe("GET /archivi/<id>", () => {
     expect(res.headers.get("x-frame-options")).toBeTruthy();
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
   });
+
+  // feat-il-giorno-d-archivio-mostra-tutto-il-suo-arco
+  it("giorni dello stesso arco in KV: la striscia compare con i link agli altri giorni e il giorno mostrato marcato aria-current", async () => {
+    const env = makeEnv();
+    for (const [d, n] of [["2025-01-01", 1], ["2025-01-02", 2], ["2025-01-03", 3]]) {
+      await env.KV.put(`archive:island:${d}`, "1");
+      await env.KV.put(
+        `giorno:island:${d}`,
+        JSON.stringify({ data: d, canale: "island", arco: 2, giornoNellArco: n, tappa: n }),
+      );
+    }
+
+    const res = await callWorker(env, "/archivi/island?date=2025-01-02");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<nav class="arco" aria-label="I giorni di questo arco">');
+    expect(html).toContain('href="/archivi/island?date=2025-01-01"');
+    expect(html).toContain('href="/archivi/island?date=2025-01-03"');
+    expect(html).toContain('<span aria-current="page">');
+  });
+
+  it("carte d'identità mancanti (arco ricostruito/null): 200 senza striscia", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put("archive:island:2025-01-03", "1");
+
+    const res = await callWorker(env, "/archivi/island?date=2025-01-02");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain('<nav class="arco"');
+  });
+
+  it("KV.get che lancia sulle chiavi giorno: comunque 200, senza striscia e senza dettagli tecnici", async () => {
+    const kv = makeKV();
+    for (const d of ["2025-01-01", "2025-01-02", "2025-01-03"]) {
+      await kv.put(`archive:island:${d}`, "1");
+    }
+    const env = makeEnv({
+      KV: {
+        ...kv,
+        async get(key, opts) {
+          if (key.startsWith("giorno:")) throw new Error("KV.get non disponibile (simulato)");
+          return kv.get(key, opts);
+        },
+      },
+    });
+
+    const res = await callWorker(env, "/archivi/island?date=2025-01-02");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).not.toContain('<nav class="arco"');
+    expect(html).not.toContain("KV.get non disponibile");
+  });
 });
 
 // feat-riscopri-un-giorno-a-caso-dall-archivio: /archivi/<id>?date=casuale

@@ -16,6 +16,19 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-07 — feat-il-giorno-d-archivio-mostra-tutto-il-suo-arco
+- Nella pagina di un giorno d'archivio l'arco narrativo era finora solo un numero dentro la riga di
+  posizione («arco N · giorno M · tappa K»): non c'era modo di vedere né di saltare agli altri
+  giorni che compongono lo stesso arco. Ora una striscia di miniature, subito dopo quella riga, li
+  mostra tutti e li rende raggiungibili con un tocco.
+- Costo di lettura limitato a priori: la finestra intorno al giorno aperto è ±6 posizioni (al
+  massimo 12 carte d'identità in più), mai una scansione dell'intero archivio.
+- Robustezza: try/catch proprio, separato da quello del soggetto — se l'arco non è ricostruibile
+  (campo assente, carte d'identità mancanti, lettura che fallisce) la pagina resta 200 e la
+  striscia semplicemente non si rende, mai un 500.
+- Miniatura condivisa (`miniaturaGiorno`) estratta dal codice già esistente in `vocegiorno`, riusata
+  anche dalla nuova striscia: evita la duplicazione dello stesso markup in due punti.
+
 ## 2026-08-07 — feat-confronta-il-giorno-d-archivio-con-quello-che-scegli
 - Nell'elenco «tutti i N giorni» della pagina di un giorno d'archivio, ogni altra data porta un
   `⇆` che la affianca a quella mostrata: il ciclo 166 aveva reso possibile il confronto ma con un

@@ -150,6 +150,37 @@ function rigaPosizioneArchivio(idx, totale) {
 }
 
 /**
+ * Striscia dei giorni dello STESSO arco narrativo del giorno mostrato
+ * (feat-il-giorno-d-archivio-mostra-tutto-il-suo-arco): una `<nav class="arco">`
+ * con un link per ogni giorno dell'arco (miniatura riusata `.minigiorno` +
+ * etichetta «giorno N · tappa K»), il giorno corrente reso come `<span
+ * aria-current="page">` non cliccabile. Guardia: con meno di 2 giorni la
+ * striscia non dice nulla (essenzialità) — con `arco` assente/vuoto niente
+ * markup, mai un blocco vuoto. `arco` è già ordinato per data crescente da
+ * chi chiama (index.js): questa funzione non riordina.
+ */
+function strisciaArco(id, arco, dataCorrente) {
+  if (!Array.isArray(arco) || arco.length < 2) return "";
+  const encId = encodeURIComponent(id);
+  const voci = arco.map((v) => {
+    const encD = encodeURIComponent(v.data);
+    const parti = [];
+    if (Number.isFinite(v.giornoNellArco)) parti.push(`giorno ${v.giornoNellArco}`);
+    if (Number.isFinite(v.tappa)) parti.push(`tappa ${v.tappa}`);
+    const etichetta = parti.length ? esc(parti.join(" · ")) : esc(v.data);
+    const contenuto = `${miniaturaGiorno(encId, encD)}<span class="etichetta">${etichetta}</span>`;
+    if (v.data === dataCorrente) {
+      return `<li><span aria-current="page">${contenuto}</span></li>`;
+    }
+    return `<li><a href="/archivi/${encId}?date=${encD}" aria-label="Vai al ${etichetta} di questo arco, ${esc(v.data)}">${contenuto}</a></li>`;
+  });
+  return `
+        <nav class="arco" aria-label="I giorni di questo arco">
+          <ul>${voci.join("")}</ul>
+        </nav>`;
+}
+
+/**
  * feat-due-giorni-d-archivio-uno-accanto-all-altro: la data del secondo
  * giorno da affiancare, o `null` se il parametro `?confronta=` non è
  * utilizzabile. Tre guardie, tutte necessarie: forma `AAAA-MM-GG`, data
@@ -212,6 +243,18 @@ function etichettaMese(dataKey) {
 }
 
 /**
+ * Miniatura 44×94 di un giorno (`/w/<id>?date=<data>`): token `.minigiorno` di
+ * §2.1, decorativa (`alt=""`) — il nome accessibile lo porta sempre il testo
+ * del link/`<span>` che la contiene. Un solo punto perché la usano sia le voci
+ * dell'elenco per mese (`vocegiorno`) sia la striscia dell'arco
+ * (`strisciaArco`): due copie divergerebbero al primo ritocco.
+ * `encId`/`encD` sono GIÀ passati per `encodeURIComponent` da chi chiama.
+ */
+function miniaturaGiorno(encId, encD) {
+  return `<img class="minigiorno" src="/w/${encId}?date=${encD}" alt="" loading="lazy" decoding="async" width="44" height="94" />`;
+}
+
+/**
  * Riga `<li>` di una singola data dentro `elencoGiorni`: stesso link/aria-current/↓ di sempre,
  * più — feat-confronta-il-giorno-d-archivio-con-quello-che-scegli — un terzo comando `⇆` che
  * apre il confronto fra `dataCorrente` (il giorno mostrato) e `d` (la voce), omesso sulla voce
@@ -220,7 +263,7 @@ function etichettaMese(dataKey) {
 function vocegiorno(id, d, dataCorrente = null, confronto = null) {
   const encId = encodeURIComponent(id);
   const encD = encodeURIComponent(d);
-  const miniatura = `<img class="minigiorno" src="/w/${encId}?date=${encD}" alt="" loading="lazy" decoding="async" width="44" height="94" />`;
+  const miniatura = miniaturaGiorno(encId, encD);
   const voce =
     d === dataCorrente
       ? `<span aria-current="page">${miniatura}${esc(d)}</span>`
@@ -502,6 +545,15 @@ const GIORNO_STYLE = `
   .confronto { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; }
   .confronto figure.foto { flex: 1 1 280px; min-width: 0; }
   figure.foto figcaption { margin-top: 6px; text-align: center; font-size: .88rem; color: #9aa3b8; }
+  nav.arco{margin:10px 0 0;}
+  nav.arco>ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 12px;}
+  nav.arco>ul>li{display:flex;}
+  nav.arco>ul>li>a,nav.arco>ul>li>[aria-current]{
+    display:inline-flex;flex-direction:column;align-items:center;gap:6px;
+    min-height:44px;padding:0 4px;font-size:.88rem;text-decoration:none;
+  }
+  nav.arco>ul>li>a{color:#8fd3ff;}
+  nav.arco>ul>li>[aria-current]{color:#f2f3f8;font-weight:600;}
 `;
 
 /**
@@ -708,8 +760,15 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * `/archivi/<id>?date=casuale` (rotta gestita in `index.js` con
  * `scegliDataACaso`, rotazione.js). Con un solo giorno il comando non si
  * emette: porterebbe sempre alla pagina già aperta, un link inutile.
+ *
+ * feat-il-giorno-d-archivio-mostra-tutto-il-suo-arco: `arco` è l'array (già
+ * ordinato per data crescente) dei giorni dello STESSO arco narrativo del
+ * giorno mostrato, `{ data, giornoNellArco, tappa }` per voce — calcolato in
+ * `index.js` in una finestra limitata a priori (±6 posizioni) e passato qui
+ * già pronto, default `[]`. Reso da `strisciaArco` subito dopo `rigaPos`, che
+ * già annuncia l'arco a parole.
  */
-export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null, confronta = null }) {
+export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null, confronta = null, arco = [] }) {
   const idx = Array.isArray(date) ? date.indexOf(data) : -1;
   const precedente = idx >= 0 && idx + 1 < date.length ? date[idx + 1] : null;
   const successivo = idx > 0 ? date[idx - 1] : null;
@@ -765,6 +824,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
   const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
+  const striscia = strisciaArco(id, arco, data);
   const rigaRacc = rigaRacconto(soggetto?.testoTappa);
   const elencoGiorniGiorno = elencoGiorni(id, date, data, confronto);
   // La riga erede non porta mai `&d=`: la data appartiene all'archivio del
@@ -797,7 +857,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
     <a class="back" href="/archivi">← tutti gli archivi</a>
     <h1>${esc(nome)}</h1>
     <p class="sub">${rigaData(data)}</p>
-  </header>${rigaSogg}${rigaPos}${rigaRacc}${rigaPosArch}
+  </header>${rigaSogg}${rigaPos}${striscia}${rigaRacc}${rigaPosArch}
   ${bloccoFigure}
   <nav class="giorni-nav" aria-label="Sfoglia i giorni dell'archivio">
     ${linkPrecedente}

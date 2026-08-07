@@ -103,3 +103,11 @@ describe("renderGiornoArchivio — salvataggio ed escaping", () => {
     expect(html).toContain("&lt;i&gt;El&lt;/i&gt;");
   });
 });
+
+describe("renderGiornoArchivio — arco non passato (retrocompatibilità)", () => {
+  it("senza la chiave arco la pagina si rende comunque, con la figura del giorno e senza striscia", () => {
+    const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
+    expect(html).toContain('<figure class="foto">');
+    expect(html).not.toContain('<nav class="arco"');
+  });
+});
