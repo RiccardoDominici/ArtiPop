@@ -1253,8 +1253,42 @@ export default {
         console.error(`[archivi/${id}] soggetto non disponibile: ${err.message}`);
       }
 
+      // feat-il-giorno-d-archivio-mostra-tutto-il-suo-arco: i giorni dello
+      // STESSO arco del giorno aperto, letti in una finestra LIMITATA A PRIORI
+      // (±6 posizioni attorno al giorno mostrato, al massimo 12 carte
+      // d'identità in più — CRITERI 4). try/catch proprio, separato da quello
+      // del soggetto: un errore lascia la pagina senza striscia, mai un 500.
+      let arco = [];
+      try {
+        if (Number.isFinite(soggetto?.arco)) {
+          const i = date.indexOf(data);
+          const finestra = date
+            .slice(Math.max(0, i - 6), i + 7)
+            .filter((d) => d !== data);
+          const carte = await Promise.all(
+            finestra.map(async (d) => ({ data: d, carta: await cartaDiIdentita(env, id, d) })),
+          );
+          arco = carte
+            .filter(({ carta }) => carta?.arco === soggetto.arco)
+            .map(({ data: d, carta }) => ({
+              data: d,
+              giornoNellArco: carta.giornoNellArco,
+              tappa: carta.tappa,
+            }))
+            .concat([{
+              data,
+              giornoNellArco: soggetto.giornoNellArco,
+              tappa: soggetto.tappa,
+            }])
+            .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+        }
+      } catch (err) {
+        console.error(`[archivi/${id}] arco non disponibile: ${err.message}`);
+        arco = [];
+      }
+
       return new Response(
-        conServiceWorker(renderGiornoArchivio({ id, data, date, soggetto, origin: url.origin, confronta })),
+        conServiceWorker(renderGiornoArchivio({ id, data, date, soggetto, origin: url.origin, confronta, arco })),
         {
           headers: {
             "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",

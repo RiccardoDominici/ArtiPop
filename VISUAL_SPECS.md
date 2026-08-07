@@ -327,6 +327,18 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   `handlers.js` hanno `arco/giornoNellArco/tappa: null`, quindi nessuna riga vuota — subito dopo la
   riga del soggetto e prima della riga del racconto. Nessun token nuovo: riusa `<div class="soggetto">`
   già esistente, nessuna regola CSS, colore o dimensione aggiunti.
+- Striscia dell'arco (proposta ai sensi di §7, feat-il-giorno-d-archivio-mostra-tutto-il-suo-arco):
+  `<nav class="arco" aria-label="I giorni di questo arco">` con una `<ul>` di voci, una per giorno
+  dello stesso arco narrativo del giorno mostrato, in ordine cronologico crescente, subito dopo la
+  riga della posizione (che già annuncia l'arco a parole) e prima della riga del racconto. Ogni
+  voce riusa la `<img class="minigiorno">` `44×94` di §2.1 (`alt=""`, `loading="lazy"`,
+  `decoding="async"`) più l'etichetta «giorno N · tappa K» nei token già in uso `.88rem`/`#8fd3ff`
+  (`#f2f3f8` + `font-weight:600` per il giorno mostrato), area di tocco ≥44px. Il giorno aperto è
+  uno `<span aria-current="page">` non cliccabile, stessa regola dell'elenco «tutti i N giorni».
+  Assente con meno di 2 giorni nell'arco o quando l'arco non è ricostruibile (campo `arco` assente,
+  carte d'identità non disponibili, errore di lettura). **Nessun colore, font, dimensione o
+  componente nuovi; nessuno `<script>` in più — la striscia è server-rendered e funziona a
+  JavaScript spento.**
 - Riga del racconto: `<p class="racconto">` col testo della tappa in `#f2f3f8` (stesso `--text`),
   emessa solo se il testo è disponibile — i giorni ricostruiti di `handlers.js` hanno
   `testoTappa: null`, quindi nessun paragrafo vuoto — subito dopo la riga della posizione e prima
