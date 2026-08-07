@@ -16,17 +16,6 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
-## 2026-08-07 — feat-il-giorno-d-archivio-si-condivide-con-un-tocco
-- La pagina di un giorno d'archivio guadagna «copia link»: il perché è che il link ufficiale
-  di quel giorno esisteva già (canonical, ciclo 158) ma sul telefono l'unico modo di prenderlo
-  era pescarlo dalla barra del browser — la home ha lo stesso gesto (#dayshare) da tempo.
-- L'indirizzo si legge dal `<link rel="canonical">` con ripiego su `location.href`: nessun dato
-  interpolato nello script, nessuna nuova superficie d'iniezione.
-- `TASTIERA_SCRIPT` → `GIORNO_SCRIPT`: la logica di copia vive nello STESSO `<script>` delle
-  scorciatoie (VISUAL_SPECS §2.2 impone un solo blocco), non in un secondo blocco.
-- Bottone `hidden` nel markup + regola `[hidden]` esplicita in CSS: senza JavaScript o senza
-  `navigator.clipboard` il comando non compare — mai un bottone che non fa nulla.
-
 ## 2026-08-03 — feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera
 - La pagina di un giorno d'archivio (`/archivi/<id>?date=…`) risponde ora a `←`/`→` (giorno
   precedente/successivo) e `Home`/`Fine` (primo/ultimo giorno): sfogliare molti giorni di fila da

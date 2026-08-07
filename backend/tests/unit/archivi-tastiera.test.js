@@ -2,9 +2,6 @@
 // seguono i link precedente/successivo/estremo già presenti nel markup della
 // pagina di un giorno d'archivio, con le stesse guardie di robustezza della
 // navigazione da tastiera della home (feat-sfoglia-il-viaggio-con-la-tastiera).
-// Il blocco `<script>` (GIORNO_SCRIPT) è condiviso con la copia del link
-// (feat-il-giorno-d-archivio-si-condivide-con-un-tocco, v. archivi-condividi.test.js):
-// le scorciatoie qui sotto non cambiano.
 import { describe, it, expect } from "vitest";
 import { renderGiornoArchivio } from "../../src/archivi.js";
 
@@ -113,13 +110,5 @@ describe("renderGiornoArchivio — scorciatoie da tastiera", () => {
     });
     expect(blocco(htmlOstile)).toBe(blocco(html));
     expect(htmlOstile).not.toContain("<script>alert(1)</script>");
-  });
-
-  it("le due IIFE convivono nello stesso blocco: keydown ancora presente accanto alla copia", () => {
-    const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
-    const script = blocco(html);
-    expect(script).toContain('addEventListener("keydown"');
-    expect(script).toContain("clipboard");
-    expect((html.match(/<script/g) || []).length).toBe(1);
   });
 });
