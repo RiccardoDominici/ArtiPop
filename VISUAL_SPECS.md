@@ -396,9 +396,24 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   non agisce con un modificatore premuto (`meta`/`ctrl`/`alt`) né col fuoco in un campo di testo
   (`input`, `textarea`, `select`, `contenteditable`), e chiama `preventDefault()` solo quando
   naviga davvero.
-- Un solo `<script>` inline nell'HTML servito, quello delle scorciatoie qui sopra, e nessuna
-  `fetch(`: la pagina resta server-rendered e non fa rete. §2.1 (`/archivi`) e la pagina d'errore
-  qui sotto restano senza alcuno `<script>`.
+- Copia link (proposta ai sensi di §7, feat-il-giorno-d-archivio-si-condivide-con-un-tocco):
+  in coda alla stessa barra di navigazione, dopo «un giorno a caso», un
+  `<button class="salva copia-link" type="button">copia link</button>` — stesso trattamento
+  del link `.salva` accanto (colore `#8fd3ff`, `font-weight:600`, area di tocco ≥44px,
+  `background:transparent`, nessun bordo): nessun colore, dimensione o componente nuovi, il
+  bottone si legge come gli altri comandi della barra. `aria-label` esplicito che nomina data e
+  canale, come gli altri comandi della pagina. Miglioramento progressivo: nel markup il bottone
+  è `hidden` (con regola CSS `[hidden] { display:none }` esplicita, perché la regola
+  `display:inline-flex` non lo scopra) e viene mostrato solo se il browser espone
+  `navigator.clipboard` — senza JavaScript o in contesto non sicuro l'aspetto della pagina non
+  cambia e non compare alcun comando che non funziona. L'indirizzo copiato è quello canonico già
+  emesso nel `<head>` (`<link rel="canonical">`), con ripiego su `location.href` quando l'origin
+  non è noto al render. Conferma ed errore sono il solo cambio di testo dentro il bottone
+  («link copiato» / «copia non riuscita», ~2s poi ritorno a «copia link»): nessun toast, nessun
+  overlay, nessun componente nuovo da progettare.
+- Un solo `<script>` inline nell'HTML servito — quello delle scorciatoie e della copia del link
+  qui sopra, due IIFE nello STESSO blocco, e nessuna `fetch(`: la pagina resta server-rendered e
+  non fa rete. §2.1 (`/archivi`) e la pagina d'errore qui sotto restano senza alcuno `<script>`.
 - Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente in archivio):
   messaggio umano in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON,
   mai la pagina d'errore generica di Cloudflare (principio 3 di CLAUDE.md). Quando il canale ha
