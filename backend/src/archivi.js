@@ -9,8 +9,8 @@
 // coerente con la guardia `fetches.length === 1` sulla home, che questo
 // modulo non tocca. L'elenco `/archivi` e la pagina d'errore restano senza
 // JavaScript; la pagina di un giorno (`renderGiornoArchivio`) ha invece il
-// solo `<script>` `GIORNO_SCRIPT` sotto, due IIFE indipendenti: scorciatoie
-// da tastiera e condivisione — mai un secondo blocco.
+// solo `<script>` `GIORNO_SCRIPT` sotto, tre IIFE indipendenti: scorciatoie
+// da tastiera, condivisione e sfogliata col dito — mai un secondo blocco.
 
 import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag, feedLinkTag } from "./head.js";
 import { LEGACY_ALIASES, getChannel, displayName } from "./channels.js";
@@ -395,7 +395,7 @@ const GIORNO_STYLE = `
 `;
 
 /**
- * Unico `<script>` della pagina di un giorno d'archivio: DUE IIFE
+ * Unico `<script>` della pagina di un giorno d'archivio: TRE IIFE
  * indipendenti nello stesso blocco (mai un secondo `<script>`, v. §2.2).
  *
  * 1) feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera: scorciatoie da
@@ -405,6 +405,10 @@ const GIORNO_STYLE = `
  *    foglio di condivisione nativo (`navigator.share`), ripiego negli
  *    appunti dove non c'è; rende visibile `button.condividi` solo se almeno
  *    un canale esiste.
+ * 3) feat-il-giorno-d-archivio-si-sfoglia-col-dito: una strisciata orizzontale
+ *    del dito segue gli stessi link `.precedente`/`.successivo` della IIFE 1,
+ *    con guardie su `pointerType`, soglia e dominanza orizzontale, nessun
+ *    elemento visibile aggiunto.
  *
  * Contenuto letterale e statico, nessuna interpolazione: nessuna superficie
  * d'iniezione.
@@ -476,6 +480,38 @@ const GIORNO_SCRIPT = `
       }
     } catch (e) { copia(link); }
   });
+})();
+(function () {
+  /* feat-il-giorno-d-archivio-si-sfoglia-col-dito: strisciata orizzontale del
+     dito = gli stessi link precedente/successivo della barra e degli stessi
+     tasti ←/→ (IIFE 1) — su un telefono la tastiera non c'è. Stessa meccanica
+     e stessa soglia di attachJourneySwipe sulla home (page.js): nessun
+     preventDefault su pointermove, così lo scorrimento verticale resta libero;
+     conta solo un gesto ampio e prevalentemente orizzontale. */
+  var SOGLIA = 48;                 // px minimi orizzontali perché sia un gesto
+  var g = null;                    // gesto in corso: { x, y } del pointerdown
+  document.addEventListener("pointerdown", function (e) {
+    g = null;
+    if (e.pointerType !== "touch" && e.pointerType !== "pen") return;  // mai il mouse
+    if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+    var t = e.target;
+    if (t && t.closest &&
+        t.closest("a, button, input, textarea, select, summary, details, [contenteditable]")) return;
+    g = { x: e.clientX, y: e.clientY };
+  });
+  document.addEventListener("pointerup", function (e) {
+    var s = g;
+    g = null;
+    if (!s) return;
+    var dx = e.clientX - s.x;
+    var dy = e.clientY - s.y;
+    if (Math.abs(dx) < SOGLIA) return;          // troppo corto: un tocco, non un gesto
+    if (Math.abs(dx) <= Math.abs(dy)) return;   // verticale dominante: è uno scorrimento
+    var a = document.querySelector(dx < 0 ? "a.successivo" : "a.precedente");
+    if (!a || !a.href) return;                  // bordo dell'archivio: il link non è emesso
+    window.location.href = a.href;
+  });
+  document.addEventListener("pointercancel", function () { g = null; });
 })();
 </script>`;
 

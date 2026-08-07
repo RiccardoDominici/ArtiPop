@@ -410,9 +410,21 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   il solo cambio di testo dentro il bottone («link copiato» / «copia non riuscita» / «condivisione
   non riuscita», ~2s poi ritorno a «condividi»): nessun toast, nessun overlay, nessun componente
   nuovo.
-- Un solo `<script>` inline nell'HTML servito — scorciatoie e condivisione, DUE IIFE nello STESSO
-  blocco — e nessuna `fetch(`: la pagina resta server-rendered e non fa rete. §2.1 (`/archivi`) e la
-  pagina d'errore qui sotto restano senza alcuno `<script>`.
+- Sfogliare col dito (proposta ai sensi di §7, feat-il-giorno-d-archivio-si-sfoglia-col-dito): una
+  strisciata orizzontale del dito segue gli stessi link della voce «Scorciatoie da tastiera» —
+  verso sinistra «giorno successivo» (`a.successivo`), verso destra «giorno precedente»
+  (`a.precedente`), stessa direzione del mazzo della home. **Nessun elemento visibile aggiunto,
+  nessun token, colore o dimensione nuovi: l'aspetto della pagina non cambia in nessun viewport.**
+  Miglioramento progressivo: senza JavaScript la pagina resta identica e tutti i link restano
+  cliccabili; al bordo dell'archivio, dove il link non è emesso, il gesto non fa nulla. Guardie:
+  solo `pointerType` `touch`/`pen` (mai il mouse), soglia orizzontale ≥48px, movimento orizzontale
+  dominante su quello verticale (`|dx| > |dy|`, così lo scorrimento verticale della pagina resta
+  intatto), nessuna azione con un modificatore premuto né se il gesto parte da `a`, `button`,
+  `input`, `textarea`, `select`, `summary`, `details` o `[contenteditable]` (l'elenco per mese e il
+  bottone «condividi» continuano a rispondere al tocco come prima).
+- Un solo `<script>` inline nell'HTML servito — scorciatoie, condivisione e sfogliata col dito, TRE
+  IIFE nello STESSO blocco — e nessuna `fetch(`: la pagina resta server-rendered e non fa rete.
+  §2.1 (`/archivi`) e la pagina d'errore qui sotto restano senza alcuno `<script>`.
 - Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente in archivio):
   messaggio umano in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON,
   mai la pagina d'errore generica di Cloudflare (principio 3 di CLAUDE.md). Quando il canale ha

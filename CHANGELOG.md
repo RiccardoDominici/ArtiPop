@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-07 — feat-il-giorno-d-archivio-si-sfoglia-col-dito
+- La pagina di un giorno d'archivio si sfoglia con una strisciata del dito (sinistra → giorno
+  successivo, destra → precedente): dal ciclo 155 ci sono le scorciatoie da tastiera, ma
+  sull'archivio — che si consuma soprattutto da telefono — la tastiera non c'è e l'unico modo di
+  cambiare giorno era centrare un link.
+- Terza IIFE nello stesso unico <script> di GIORNO_SCRIPT, non un secondo blocco: il contratto
+  §2.2 («un solo <script>», nessuna fetch() resta vero. Segue i link a.precedente/a.successivo già
+  nel markup, quindi nessun elemento visibile aggiunto e nessuna baseline visual da aggiornare.
+
 ## 2026-08-07 — feat-il-giorno-d-archivio-si-condivide-con-un-tocco
 - La pagina di un giorno d'archivio ha ora un bottone «condividi» nella barra `nav.giorni-nav`: il
   link canonico del giorno esisteva già (ciclo 158, `canonicalTag`) ma dal telefono si poteva solo
