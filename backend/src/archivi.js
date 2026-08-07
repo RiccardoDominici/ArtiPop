@@ -211,14 +211,28 @@ function etichettaMese(dataKey) {
   return { chiave: dataKey.slice(0, 7), label };
 }
 
-/** Riga `<li>` di una singola data dentro `elencoGiorni`: stesso link/aria-current/↓ di sempre. */
-function vocegiorno(id, d, dataCorrente) {
-  const miniatura = `<img class="minigiorno" src="/w/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}" alt="" loading="lazy" decoding="async" width="44" height="94" />`;
+/**
+ * Riga `<li>` di una singola data dentro `elencoGiorni`: stesso link/aria-current/↓ di sempre,
+ * più — feat-confronta-il-giorno-d-archivio-con-quello-che-scegli — un terzo comando `⇆` che
+ * apre il confronto fra `dataCorrente` (il giorno mostrato) e `d` (la voce), omesso sulla voce
+ * mostrata, su quella già affiancata e fuori dalla pagina di un giorno (`dataCorrente` nullo).
+ */
+function vocegiorno(id, d, dataCorrente = null, confronto = null) {
+  const encId = encodeURIComponent(id);
+  const encD = encodeURIComponent(d);
+  const miniatura = `<img class="minigiorno" src="/w/${encId}?date=${encD}" alt="" loading="lazy" decoding="async" width="44" height="94" />`;
   const voce =
     d === dataCorrente
       ? `<span aria-current="page">${miniatura}${esc(d)}</span>`
-      : `<a href="/archivi/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}">${miniatura}${esc(d)}</a>`;
-  return `<li>${voce}<a class="salva-giorno" href="/w/${encodeURIComponent(id)}?date=${encodeURIComponent(d)}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a></li>`;
+      : `<a href="/archivi/${encId}?date=${encD}">${miniatura}${esc(d)}</a>`;
+  const salva = `<a class="salva-giorno" href="/w/${encId}?date=${encD}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(d)}">↓</a>`;
+  // feat-confronta-il-giorno-d-archivio-con-quello-che-scegli
+  const inPaginaGiorno = typeof dataCorrente === "string" && dataCorrente !== "";
+  const confronta =
+    inPaginaGiorno && d !== dataCorrente && d !== confronto
+      ? `<a class="confronta-giorno" href="/archivi/${encId}?date=${encodeURIComponent(dataCorrente)}&amp;confronta=${encD}" aria-label="Confronta il giorno ${esc(dataCorrente)} col ${esc(d)}">⇆</a>`
+      : "";
+  return `<li>${voce}${salva}${confronta}</li>`;
 }
 
 /**
@@ -237,8 +251,12 @@ function vocegiorno(id, d, dataCorrente) {
  * chiavi malformate finiscono tutte nell'ultimo gruppo «altri giorni», mai
  * scartate. Solo il gruppo che contiene `dataCorrente` è aperto di default;
  * con un solo gruppo, quel gruppo resta aperto comunque.
+ *
+ * feat-confronta-il-giorno-d-archivio-con-quello-che-scegli: `confronto` è la data già
+ * affiancata (modalità confronto attiva) — esclusa dall'emissione del comando `⇆` in
+ * `vocegiorno`, mai un link verso lo stato già a schermo.
  */
-function elencoGiorni(id, date, dataCorrente = null) {
+function elencoGiorni(id, date, dataCorrente = null, confronto = null) {
   if (!Array.isArray(date) || date.length === 0) return "";
 
   const ordine = [];
@@ -270,7 +288,7 @@ function elencoGiorni(id, date, dataCorrente = null) {
       return `
           <details class="mese"${aperto ? " open" : ""}>
             <summary aria-label="${esc(gruppo.label)} — ${n} giorn${plurale} di ${esc(id)}">${esc(gruppo.label)} — ${n} giorn${plurale}</summary>
-            <ul class="date">${gruppo.voci.map((d) => vocegiorno(id, d, dataCorrente)).join("")}</ul>
+            <ul class="date">${gruppo.voci.map((d) => vocegiorno(id, d, dataCorrente, confronto)).join("")}</ul>
           </details>`;
     })
     .join("");
@@ -281,19 +299,6 @@ function elencoGiorni(id, date, dataCorrente = null) {
         </details>`;
 }
 
-/**
- * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array
- * ordinato da chi chiama, forma
- * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome, attivo }]` —
- * stessa forma di `listChannelsWithArchive` (storage.js) una volta appiattita
- * la Map in voci con `id`, arricchita da `cartaDiIdentita` (handlers.js) e
- * `attivo` (feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio: `id`
- * è in `ACTIVE_CHANNELS`). Nonostante il nome, l'elenco comprende ora anche i
- * canali ancora attivi che hanno giorni in archivio, non solo quelli
- * storici. `date` (dalla più recente alla più vecchia), `elementNome` e
- * `conceptNome` sono opzionali: se assenti l'elenco espandibile / la riga del
- * soggetto non vengono emessi (chiamata legacy).
- */
 /**
  * feat-cerca-il-canale-fra-gli-archivi: sottoinsieme di `storici` il cui nome
  * visibile (`displayName(id)`) o id grezzo contiene `cerca`, confronto
@@ -331,6 +336,19 @@ function formCerca(cerca) {
     </form>`;
 }
 
+/**
+ * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array
+ * ordinato da chi chiama, forma
+ * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome, attivo }]` —
+ * stessa forma di `listChannelsWithArchive` (storage.js) una volta appiattita
+ * la Map in voci con `id`, arricchita da `cartaDiIdentita` (handlers.js) e
+ * `attivo` (feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio: `id`
+ * è in `ACTIVE_CHANNELS`). Nonostante il nome, l'elenco comprende ora anche i
+ * canali ancora attivi che hanno giorni in archivio, non solo quelli
+ * storici. `date` (dalla più recente alla più vecchia), `elementNome` e
+ * `conceptNome` sono opzionali: se assenti l'elenco espandibile / la riga del
+ * soggetto non vengono emessi (chiamata legacy).
+ */
 function renderElenco(storici) {
   if (!Array.isArray(storici) || storici.length === 0) {
     return `<p class="msg">Nessun archivio storico da mostrare.</p>`;
@@ -401,7 +419,7 @@ const BASE_STYLE = `
     width: 44px; height: 94px; object-fit: cover; border-radius: 8px;
     border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); flex: none;
   }
-  a.salva, a.salva-giorno {
+  a.salva, a.salva-giorno, a.confronta-giorno {
     color: #8fd3ff; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
     text-decoration: none; font-weight: 600; flex-shrink: 0;
   }
@@ -748,7 +766,7 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
   const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
   const rigaRacc = rigaRacconto(soggetto?.testoTappa);
-  const elencoGiorniGiorno = elencoGiorni(id, date, data);
+  const elencoGiorniGiorno = elencoGiorni(id, date, data, confronto);
   // La riga erede non porta mai `&d=`: la data appartiene all'archivio del
   // canale storico, non a quello dell'erede — passarla porterebbe la home
   // su un giorno che il canale erede non ha.

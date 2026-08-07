@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-07 — feat-confronta-il-giorno-d-archivio-con-quello-che-scegli
+- Nell'elenco «tutti i N giorni» della pagina di un giorno d'archivio, ogni altra data porta un
+  `⇆` che la affianca a quella mostrata: il ciclo 166 aveva reso possibile il confronto ma con un
+  solo termine fisso (il giorno precedente), e per confrontare due giorni lontani si doveva
+  comporre l'URL a mano.
+- Zero superficie nuova: la validazione server (`dataConfronto`) accettava già qualunque data in
+  archivio, quindi mancava solo l'ingresso in interfaccia — nessuna rotta, nessun parametro,
+  nessuna dipendenza, nessun `<script>` in più, e il CSS riusa la regola di `.salva-giorno`.
+
 ## 2026-08-07 — feat-due-giorni-d-archivio-uno-accanto-all-altro
 - La pagina di un giorno d'archivio accetta `?confronta=<data>` e affianca un secondo wallpaper dello
   stesso canale: si vede come è cambiato il canale fra due date senza aprire due schede.
