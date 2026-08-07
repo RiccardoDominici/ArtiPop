@@ -103,6 +103,18 @@ describe("GET /archivi", () => {
     expect(html).toContain("horizon");
     expect(html).not.toContain('class="soggetto"');
   });
+
+  it("?cerca=<id>: 200 con la sola card che corrisponde, le altre assenti", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:bloom:2025-02-01", "1");
+
+    const res = await callWorker(env, "/archivi?cerca=isl");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("/archivi/island?date=2025-01-01");
+    expect(html).not.toContain("/archivi/bloom?date=2025-02-01");
+  });
 });
 
 // feat-il-giorno-d-archivio-si-apre-dentro-il-sito: /archivi/<id> apre UN

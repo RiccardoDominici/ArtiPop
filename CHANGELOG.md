@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-07 — feat-cerca-il-canale-fra-gli-archivi
+- `/archivi` ha un campo di ricerca del canale: con molti archivi l'elenco è lungo e trovare un
+  canale voleva dire scorrerlo tutto.
+- Filtro **lato server** via `?cerca=` (`<form method="get">` puro HTML) e non client-side: la
+  pagina è vincolata a restare senza alcuno `<script>` (VISUAL_SPECS §2.1, archivi-pagina.test.js) —
+  un filtro JS sarebbe entrato in collisione con quel contratto.
+- Nessuna corrispondenza → messaggio umano con la query e link di ritorno all'elenco completo,
+  mai una pagina vuota.
+
 ## 2026-08-07 — feat-il-giorno-d-archivio-si-sfoglia-col-dito
 - La pagina di un giorno d'archivio si sfoglia con una strisciata del dito (sinistra → giorno
   successivo, destra → precedente): dal ciclo 155 ci sono le scorciatoie da tastiera, ma
