@@ -3,7 +3,9 @@
 // pagina di un giorno d'archivio, con le stesse guardie di robustezza della
 // navigazione da tastiera della home (feat-sfoglia-il-viaggio-con-la-tastiera).
 // Lo stesso blocco <script> (GIORNO_SCRIPT) ospita anche la seconda IIFE di
-// feat-il-giorno-d-archivio-si-condivide-con-un-tocco (v. archivi-condividi.test.js).
+// feat-il-giorno-d-archivio-si-condivide-con-un-tocco (v. archivi-condividi.test.js)
+// e la terza di feat-il-giorno-d-archivio-si-sfoglia-col-dito (v.
+// archivi-sfoglia-col-dito.test.js).
 import { describe, it, expect } from "vitest";
 import { renderGiornoArchivio } from "../../src/archivi.js";
 
@@ -114,12 +116,13 @@ describe("renderGiornoArchivio — scorciatoie da tastiera", () => {
     expect(htmlOstile).not.toContain("<script>alert(1)</script>");
   });
 
-  it("le due IIFE convivono nello stesso blocco <script>", () => {
+  it("le tre IIFE convivono nello stesso blocco <script>", () => {
     const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
     const script = blocco(html);
     expect(script).toContain('addEventListener("keydown"');
     expect(script).toContain("navigator.share");
     expect(script).toContain("clipboard");
+    expect(script).toContain("pointerdown");
     expect((html.match(/<script/g) || []).length).toBe(1);
   });
 });
