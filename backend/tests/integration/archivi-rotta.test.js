@@ -163,6 +163,26 @@ describe("GET /archivi/<id>", () => {
     expect(html).toContain(`<meta property="og:url" content="${ORIGIN}/archivi/island?date=2025-01-02" />`);
   });
 
+  it("?date=X&confronta=Y: la seconda figura arriva fino all'HTML servito", async () => {
+    // feat-due-giorni-d-archivio-uno-accanto-all-altro
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put("archive:island:2025-01-03", "1");
+
+    const res = await callWorker(env, "/archivi/island?date=2025-01-02&confronta=2025-01-01");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect((html.match(/<figure class="foto"/g) || []).length).toBe(2);
+    expect(html).toContain('<img src="/w/island?date=2025-01-01"');
+    expect(html).toContain('<div class="confronto">');
+
+    const resInesistente = await callWorker(env, "/archivi/island?date=2025-01-02&confronta=2099-01-01");
+    expect(resInesistente.status).toBe(200);
+    const htmlInesistente = await resInesistente.text();
+    expect((htmlInesistente.match(/<figure class="foto"/g) || []).length).toBe(1);
+  });
+
   it("?date= malformata: HTML 404 con link a /archivi, mai JSON", async () => {
     const env = makeEnv();
     await env.KV.put("archive:island:2025-01-01", "1");

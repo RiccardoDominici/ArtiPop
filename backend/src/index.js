@@ -1228,6 +1228,11 @@ export default {
             ? dateParam
             : null;
 
+      // feat-due-giorni-d-archivio-uno-accanto-all-altro: parametro passato
+      // GREZZO al renderer, che ha già `date` e valida da sé (dataConfronto):
+      // nessuna seconda copia della stessa regola qui.
+      const confronta = url.searchParams.get("confronta");
+
       // Nessuna data disponibile: id sconosciuto, canale senza archivio, o
       // ?date= che non ci sta dentro. Sempre una pagina HTML leggibile con
       // link a /archivi (principio 3), mai JSON, mai un 500 grezzo.
@@ -1249,7 +1254,7 @@ export default {
       }
 
       return new Response(
-        conServiceWorker(renderGiornoArchivio({ id, data, date, soggetto, origin: url.origin })),
+        conServiceWorker(renderGiornoArchivio({ id, data, date, soggetto, origin: url.origin, confronta })),
         {
           headers: {
             "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",

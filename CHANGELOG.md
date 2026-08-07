@@ -16,6 +16,14 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-07 — feat-due-giorni-d-archivio-uno-accanto-all-altro
+- La pagina di un giorno d'archivio accetta `?confronta=<data>` e affianca un secondo wallpaper dello
+  stesso canale: si vede come è cambiato il canale fra due date senza aprire due schede.
+- Direzione opposta al ciclo 150 (FALLITO(EXEC), rotta/pagina di confronto dedicata, diff troppo
+  ampio): qui `renderGiornoArchivio` rende una seconda `<figure>` sulla pagina esistente, zero
+  JavaScript, URL condivisibile, diff minimo — `index.js` è un puro pass-through, tutta la
+  validazione (`dataConfronto`) vive nel renderer ed è testabile in unit.
+
 ## 2026-08-07 — feat-cerca-il-canale-fra-gli-archivi
 - `/archivi` ha un campo di ricerca del canale: con molti archivi l'elenco è lungo e trovare un
   canale voleva dire scorrerlo tutto.
