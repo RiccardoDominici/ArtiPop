@@ -37,17 +37,21 @@ describe("renderGiornoArchivio — confronto fra due giorni", () => {
   });
 
   it("link d'ingresso: solo con un precedente e fuori confronto", () => {
+    const barra = (html) => html.slice(html.indexOf('<nav class="giorni-nav"'), html.indexOf("</nav>"));
+
     const conPrecedente = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
     expect(conPrecedente).toContain("confronta=2025-01-01");
     expect(conPrecedente).toContain("confronta col precedente");
 
     const senzaPrecedente = renderGiornoArchivio({ id: "island", data: "2025-01-01", date: DATE });
-    expect(senzaPrecedente).not.toContain("confronta=");
+    expect(barra(senzaPrecedente)).not.toContain("confronta=");
+    expect(senzaPrecedente).not.toContain("confronta col precedente");
 
     const inConfronto = renderGiornoArchivio({
       id: "island", data: "2025-01-02", date: DATE, confronta: "2025-01-01",
     });
-    expect(inConfronto).not.toContain("confronta=");
+    expect(barra(inConfronto)).not.toContain("confronta=");
+    expect(inConfronto).not.toContain("confronta col precedente");
   });
 
   it("link d'uscita: «chiudi il confronto» verso il giorno singolo", () => {

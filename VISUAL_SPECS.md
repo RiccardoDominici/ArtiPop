@@ -448,6 +448,20 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   identica a quella senza parametro, mai una figura vuota. **Nessun colore, dimensione o componente
   nuovi; nessuno `<script>` in più: il contratto «un solo `<script>`, tre IIFE, nessuna `fetch`»
   resta invariato — il confronto è tutto server-rendered e funziona a JavaScript spento.**
+- Scelta del secondo giorno (proposta ai sensi di §7,
+  feat-confronta-il-giorno-d-archivio-con-quello-che-scegli): nell'elenco «tutti i N giorni»
+  qui sopra, ogni voce diversa dal giorno mostrato porta in coda, dopo il `↓`, un
+  `<a class="confronta-giorno">⇆</a>` verso `/archivi/<id>?date=<giorno mostrato>&confronta=<data
+  della voce>` — secondo ingresso al confronto accanto a «⇆ confronta col precedente» della barra,
+  che resta invariato. Stessi token di `.salva-giorno` di §2.1 (colore `#8fd3ff`,
+  `font-weight:600`, area di tocco ≥44px): **nessun colore, font, dimensione o componente nuovi**,
+  la regola CSS è la stessa, con il selettore esteso. `aria-label` esplicito che nomina le due date
+  («Confronta il giorno {D} col {altra}»), perché il glifo da solo non è autoesplicativo — stessa
+  regola del `↓`. Omesso sulla voce del giorno mostrato e, in modalità confronto, su quella del
+  giorno già affiancato (mai un link verso lo stato già a schermo); con un solo giorno in archivio
+  nessuna voce lo porta. Assente nell'elenco di §2.1 e nella pagina d'errore, dove non esiste un
+  giorno mostrato da confrontare. Server-rendered come il confronto stesso: è un `<a href>`,
+  funziona a JavaScript spento.
 - Un solo `<script>` inline nell'HTML servito — scorciatoie, condivisione e sfogliata col dito, TRE
   IIFE nello STESSO blocco — e nessuna `fetch(`: la pagina resta server-rendered e non fa rete.
   §2.1 (`/archivi`) e la pagina d'errore qui sotto restano senza alcuno `<script>`.
