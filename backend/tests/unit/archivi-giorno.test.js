@@ -18,9 +18,9 @@ describe("renderGiornoArchivio — struttura di base", () => {
     expect(altMatch[1].length).toBeGreaterThan(0);
   });
 
-  it("un solo <script>, quello delle scorciatoie da tastiera, e nessuna fetch( nell'HTML: pagina server-rendered", () => {
+  it("un solo <script> (scorciatoie + condivisione), e nessuna fetch( nell'HTML: pagina server-rendered", () => {
     const html = renderGiornoArchivio({ id: "island", data: "2025-01-02", date: DATE });
-    expect((html.match(/<script/g) || []).length).toBe(1); // solo le scorciatoie da tastiera (§2.2)
+    expect((html.match(/<script/g) || []).length).toBe(1); // GIORNO_SCRIPT: due IIFE, un solo blocco (§2.2)
     expect(html).not.toContain("fetch(");
   });
 

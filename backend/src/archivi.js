@@ -9,7 +9,8 @@
 // coerente con la guardia `fetches.length === 1` sulla home, che questo
 // modulo non tocca. L'elenco `/archivi` e la pagina d'errore restano senza
 // JavaScript; la pagina di un giorno (`renderGiornoArchivio`) ha invece il
-// solo `<script>` delle scorciatoie da tastiera (v. `TASTIERA_SCRIPT` sotto).
+// solo `<script>` `GIORNO_SCRIPT` sotto, due IIFE indipendenti: scorciatoie
+// da tastiera e condivisione — mai un secondo blocco.
 
 import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag, feedLinkTag } from "./head.js";
 import { LEGACY_ALIASES, getChannel, displayName } from "./channels.js";
@@ -384,17 +385,31 @@ const GIORNO_STYLE = `
     border: 1px solid rgba(255,255,255,.10);
   }
   nav.giorni-nav a.estremo { color: #8fd3ff; }
+  nav.giorni-nav button.condividi {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    color: #8fd3ff; background: transparent; border: 0;
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  nav.giorni-nav button.condividi[hidden] { display: none; }
   p.posizione-archivio { margin: 6px 0 0; font-size: .88rem; color: #9aa3b8; }
 `;
 
 /**
- * feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera: scorciatoie da
- * tastiera per la pagina di un giorno d'archivio — segue i link GIÀ presenti
- * nel markup (`.precedente`, `.successivo`, `.estremo[data-nav]`), nessun
- * elemento visibile aggiunto. Contenuto letterale e statico, nessuna
- * interpolazione: nessuna superficie d'iniezione.
+ * Unico `<script>` della pagina di un giorno d'archivio: DUE IIFE
+ * indipendenti nello stesso blocco (mai un secondo `<script>`, v. §2.2).
+ *
+ * 1) feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera: scorciatoie da
+ *    tastiera — segue i link GIÀ presenti nel markup (`.precedente`,
+ *    `.successivo`, `.estremo[data-nav]`), nessun elemento visibile aggiunto.
+ * 2) feat-il-giorno-d-archivio-si-condivide-con-un-tocco: via primaria il
+ *    foglio di condivisione nativo (`navigator.share`), ripiego negli
+ *    appunti dove non c'è; rende visibile `button.condividi` solo se almeno
+ *    un canale esiste.
+ *
+ * Contenuto letterale e statico, nessuna interpolazione: nessuna superficie
+ * d'iniezione.
  */
-const TASTIERA_SCRIPT = `
+const GIORNO_SCRIPT = `
 <script>
 (function () {
   var MAPPA = {
@@ -415,6 +430,51 @@ const TASTIERA_SCRIPT = `
     if (!a || !a.href) return;
     e.preventDefault();
     window.location.href = a.href;
+  });
+})();
+(function () {
+  /* feat-il-giorno-d-archivio-si-condivide-con-un-tocco: via primaria il foglio di
+     condivisione nativo (navigator.share), ripiego negli appunti dove non c'è.
+     L'indirizzo è quello canonico già nel <head> (canonicalTag, head.js), con
+     ripiego su location.href quando l'origin non è noto al render. */
+  var b = document.querySelector("button.condividi");
+  if (!b) return;
+  var puoCondividere = !!(navigator.share);
+  var puoCopiare = !!(navigator.clipboard && navigator.clipboard.writeText);
+  if (!puoCondividere && !puoCopiare) return;   // nessun canale: il bottone resta hidden
+  var INIZIALE = b.textContent;
+  var timer = null;
+  function messaggio(t) {
+    b.textContent = t;
+    clearTimeout(timer);
+    timer = setTimeout(function () { b.textContent = INIZIALE; }, 2000);
+  }
+  function indirizzo() {
+    var c = document.querySelector('link[rel="canonical"]');
+    return (c && c.href) ? c.href : window.location.href;
+  }
+  function copia(link) {
+    if (!puoCopiare) { messaggio("condivisione non riuscita"); return; }
+    try {
+      navigator.clipboard.writeText(link).then(
+        function () { messaggio("link copiato"); },
+        function () { messaggio("copia non riuscita"); }
+      );
+    } catch (e) { messaggio("copia non riuscita"); }
+  }
+  b.hidden = false;
+  b.addEventListener("click", function () {
+    var link = indirizzo();
+    if (!puoCondividere) { copia(link); return; }
+    try {
+      var p = navigator.share({ title: document.title, url: link });
+      if (p && p.then) {
+        p.then(null, function (err) {
+          if (err && err.name === "AbortError") return;  // foglio chiuso dall'utente: nessun rumore
+          copia(link);
+        });
+      }
+    } catch (e) { copia(link); }
   });
 })();
 </script>`;
@@ -463,15 +523,20 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * Pagina di un giorno d'archivio (`/archivi/<id>?date=<data>`): il wallpaper
  * con intestazione (canale + data), soggetto se disponibile, e la barra
  * precedente/successivo per sfogliare l'archivio senza tornare a `/archivi`
- * ogni volta. Server-rendered, nessuna `fetch`: l'unico `<script>` è quello
- * delle scorciatoie da tastiera (feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera,
- * `TASTIERA_SCRIPT`).
+ * ogni volta. Server-rendered, nessuna `fetch`: l'unico `<script>` è
+ * `GIORNO_SCRIPT` (tastiera + condivisione).
  *
  * `date`: array di TUTTE le date del canale, dalla più recente alla più
  * vecchia (stessa forma di `storici[].date` sopra) — serve solo a calcolare
  * precedente/successivo, non viene mostrato per intero come in `/archivi`.
  * Al bordo dell'archivio (giorno più vecchio o più recente) il comando
  * assente non viene emesso: mai un link morto.
+ *
+ * feat-il-giorno-d-archivio-si-condivide-con-un-tocco: la barra include
+ * anche `button.condividi`, emesso sempre ma `hidden` nel markup finché
+ * `GIORNO_SCRIPT` non accerta `navigator.share` o `navigator.clipboard`:
+ * doppio binario condivisione nativa / copia negli appunti, coerente con
+ * quello già in produzione sulla home (`#dayshare` in `page.js`).
  *
  * feat-dall-archivio-si-segue-il-canale-col-lettore-di-feed: la barra include
  * anche «segui col lettore di feed» verso `/feed/<id>.xml` (stesso indirizzo
@@ -568,12 +633,13 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
     ${linkUltimo}
     <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
     <a class="salva" href="${feedPath}">segui col lettore di feed</a>${linkACaso}
+    <button class="salva condividi" type="button" hidden aria-label="Condividi il giorno ${esc(data)} di ${esc(nome)}">condividi</button>
   </nav>${elencoGiorniGiorno}${riga3}
   <footer>
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
   </footer>
 </main>
-${TASTIERA_SCRIPT}
+${GIORNO_SCRIPT}
 </body>
 </html>`;
 }

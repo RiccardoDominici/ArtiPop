@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-07 — feat-il-giorno-d-archivio-si-condivide-con-un-tocco
+- La pagina di un giorno d'archivio ha ora un bottone «condividi» nella barra `nav.giorni-nav`: il
+  link canonico del giorno esisteva già (ciclo 158, `canonicalTag`) ma dal telefono si poteva solo
+  pescare dalla barra del browser, mentre la home ha lo stesso gesto da tempo (`#dayshare`,
+  `page.js`).
+- Via primaria `navigator.share` (è la semantica vera dello slug: "si condivide", non "si copia"),
+  con `navigator.clipboard.writeText` come ripiego dove il foglio nativo non c'è o fallisce — stesso
+  doppio binario già collaudato sulla home. Il bottone compare (`hidden` rimosso via script) se
+  ALMENO UNO dei due canali è disponibile.
+- `TASTIERA_SCRIPT` rinominato `GIORNO_SCRIPT`: resta un solo `<script>` (impone §2.2), ora con due
+  IIFE indipendenti — scorciatoie da tastiera e condivisione. `hidden` nel markup più regola CSS
+  esplicita `[hidden] { display:none }`, altrimenti `display:inline-flex` lo scoprirebbe mostrando
+  un comando morto senza JavaScript.
+
 ## 2026-08-03 — feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera
 - La pagina di un giorno d'archivio (`/archivi/<id>?date=…`) risponde ora a `←`/`→` (giorno
   precedente/successivo) e `Home`/`Fine` (primo/ultimo giorno): sfogliare molti giorni di fila da
