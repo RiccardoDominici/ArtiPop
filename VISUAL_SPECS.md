@@ -436,6 +436,18 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   intatto), nessuna azione con un modificatore premuto né se il gesto parte da `a`, `button`,
   `input`, `textarea`, `select`, `summary`, `details` o `[contenteditable]` (l'elenco per mese e il
   bottone «condividi» continuano a rispondere al tocco come prima).
+- Confronto fra due giorni (proposta ai sensi di §7, feat-due-giorni-d-archivio-uno-accanto-all-altro):
+  `?confronta=<data>` sulla stessa pagina rende due `<figure class="foto">` affiancate in un
+  `<div class="confronto">` (`display:flex; flex-wrap:wrap; gap:10px 16px`, lo stesso `gap` di
+  `nav.giorni-nav`), ciascuna con la propria `<figcaption>` con la data estesa italiana dentro
+  `<time>` nei token `.88rem`/`#9aa3b8` già in uso; su viewport stretto le figure si impilano,
+  ciascuna resta `max-width:420px`. Ingresso: `<a class="salva">⇆ confronta col precedente</a>` in
+  coda alla barra, emesso solo se esiste un giorno precedente e non si è già in confronto; uscita:
+  `<a class="salva">chiudi il confronto</a>` sopra le figure, verso l'URL senza il parametro.
+  `confronta` assente, malformata, uguale al giorno mostrato o non presente in archivio → pagina
+  identica a quella senza parametro, mai una figura vuota. **Nessun colore, dimensione o componente
+  nuovi; nessuno `<script>` in più: il contratto «un solo `<script>`, tre IIFE, nessuna `fetch`»
+  resta invariato — il confronto è tutto server-rendered e funziona a JavaScript spento.**
 - Un solo `<script>` inline nell'HTML servito — scorciatoie, condivisione e sfogliata col dito, TRE
   IIFE nello STESSO blocco — e nessuna `fetch(`: la pagina resta server-rendered e non fa rete.
   §2.1 (`/archivi`) e la pagina d'errore qui sotto restano senza alcuno `<script>`.

@@ -150,6 +150,43 @@ function rigaPosizioneArchivio(idx, totale) {
 }
 
 /**
+ * feat-due-giorni-d-archivio-uno-accanto-all-altro: la data del secondo
+ * giorno da affiancare, o `null` se il parametro `?confronta=` non è
+ * utilizzabile. Tre guardie, tutte necessarie: forma `AAAA-MM-GG`, data
+ * DIVERSA da quella mostrata (affiancare un giorno a se stesso non è un
+ * confronto), data realmente in archivio (`date.includes`) — mai un
+ * `<img src>` verso un giorno che non esiste. Pura: la validazione vive qui e
+ * non in index.js, che si limita a passare il parametro grezzo.
+ */
+function dataConfronto(confronta, data, date) {
+  if (typeof confronta !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(confronta)) return null;
+  if (confronta === data) return null;
+  if (!Array.isArray(date) || !date.includes(confronta)) return null;
+  return confronta;
+}
+
+/**
+ * Blocco `<figure class="foto">` di un giorno: `<a class="apri">` + `<img>`
+ * verso `/w/<id>?date=<giorno>`, alt descrittivo, lazy/async — la stessa
+ * composizione di sempre (§2.2), ora in un solo punto perché la modalità
+ * confronto ne rende DUE. Con `didascalia: true` (solo in confronto) la
+ * figura porta una `<figcaption>` con la propria data in forma estesa
+ * italiana (riuso di `rigaData`): con una figura sola la data è già
+ * nell'intestazione, ripeterla sarebbe rumore.
+ */
+function figuraGiorno(id, nome, giorno, { didascalia = false } = {}) {
+  const encId = encodeURIComponent(id);
+  const encGiorno = encodeURIComponent(giorno);
+  const figcaption = didascalia ? `
+    <figcaption>${rigaData(giorno)}</figcaption>` : "";
+  return `<figure class="foto">
+    <a class="apri" href="/w/${encId}?date=${encGiorno}" target="_blank" rel="noopener" aria-label="Apri a grandezza piena il wallpaper di ${esc(nome)} del ${esc(giorno)}">
+      <img src="/w/${encId}?date=${encGiorno}" alt="${esc(nome)} — sfondo del ${esc(giorno)}" loading="lazy" decoding="async" />
+    </a>${figcaption}
+  </figure>`;
+}
+
+/**
  * Chiave e forma estesa italiana del mese di una data d'archivio, usate da
  * `elencoGiorni` per raggruppare — riusa `Intl.DateTimeFormat("it-IT", {
  * month: "long", year: "numeric", timeZone: "UTC" })` a mezzogiorno UTC,
@@ -444,6 +481,9 @@ const GIORNO_STYLE = `
   }
   nav.giorni-nav button.condividi[hidden] { display: none; }
   p.posizione-archivio { margin: 6px 0 0; font-size: .88rem; color: #9aa3b8; }
+  .confronto { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; }
+  .confronto figure.foto { flex: 1 1 280px; min-width: 0; }
+  figure.foto figcaption { margin-top: 6px; text-align: center; font-size: .88rem; color: #9aa3b8; }
 `;
 
 /**
@@ -651,10 +691,11 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * `scegliDataACaso`, rotazione.js). Con un solo giorno il comando non si
  * emette: porterebbe sempre alla pagina già aperta, un link inutile.
  */
-export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null }) {
+export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = null, confronta = null }) {
   const idx = Array.isArray(date) ? date.indexOf(data) : -1;
   const precedente = idx >= 0 && idx + 1 < date.length ? date[idx + 1] : null;
   const successivo = idx > 0 ? date[idx - 1] : null;
+  const confronto = dataConfronto(confronta, data, date);
 
   const encId = encodeURIComponent(id);
   const encData = encodeURIComponent(data);
@@ -686,6 +727,23 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
     Array.isArray(date) && date.length >= 2
       ? `<a class="salva" href="/archivi/${encId}?date=casuale" aria-label="Apri un giorno a caso dell'archivio di ${esc(displayName(id))}">un giorno a caso</a>`
       : "";
+
+  // feat-due-giorni-d-archivio-uno-accanto-all-altro: mai un link morto (solo
+  // se esiste un precedente) né un link verso lo stato già mostrato (mai in
+  // modalità confronto).
+  const linkConfronta =
+    precedente && !confronto
+      ? `<a class="salva" href="/archivi/${encId}?date=${encData}&amp;confronta=${encodeURIComponent(precedente)}" aria-label="Confronta il giorno ${esc(data)} di ${esc(nome)} col precedente ${esc(precedente)}">⇆ confronta col precedente</a>`
+      : "";
+
+  const bloccoFigure =
+    confronto === null
+      ? `${figuraGiorno(id, nome, data)}`
+      : `<a class="salva chiudi" href="/archivi/${encId}?date=${encData}">chiudi il confronto</a>
+  <div class="confronto">
+    ${figuraGiorno(id, nome, data, { didascalia: true })}
+    ${figuraGiorno(id, nome, confronto, { didascalia: true })}
+  </div>`;
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
   const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
@@ -722,11 +780,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
     <h1>${esc(nome)}</h1>
     <p class="sub">${rigaData(data)}</p>
   </header>${rigaSogg}${rigaPos}${rigaRacc}${rigaPosArch}
-  <figure class="foto">
-    <a class="apri" href="/w/${encId}?date=${encData}" target="_blank" rel="noopener" aria-label="Apri a grandezza piena il wallpaper di ${esc(nome)} del ${esc(data)}">
-      <img src="/w/${encId}?date=${encData}" alt="${esc(nome)} — sfondo del ${esc(data)}" loading="lazy" decoding="async" />
-    </a>
-  </figure>
+  ${bloccoFigure}
   <nav class="giorni-nav" aria-label="Sfoglia i giorni dell'archivio">
     ${linkPrecedente}
     ${linkSuccessivo}
@@ -734,7 +788,7 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
     ${linkUltimo}
     <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
     <a class="salva" href="${feedPath}">segui col lettore di feed</a>${linkACaso}
-    <button class="salva condividi" type="button" hidden aria-label="Condividi il giorno ${esc(data)} di ${esc(nome)}">condividi</button>
+    <button class="salva condividi" type="button" hidden aria-label="Condividi il giorno ${esc(data)} di ${esc(nome)}">condividi</button>${linkConfronta}
   </nav>${elencoGiorniGiorno}${riga3}
   <footer>
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
