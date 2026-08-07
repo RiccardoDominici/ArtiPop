@@ -161,6 +161,16 @@ const FAQ = [
       intatto: si sfoglia giorno per giorno dalla pagina <a href="/archivi">Archivi storici</a>,
       che indica anche quale canale attivo ne raccoglie l'eredità.
       <br><br>
+      La pagina di un singolo giorno d'archivio si sfoglia in più modi, tutti equivalenti: da
+      telefono con un <strong>dito</strong>, strisciando sull'immagine — verso sinistra si va al
+      giorno successivo, verso destra al precedente; da tastiera con le
+      <strong>frecce ←/→</strong> per giorno precedente e successivo e con
+      <strong>Home/End</strong> per il primo e l'ultimo giorno dell'archivio. Per
+      <strong>saltare a una data</strong> qualsiasi apri <strong>«tutti i N giorni»</strong> in
+      fondo alla pagina: i giorni sono raggruppati per mese, e il mese che stai guardando è già
+      aperto. <strong>«un giorno a caso»</strong> ne pesca invece uno a sorpresa. Da
+      <a href="/archivi">Archivi storici</a> si raggiunge l'ultimo giorno di qualunque canale.
+      <br><br>
       Se un giorno passato ti piace in particolare, mentre lo sfogli dalla home tocca
       <strong>«☆ segna preferito»</strong>: lo ritrovi poi nel pannello
       <strong>«i tuoi preferiti»</strong>. È una memoria del browser (localStorage), tenuta

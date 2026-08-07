@@ -1940,3 +1940,11 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   sempre il canale corrente, ordina le date del più recente al più vecchio, scarta date non
   valide e canali che ne restano privi; `renderFavList` emette i due rami `/?c=`/`/archivi/` con
   `encodeURIComponent`; la nuova condizione di visibilità di `#favpick`; nessuna classe CSS nuova.
+
+## 2026-08-07 — feat-l-aiuto-spiega-come-si-sfoglia-l-archivio
+- L'archivio ha guadagnato in cicli successivi lo sfoglio col dito, le scorciatoie da tastiera
+  (frecce, Home/End), il salto a una data e il giorno a caso, ma nessuno di questi gesti era
+  documentato nell'aiuto: chi apre un vecchio archivio non sapeva di poterli usare.
+- Testo aggiunto dentro la risposta della FAQ già esistente «Che fine fanno gli sfondi vecchi?»,
+  non una voce nuova: la voce è un `<details>` chiuso di default, quindi la pagina /aiuto
+  collassata resta pixel-identica e le baseline visive non cambiano.
