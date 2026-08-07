@@ -396,9 +396,23 @@ link `#8fd3ff`, stesso stack font, stessa colonna `max-width:720px`, stesso `<he
   non agisce con un modificatore premuto (`meta`/`ctrl`/`alt`) né col fuoco in un campo di testo
   (`input`, `textarea`, `select`, `contenteditable`), e chiama `preventDefault()` solo quando
   naviga davvero.
-- Un solo `<script>` inline nell'HTML servito, quello delle scorciatoie qui sopra, e nessuna
-  `fetch(`: la pagina resta server-rendered e non fa rete. §2.1 (`/archivi`) e la pagina d'errore
-  qui sotto restano senza alcuno `<script>`.
+- Condividi il giorno (proposta ai sensi di §7, feat-il-giorno-d-archivio-si-condivide-con-un-tocco):
+  in coda alla barra `nav.giorni-nav`, dopo «un giorno a caso», un
+  `<button class="salva condividi" type="button">condividi</button>` con gli stessi token dei comandi
+  accanto (colore `#8fd3ff`, `font-weight:600`, area di tocco ≥44px, `background:transparent`,
+  nessun bordo) — nessun colore, dimensione o componente nuovi. `aria-label` che nomina data e
+  canale. Miglioramento progressivo: `hidden` nel markup (con regola CSS `[hidden] { display:none }`
+  esplicita, perché `display:inline-flex` non lo scopra), reso visibile solo se il browser espone
+  `navigator.share` OPPURE `navigator.clipboard.writeText`. Comportamento: via primaria il foglio di
+  condivisione nativo (`navigator.share({title,url})`, con l'`AbortError` dell'utente che chiude il
+  foglio ignorato in silenzio); ripiego negli appunti dove `navigator.share` non c'è o fallisce.
+  Indirizzo condiviso: quello canonico del `<head>`, ripiego `location.href`. Conferma ed errore sono
+  il solo cambio di testo dentro il bottone («link copiato» / «copia non riuscita» / «condivisione
+  non riuscita», ~2s poi ritorno a «condividi»): nessun toast, nessun overlay, nessun componente
+  nuovo.
+- Un solo `<script>` inline nell'HTML servito — scorciatoie e condivisione, DUE IIFE nello STESSO
+  blocco — e nessuna `fetch(`: la pagina resta server-rendered e non fa rete. §2.1 (`/archivi`) e la
+  pagina d'errore qui sotto restano senza alcuno `<script>`.
 - Pagina d'errore (id sconosciuto, canale senza archivio, `?date=` non presente in archivio):
   messaggio umano in `#9aa3b8` e link a `/archivi`, stesso `<head>` e stessa palette — mai JSON,
   mai la pagina d'errore generica di Cloudflare (principio 3 di CLAUDE.md). Quando il canale ha
