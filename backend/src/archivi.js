@@ -9,7 +9,8 @@
 // coerente con la guardia `fetches.length === 1` sulla home, che questo
 // modulo non tocca. L'elenco `/archivi` e la pagina d'errore restano senza
 // JavaScript; la pagina di un giorno (`renderGiornoArchivio`) ha invece il
-// solo `<script>` delle scorciatoie da tastiera (v. `TASTIERA_SCRIPT` sotto).
+// solo `<script>` `GIORNO_SCRIPT` sotto, che contiene DUE IIFE indipendenti:
+// scorciatoie da tastiera e copia del link — mai un secondo blocco.
 
 import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag, feedLinkTag } from "./head.js";
 import { LEGACY_ALIASES, getChannel, displayName } from "./channels.js";
@@ -384,17 +385,28 @@ const GIORNO_STYLE = `
     border: 1px solid rgba(255,255,255,.10);
   }
   nav.giorni-nav a.estremo { color: #8fd3ff; }
+  nav.giorni-nav button.copia-link {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
+    color: #8fd3ff; background: transparent; border: 0;
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  nav.giorni-nav button.copia-link[hidden] { display: none; }
   p.posizione-archivio { margin: 6px 0 0; font-size: .88rem; color: #9aa3b8; }
 `;
 
 /**
- * feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera: scorciatoie da
- * tastiera per la pagina di un giorno d'archivio — segue i link GIÀ presenti
- * nel markup (`.precedente`, `.successivo`, `.estremo[data-nav]`), nessun
- * elemento visibile aggiunto. Contenuto letterale e statico, nessuna
- * interpolazione: nessuna superficie d'iniezione.
+ * `GIORNO_SCRIPT`: l'unico `<script>` della pagina di un giorno d'archivio,
+ * due IIFE indipendenti nello STESSO blocco (VISUAL_SPECS §2.2 impone un
+ * solo `<script>` per pagina):
+ * - feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera: scorciatoie da
+ *   tastiera — segue i link GIÀ presenti nel markup (`.precedente`,
+ *   `.successivo`, `.estremo[data-nav]`), nessun elemento visibile aggiunto.
+ * - feat-il-giorno-d-archivio-si-condivide-con-un-tocco: copia negli
+ *   appunti l'indirizzo canonico del giorno.
+ * Contenuto letterale e statico, nessuna interpolazione: nessuna superficie
+ * d'iniezione.
  */
-const TASTIERA_SCRIPT = `
+const GIORNO_SCRIPT = `
 <script>
 (function () {
   var MAPPA = {
@@ -415,6 +427,33 @@ const TASTIERA_SCRIPT = `
     if (!a || !a.href) return;
     e.preventDefault();
     window.location.href = a.href;
+  });
+})();
+(function () {
+  /* feat-il-giorno-d-archivio-si-condivide-con-un-tocco: l'indirizzo da copiare è
+     quello canonico già emesso nel <head> (canonicalTag, head.js); senza origin il
+     canonical non c'è e si ripiega su location.href. Conferma e fallimento sono un
+     semplice cambio di testo dentro il bottone: nessun componente nuovo. */
+  var b = document.querySelector("button.copia-link");
+  if (!b) return;
+  if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+  var INIZIALE = b.textContent;
+  var timer = null;
+  function messaggio(t) {
+    b.textContent = t;
+    clearTimeout(timer);
+    timer = setTimeout(function () { b.textContent = INIZIALE; }, 2000);
+  }
+  b.hidden = false;
+  b.addEventListener("click", function () {
+    var c = document.querySelector('link[rel="canonical"]');
+    var link = (c && c.href) ? c.href : window.location.href;
+    try {
+      navigator.clipboard.writeText(link).then(
+        function () { messaggio("link copiato"); },
+        function () { messaggio("copia non riuscita"); }
+      );
+    } catch (e) { messaggio("copia non riuscita"); }
   });
 })();
 </script>`;
@@ -463,15 +502,21 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
  * Pagina di un giorno d'archivio (`/archivi/<id>?date=<data>`): il wallpaper
  * con intestazione (canale + data), soggetto se disponibile, e la barra
  * precedente/successivo per sfogliare l'archivio senza tornare a `/archivi`
- * ogni volta. Server-rendered, nessuna `fetch`: l'unico `<script>` è quello
- * delle scorciatoie da tastiera (feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera,
- * `TASTIERA_SCRIPT`).
+ * ogni volta. Server-rendered, nessuna `fetch`: l'unico `<script>` è
+ * `GIORNO_SCRIPT` — due IIFE, scorciatoie da tastiera
+ * (feat-il-giorno-d-archivio-si-sfoglia-con-la-tastiera) e copia del link
+ * (feat-il-giorno-d-archivio-si-condivide-con-un-tocco).
  *
  * `date`: array di TUTTE le date del canale, dalla più recente alla più
  * vecchia (stessa forma di `storici[].date` sopra) — serve solo a calcolare
  * precedente/successivo, non viene mostrato per intero come in `/archivi`.
  * Al bordo dell'archivio (giorno più vecchio o più recente) il comando
  * assente non viene emesso: mai un link morto.
+ *
+ * feat-il-giorno-d-archivio-si-condivide-con-un-tocco: la barra include
+ * anche «copia link», che copia negli appunti l'indirizzo canonico del
+ * giorno — reso visibile solo da `GIORNO_SCRIPT` quando `navigator.clipboard`
+ * è disponibile, `hidden` nel markup altrimenti: mai un comando morto.
  *
  * feat-dall-archivio-si-segue-il-canale-col-lettore-di-feed: la barra include
  * anche «segui col lettore di feed» verso `/feed/<id>.xml` (stesso indirizzo
@@ -518,8 +563,14 @@ export function renderGiornoArchivio({ id, data, date, soggetto = {}, origin = n
 
   const linkACaso =
     Array.isArray(date) && date.length >= 2
-      ? `<a class="salva" href="/archivi/${encId}?date=casuale" aria-label="Apri un giorno a caso dell'archivio di ${esc(displayName(id))}">un giorno a caso</a>`
+      ? `<a class="salva" href="/archivi/${encId}?date=casuale" aria-label="Apri un giorno a caso dell'archivio di ${esc(nome)}">un giorno a caso</a>`
       : "";
+
+  // feat-il-giorno-d-archivio-si-condivide-con-un-tocco: comando reso visibile solo
+  // da GIORNO_SCRIPT (hidden nel markup + regola [hidden] in GIORNO_STYLE): senza
+  // JavaScript, o senza clipboard, il bottone non compare mai — nessun comando morto.
+  // Nessun dato viaggia nello script: l'indirizzo si legge dal <link rel="canonical">.
+  const bottoneCopia = `<button class="salva copia-link" type="button" hidden aria-label="Copia il link del giorno ${esc(data)} di ${esc(nome)}">copia link</button>`;
 
   const rigaSogg = rigaSoggetto(soggetto?.elementNome, soggetto?.conceptNome);
   const rigaPos = rigaPosizione(soggetto?.arco, soggetto?.giornoNellArco, soggetto?.tappa);
@@ -568,12 +619,13 @@ ${origin ? metaAnteprima(origin, data, `ArtiPop — ${nome}, ${data}`, `Il giorn
     ${linkUltimo}
     <a class="salva" href="/w/${encId}?date=${encData}&amp;dl=1" aria-label="Salva il wallpaper del ${esc(data)}">Salva</a>
     <a class="salva" href="${feedPath}">segui col lettore di feed</a>${linkACaso}
+    ${bottoneCopia}
   </nav>${elencoGiorniGiorno}${riga3}
   <footer>
     <a href="/archivi">Tutti gli archivi</a> · <a href="/">Home</a> · <a href="/aiuto">Aiuto</a>
   </footer>
 </main>
-${TASTIERA_SCRIPT}
+${GIORNO_SCRIPT}
 </body>
 </html>`;
 }
