@@ -58,3 +58,30 @@ describe("renderArchiviPage(storici)", () => {
     expect(html).toContain("1 giorno<");
   });
 });
+
+// feat-segui-tutti-i-canali-con-un-solo-import: link all'elenco OPML di
+// tutti i canali, sempre presente in /archivi, anche a scansione fallita.
+describe("renderArchiviPage(storici) — link OPML", () => {
+  it("con ESEMPIO: link a /canali.opml con testo, classe salva e aria-label", () => {
+    const html = renderArchiviPage(ESEMPIO);
+    expect(html).toContain('href="/canali.opml"');
+    expect(html).toContain("tutti i canali nel lettore di feed");
+    expect(html).toMatch(/<a class="salva opml" href="\/canali\.opml"/);
+    expect(html).toContain('aria-label="Scarica l\'elenco OPML di tutti i canali per il lettore di feed"');
+  });
+
+  it("con lista vuota ([]): il link è comunque presente", () => {
+    const html = renderArchiviPage([]);
+    expect(html).toContain('href="/canali.opml"');
+  });
+
+  it("con null (scansione fallita): il link è comunque presente", () => {
+    const html = renderArchiviPage(null);
+    expect(html).toContain('href="/canali.opml"');
+  });
+
+  it("nessuno <script> nell'HTML anche col link presente", () => {
+    const html = renderArchiviPage(ESEMPIO);
+    expect(html).not.toContain("<script");
+  });
+});
