@@ -33,9 +33,9 @@ describe("renderHelpPage — spiegazione di cosa funziona senza rete", () => {
     expect(voce).not.toMatch(/genera(no)? .*senza rete/i);
   });
 
-  it("il numero di voci <details> resta invariato (15)", () => {
+  it("il numero di voci <details> resta invariato (16)", () => {
     const details = html.match(/<details[^>]*>/g) ?? [];
-    expect(details).toHaveLength(15);
+    expect(details).toHaveLength(16);
   });
 
   it("la ricerca in /aiuto trova la voce digitando «rete» (filtro su textContent)", () => {

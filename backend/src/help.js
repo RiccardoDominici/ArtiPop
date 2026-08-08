@@ -205,6 +205,18 @@ const FAQ = [
     a: `Pochissimo: un download da circa 1 MB al giorno e nessun processo in background.
       ArtiPop non gira mai sul telefono, se non nei due secondi dell'automazione.`,
   },
+  /* feat-l-aiuto-spiega-il-promemoria-nel-calendario: la rotta /promemoria.ics (index.js) e il
+     link della home (page.js:459) vanno spiegati dove l'utente li cerca. */
+  {
+    q: "Posso ricevere un promemoria quando esce l'immagine nuova?",
+    a: `Sì: dalla home c'è il link <strong>«aggiungi il promemoria al calendario»</strong>, che
+      iscrive il tuo calendario all'indirizzo <code>/promemoria.ics</code>. Segue il canale che hai
+      scelto, con la forma <code>/promemoria.ics?c=natura</code> (&lt;canale&gt; al posto di
+      <code>natura</code>).<br><br>
+      È un evento <strong>ricorrente, uno al giorno</strong>, alle <strong>3:00 UTC</strong>, la
+      stessa ora in cui viene pubblicato il giorno nuovo. Non serve nessun account: una volta
+      iscritto, il calendario si aggiorna da solo.`,
+  },
 ];
 
 /** Escape minimo per il testo dinamico inserito nell'HTML. */
