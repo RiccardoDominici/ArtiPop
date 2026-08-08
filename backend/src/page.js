@@ -24,7 +24,9 @@ import { INSTALL_TAGS, metaAnteprima, feedLinkTag, canonicalTag } from "./head.j
 // gira alle 03:00 UTC. Se quell'orario cambia senza aggiornare questa
 // costante, la home mostrerebbe un orario sbagliato all'utente: il test
 // backend/tests/unit/config-cron-coerente.test.js rompe apposta in quel caso.
-const ORA_CRON_UTC = 3;
+// Esportata perché è anche l'unica fonte dell'ora per la rotta
+// GET /promemoria.ics (feat-il-promemoria-del-wallpaper-va-nel-calendario).
+export const ORA_CRON_UTC = 3;
 
 // NOTA: qui viveva esc(), un escape HTML mai chiamato nel file — i campi del
 // template (ch.name, ch.tagline, ch.scene, ch.concept) vengono inseriti senza
@@ -264,6 +266,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .dot { width: .5rem; height: .5rem; border-radius: 50%; background: rgba(255,255,255,.22); transition: all .3s ease; }
   .dot.on { background: var(--a1); transform: scale(1.35); }
   .hint { color: var(--dim); font-size: .78rem; opacity: .8; }
+  .hint a { color: var(--a1); text-decoration: underline; }
 
   /* ---------- azioni canale ---------- */
   .actions { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
@@ -453,6 +456,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
     <p class="hint">La Shortcut scaricata ha già l'URL del canale dentro: aprila e importala.</p>
     <p class="hint" id="nextdrop">Il wallpaper cambia da solo ogni notte.</p>
     <p class="hint" id="netstate" hidden>Sei senza rete: questa è l'ultima copia salvata. L'archivio torna sfogliabile quando la rete ritorna.</p>
+    <p class="hint"><a id="icslink" href="/promemoria.ics?c=${esc(feedChannelId)}">aggiungi il promemoria al calendario</a></p>
 
     <section class="journey">
       <div class="jhead">
@@ -1118,6 +1122,9 @@ function updateChrome() {
   // canale in cima: stesso ciclo di vita di #feedlink, sempre in sync.
   const archlinkEl = document.getElementById("archlink");
   if (archlinkEl) archlinkEl.href = "/archivi/" + encodeURIComponent(ch.id);
+  // Il promemoria da calendario segue lo stesso canale in cima al mazzo.
+  const icslinkEl = document.getElementById("icslink");
+  if (icslinkEl) icslinkEl.href = "/promemoria.ics?c=" + encodeURIComponent(ch.id);
   dotsEl.innerHTML = CHANNELS.map((c) =>
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
   previewDate = null;

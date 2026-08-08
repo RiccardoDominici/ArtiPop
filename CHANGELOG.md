@@ -16,6 +16,20 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-08 — feat-il-promemoria-del-wallpaper-va-nel-calendario
+- Nuova rotta `GET /promemoria.ics`: calendario iCalendar sottoscrivibile con un evento
+  giornaliero ricorrente all'orario del cron, perché l'orario del wallpaper nuovo deve poter
+  uscire dal sito ed entrare nel calendario del telefono, invece di restare leggibile solo
+  dentro la pagina aperta.
+- Terza superficie di sottoscrizione dopo il feed RSS e l'OPML: stesso schema — modulo puro
+  (`promemoria.js`, nessun accesso a KV/rete) più ripiego `PROMEMORIA_VUOTO` sempre valido nel
+  catch della rotta, mai un errore grezzo verso il client.
+- `ORA_CRON_UTC` (`page.js`) è ora esportata ed è l'unica fonte dell'ora dell'evento: nessuna
+  seconda copia del `3` nel codice nuovo, e resta sorvegliata da
+  `config-cron-coerente.test.js`.
+- La home mostra sotto `#nextdrop`/`#netstate` un link «aggiungi il promemoria al calendario»
+  che segue il canale in cima al mazzo, con lo stesso componente `.hint` già in uso.
+
 ## 2026-08-08 — feat-l-aiuto-elenca-le-scorciatoie-da-tastiera
 - La FAQ «Come funziona la storia degli sfondi?» ora elenca anche le scorciatoie da tastiera
   (frecce sinistra/destra su home e giorno d'archivio, Inizio/Fine per il primo e l'ultimo
