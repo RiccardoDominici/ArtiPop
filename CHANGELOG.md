@@ -16,6 +16,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-08 — feat-segui-tutti-i-canali-con-un-solo-import
+- Nuova rotta pubblica `/canali.opml`: elenco OPML 2.0 con un `<outline>` per ogni canale attivo
+  (perché: seguire tutti i canali col lettore di feed era un gesto per canale, uno alla volta —
+  l'OPML è il formato standard di import in blocco dei lettori RSS).
+- Link «tutti i canali nel lettore di feed» in `/archivi`, accanto al campo di ricerca (riusa il
+  componente `.salva` già normato, nessun colore/componente nuovo).
+- Robustezza: se la costruzione dell'elenco fallisce la rotta resta un OPML valido col `<body>`
+  vuoto, status 200 — mai un 500 grezzo né JSON verso un lettore di feed.
+
 ## 2026-08-07 — feat-il-giorno-d-archivio-mostra-tutto-il-suo-arco
 - Nella pagina di un giorno d'archivio l'arco narrativo era finora solo un numero dentro la riga di
   posizione («arco N · giorno M · tappa K»): non c'era modo di vedere né di saltare agli altri

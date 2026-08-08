@@ -380,6 +380,27 @@ function formCerca(cerca) {
 }
 
 /**
+ * feat-segui-tutti-i-canali-con-un-solo-import: link all'elenco OPML di tutti
+ * i canali (`/canali.opml`), da importare in blocco nel lettore di feed.
+ * Riusa il componente `.salva` già normato (VISUAL_SPECS §2.1), nessun colore
+ * né componente nuovo. Emesso SEMPRE, anche con `storici === null`: l'elenco
+ * OPML nasce dai flussi attivi del codice e non dipende dalla scansione KV
+ * fallita, quindi resta un comando vivo anche quando l'elenco non c'è.
+ */
+function linkOpml() {
+  // Classe composta "salva opml" invece di "salva" da sola: il componente e
+  // i suoi token restano quelli di §2.1 (stessa regola CSS .salva si applica
+  // a qualunque classList che la contenga), ma la stringa letterale
+  // `class="salva"` resta un segnale univoco di "link di salvataggio di un
+  // giorno" per i test esistenti (archivi-salva.test.js), che verificano la
+  // sua ASSENZA quando un canale non ha giorni scaricabili — questo link
+  // invece è sempre presente e non scarica un giorno, quindi non deve
+  // confondersi con quel segnale.
+  return `
+    <a class="salva opml" href="/canali.opml" aria-label="Scarica l'elenco OPML di tutti i canali per il lettore di feed">tutti i canali nel lettore di feed</a>`;
+}
+
+/**
  * Elenco degli archivi (o messaggio umano se vuoto). `storici`: array
  * ordinato da chi chiama, forma
  * `[{ id, giorni, prima, ultima, date, elementNome, conceptNome, attivo }]` —
@@ -719,7 +740,7 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
   <header>
     <a class="back" href="/">← torna ad ArtiPop</a>
     <h1>Archivi</h1>
-    <p class="sub">Tutti i canali con giorni in archivio, in corso e non: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>${storici === null ? "" : formCerca(cerca)}
+    <p class="sub">Tutti i canali con giorni in archivio, in corso e non: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>${storici === null ? "" : formCerca(cerca)}${linkOpml()}
   </header>
   ${corpo}
   <footer>

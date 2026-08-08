@@ -302,6 +302,18 @@ o componente nuovo.
   form. Nessuna corrispondenza: al posto dell'elenco due `.msg` in `#9aa3b8` — «Nessun canale
   corrisponde a «{query}».» (query sempre escapata) e il link «Mostra tutti gli archivi» verso
   `/archivi` in `#8fd3ff` — mai un contenitore vuoto.
+- Componente aggiuntivo «tutti i canali nel lettore di feed» (proposta ai sensi di §7,
+  feat-segui-tutti-i-canali-con-un-solo-import): dentro `<header>`, subito sotto il form di
+  ricerca, un `<a class="salva opml" href="/canali.opml">tutti i canali nel lettore di feed</a>`
+  con `aria-label` esplicito («Scarica l'elenco OPML di tutti i canali per il lettore di feed»: il
+  testo del link non dice da solo che si tratta di un file da importare). Classe composta `salva
+  opml` invece di `salva` da sola: la regola CSS `.salva` (stessi token del «link di salvataggio»
+  già dichiarato sopra — `#8fd3ff`, `display: inline-flex; align-items: center`, area di tocco
+  ≥44px, nessun colore o dimensione nuovi) si applica comunque a qualunque classList che la
+  contenga; il token `opml` extra evita che la stringa letterale `class="salva"` (usata altrove per
+  distinguere «link di salvataggio di un giorno») compaia per un link che non scarica un giorno.
+  Presente **sempre**, anche con scansione fallita: l'elenco OPML nasce dai flussi attivi del
+  codice e non dipende dal KV.
 
 ### 2.2 Pagina giorno d'archivio `/archivi/<id>` (sorgente: backend/src/archivi.js, proposta ai sensi di §7)
 

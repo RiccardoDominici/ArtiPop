@@ -63,6 +63,7 @@ function conServiceWorker(html) {
   return html.replace("</head>", `${SW_REGISTER_TAG}</head>`);
 }
 import { renderFeed } from "./feed.js";
+import { renderOpml, OPML_VUOTO } from "./opml.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 import { scegliDataRotazione, scegliDataACaso } from "./rotazione.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
@@ -1064,6 +1065,29 @@ export default {
         return new Response(renderFeed({ canale, voci: [], origin: url.origin, oggi: todayKey() }), {
           headers: feedHeaders,
         });
+      }
+    }
+
+    // ---- Elenco OPML dei canali: /canali.opml ----
+    // feat-segui-tutti-i-canali-con-un-solo-import: un lettore di feed importa
+    // in blocco un feed per canale invece di farsi incollare un indirizzo alla
+    // volta. Rotta pubblica come /feed.xml (nessuna chiave admin) e senza alcun
+    // accesso a KV: l'elenco è quello statico dei flussi attivi.
+    // try/catch PROPRIO, come le due rotte feed: la rete di sicurezza globale
+    // risponderebbe JSON su un percorso che un lettore si aspetta sempre in XML.
+    if (path === "/canali.opml") {
+      const opmlHeaders = {
+        "content-type": "text/x-opml; charset=utf-8",
+        "cache-control": "public, max-age=3600",
+        ...SECURITY_HEADERS,
+      };
+      try {
+        return new Response(renderOpml({ canali: ACTIVE_CHANNELS, origin: url.origin }), {
+          headers: opmlHeaders,
+        });
+      } catch (err) {
+        console.error(`[canali.opml] rotta fallita: ${err.message}`);
+        return new Response(OPML_VUOTO, { headers: opmlHeaders });
       }
     }
 
