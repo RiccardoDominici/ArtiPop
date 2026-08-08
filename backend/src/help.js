@@ -129,7 +129,19 @@ const FAQ = [
       per passare da un progetto all'altro; <strong>scegli l'arco</strong> per saltare
       direttamente a uno dall'elenco; <strong>leggi la storia</strong> per vedere tutte le
       tappe dell'arco in corso. Ogni giorno ha anche un indirizzo diretto e condivisibile
-      (<code>?date=</code>).`,
+      (<code>?date=</code>).
+      <br><br>
+      Le stesse mosse si fanno da <strong>tastiera</strong>. Sulla home, quando il fuoco è dentro
+      «Il viaggio finora» (ci arrivi toccando le sue frecce <strong>‹ ›</strong> o con
+      <strong>Tab</strong>), <strong>freccia sinistra</strong> e <strong>freccia destra</strong>
+      passano al giorno precedente e al successivo; fuori dal viaggio le stesse frecce sfogliano
+      invece il mazzo dei canali. Sulla pagina di un giorno d'archivio
+      (<code>/archivi/&lt;canale&gt;?date=…</code>) freccia sinistra e freccia destra fanno di
+      nuovo giorno precedente e successivo, e <strong>Inizio</strong> (Home) e
+      <strong>Fine</strong> (End) saltano al primo e all'ultimo giorno di quell'archivio. Lì le
+      scorciatoie restano ferme mentre scrivi in un campo di testo, e ovunque non partono se
+      tieni premuto <strong>Ctrl</strong>, <strong>Cmd</strong> o <strong>Alt</strong>: quelle
+      combinazioni restano al browser.`,
   },
   {
     q: "Posso cambiare canale?",
