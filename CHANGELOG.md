@@ -16,6 +16,14 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-08 — feat-il-catalogo-si-cerca-per-nome
+- Campo di ricerca (`#catCerca`) nella barra strumenti della scheda Catalogo: la lista
+  Concept/Element si filtra per pezzo di nome o di id, invece di scorrere tutto l'elenco.
+- Il testo cercato è unico per i due tipi e non si azzera col segmented: chi cerca una
+  parola la vede sia fra i concept sia fra gli element.
+- Filtro in sola lettura (`filtraVoci`, pura): nessuna chiamata al Worker, selezione e form
+  di dettaglio invariati; se non corrisponde nulla la lista lo dice invece di restare muta.
+
 ## 2026-08-08 — feat-l-aiuto-spiega-il-promemoria-nel-calendario
 - Nuova voce FAQ su /aiuto per `/promemoria.ics`: la rotta è in produzione dal ciclo 179 ma la
   pagina che l'utente consulta non la nominava — chi cercava «promemoria» non trovava nulla.

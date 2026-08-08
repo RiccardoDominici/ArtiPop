@@ -24,6 +24,11 @@ let catalogoArrivato = false;
    selezionare direttamente il pannello giusto. */
 let catTipo = "concept";
 
+/* testo del campo di ricerca (#catCerca): UNO solo per entrambi i tipi, apposta —
+   chi cerca "notte" vuole vederlo sia fra i concept sia fra gli element, e il cambio
+   di segmented non deve azzerargli la ricerca sotto le mani. */
+let catCerca = "";
+
 function syncSegButtons() {
   document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => b.classList.toggle("active", b.dataset.tipo === catTipo));
 }
@@ -160,6 +165,28 @@ function messaggioEliminaConcept(id, nome) {
   return righe.length ? `${base}\n\n${righe.join("\n")}` : base;
 }
 
+/* filtro della lista Catalogo: puro, senza DOM e senza stato — tutta la logica di
+   ricerca sta qui, così i test la esercitano senza sandbox. Corrispondenza su nome
+   O id, senza distinzione di maiuscole. Non lancia MAI: input degeneri degradano
+   (non-array -> [], testo non stringa/vuoto -> elenco invariato). */
+function filtraVoci(items, cerca) {
+  if (!Array.isArray(items)) return [];
+  const q = (typeof cerca === "string" ? cerca : "").trim().toLowerCase();
+  if (!q) return items;
+  return items.filter((it) => {
+    const nome = typeof it?.nome === "string" ? it.nome.toLowerCase() : "";
+    const id = typeof it?.id === "string" ? it.id.toLowerCase() : "";
+    return nome.includes(q) || id.includes(q);
+  });
+}
+
+/* messaggio della lista vuota: distingue "il catalogo è vuoto" da "il filtro non ha
+   trovato nulla" — una lista muta dopo una ricerca sembrerebbe un catalogo sparito. */
+function listaVuotaHTML(tuttiCount, vuotoTxt) {
+  if (tuttiCount) return `<div class="hint">nessuna voce corrisponde a "${esc(catCerca.trim())}"</div>`;
+  return `<div class="hint">${vuotoTxt}</div>`;
+}
+
 /* ================================================================== */
 /* ---------- LISTA + FORM: CONCEPT ---------- */
 /* ================================================================== */
@@ -173,7 +200,8 @@ function renderConceptList() {
   if (CATALOGO_ERROR) { wrap.innerHTML = `<div class="hint">${esc(CATALOGO_ERROR)}</div>`; return; }
   if (!catalogoArrivato) { wrap.innerHTML = `<div class="hint">catalogo non ancora caricato.</div>`; return; }
   wrap.innerHTML = "";
-  const items = [...cat.concepts].sort((a, b) => (a.custom === b.custom ? 0 : a.custom ? 1 : -1) || a.nome.localeCompare(b.nome));
+  const tutti = [...cat.concepts].sort((a, b) => (a.custom === b.custom ? 0 : a.custom ? 1 : -1) || a.nome.localeCompare(b.nome));
+  const items = filtraVoci(tutti, catCerca);
   for (const c of items) {
     const row = document.createElement("div");
     row.className = "itemrow" + (c.id === conceptSel ? " active" : "");
@@ -182,7 +210,7 @@ function renderConceptList() {
     row.onclick = () => selectConcept(c.id);
     wrap.appendChild(row);
   }
-  if (!items.length) wrap.innerHTML = `<div class="hint">nessun concept nel catalogo.</div>`;
+  if (!items.length) wrap.innerHTML = listaVuotaHTML(tutti.length, "nessun concept nel catalogo.");
 }
 
 function selectConcept(id, opts = {}) {
@@ -429,7 +457,8 @@ function renderElementList() {
   if (CATALOGO_ERROR) { wrap.innerHTML = `<div class="hint">${esc(CATALOGO_ERROR)}</div>`; return; }
   if (!catalogoArrivato) { wrap.innerHTML = `<div class="hint">catalogo non ancora caricato.</div>`; return; }
   wrap.innerHTML = "";
-  const items = [...cat.elements].sort((a, b) => (a.custom === b.custom ? 0 : a.custom ? 1 : -1) || a.nome.localeCompare(b.nome));
+  const tutti = [...cat.elements].sort((a, b) => (a.custom === b.custom ? 0 : a.custom ? 1 : -1) || a.nome.localeCompare(b.nome));
+  const items = filtraVoci(tutti, catCerca);
   for (const e of items) {
     const row = document.createElement("div");
     row.className = "itemrow" + (e.id === elementSel ? " active" : "");
@@ -442,7 +471,7 @@ function renderElementList() {
     row.onclick = () => selectElement(e.id);
     wrap.appendChild(row);
   }
-  if (!items.length) wrap.innerHTML = `<div class="hint">nessun element nel catalogo.</div>`;
+  if (!items.length) wrap.innerHTML = listaVuotaHTML(tutti.length, "nessun element nel catalogo.");
 }
 
 function selectElement(id, opts = {}) {
@@ -671,6 +700,13 @@ document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => {
 $("catNew").onclick = () => (catTipo === "element" ? newElement() : newConcept());
 $("catDup").onclick = () => (catTipo === "element" ? duplicateElement() : duplicateConcept());
 $("catReload").onclick = () => AP.store.carica();
+/* ricerca: sola lettura pura sullo stato già in memoria — nessuna chiamata al Worker,
+   nessuna scrittura, la selezione corrente e il form di dettaglio restano dove sono
+   (si ridisegna solo la lista). */
+$("catCerca").oninput = (ev) => {
+  catCerca = ev.target.value;
+  renderCatList();
+};
 
 /* ==================================================================
    PANNELLO "DOVE È USATO" — in testa al form della voce selezionata
