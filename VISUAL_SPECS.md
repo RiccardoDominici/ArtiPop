@@ -152,6 +152,13 @@ rete (`navigator.onLine === false`), e sparisce da sola al ritorno della rete, s
 ricaricare la pagina; nessun colore o misura nuovi oltre `.hint` (`.78rem`, colore `--dim`).
 Invisibile nell'HTML servito (`hidden`) a chi è online e a chi ha JavaScript disattivato.
 
+Riga del promemoria (`#icslink`, feat-il-promemoria-del-wallpaper-va-nel-calendario — proposta
+ai sensi di §7): riga `.hint` dentro l'hero, in coda dopo `#netstate`, con un solo link
+testuale a `/promemoria.ics?c=<canale in cima>`. Nessun token nuovo: `.hint` (`.78rem`,
+colore `--dim`) per la riga e, per il link, la coppia già usata da `.eredita a` — colore
+`--a1` e sottolineatura. Link inline come quello di `.eredita`, non una pill `.btn`: non
+entra nella fila `.actions` e non richiede il tap target da 44px dei comandi (§5.5).
+
 Fila dei comandi (`.actions`, proposta ai sensi di §7, feat-i-comandi-del-viaggio-non-si-
 accavallano): contenitore canonico di ogni gruppo di pill `.btn` — `display:flex; gap:.6rem;
 flex-wrap:wrap; justify-content:center` — già in uso sotto il deck e, da questo ciclo, anche

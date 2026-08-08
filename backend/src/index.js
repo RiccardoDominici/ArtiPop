@@ -45,7 +45,7 @@ import {
   resolveConcept, poolForWith,
 } from "./catalog.js";
 import { loadNote, putGiornoNota, putAssetto, removeAssetto } from "./note.js";
-import { renderPage } from "./page.js";
+import { renderPage, ORA_CRON_UTC } from "./page.js";
 import { renderHelpPage, renderShortcutMancante, renderErroreTemporaneo, renderPaginaNonTrovata } from "./help.js";
 import { renderArchiviPage, renderGiornoArchivio, renderArchivioNonTrovato } from "./archivi.js";
 import { renderManifest, iconaSvg } from "./manifest.js";
@@ -64,6 +64,7 @@ function conServiceWorker(html) {
 }
 import { renderFeed } from "./feed.js";
 import { renderOpml, OPML_VUOTO } from "./opml.js";
+import { renderPromemoria, PROMEMORIA_VUOTO } from "./promemoria.js";
 import { PLACEHOLDER_PNG_BYTES, PLACEHOLDER_CONTENT_TYPE } from "./placeholder.js";
 import { scegliDataRotazione, scegliDataACaso } from "./rotazione.js";
 // L'orchestrazione di un giorno di produzione (runChannel, backfillChannel,
@@ -1088,6 +1089,31 @@ export default {
       } catch (err) {
         console.error(`[canali.opml] rotta fallita: ${err.message}`);
         return new Response(OPML_VUOTO, { headers: opmlHeaders });
+      }
+    }
+
+    // ---- Promemoria da calendario: /promemoria.ics ----
+    // feat-il-promemoria-del-wallpaper-va-nel-calendario: un calendario
+    // iCalendar sottoscrivibile ricorda l'orario del wallpaper nuovo. Rotta
+    // pubblica come /feed.xml e /canali.opml, senza accesso a KV: try/catch
+    // PROPRIO perché il ripiego deve restare testo/calendario, mai JSON.
+    if (path === "/promemoria.ics") {
+      const icsHeaders = {
+        "content-type": "text/calendar; charset=utf-8",
+        "content-disposition": 'inline; filename="ArtiPop.ics"',
+        "cache-control": "public, max-age=3600",
+        ...SECURITY_HEADERS,
+      };
+      try {
+        const richiesto = url.searchParams.get("c");
+        const canale = ACTIVE_CHANNELS.find((c) => c.id === richiesto) || null;
+        return new Response(
+          renderPromemoria({ canale, origin: url.origin, oraCronUtc: ORA_CRON_UTC }),
+          { headers: icsHeaders },
+        );
+      } catch (err) {
+        console.error(`[promemoria.ics] rotta fallita: ${err.message}`);
+        return new Response(PROMEMORIA_VUOTO, { headers: icsHeaders });
       }
     }
 
