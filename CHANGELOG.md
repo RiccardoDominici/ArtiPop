@@ -16,6 +16,16 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-08 — feat-l-elenco-degli-archivi-si-ordina-come-vuoi
+- Nuovo `<select name="ordina">` nel form di ricerca già esistente di `/archivi` («Più recenti»,
+  «Più giorni», «Nome del canale»): l'elenco è cresciuto (canali attivi + alias storici) e finora
+  l'ordine era uno solo, fisso per data dell'ultimo giorno.
+- `ordinaStorici` pura in `archivi.js`, con ordine totale a tre chiavi (giorni, poi data
+  dell'ultimo giorno, poi id): senza la terza chiave l'esito di una parità dipenderebbe
+  dall'ordine d'ingresso, non deterministico.
+- Qualunque valore di `?ordina=` assente, vuoto o inventato ricade silenziosamente su «più
+  recenti»: un URL manipolato non deve mai produrre un errore (robustezza, `CLAUDE.md` §3).
+
 ## 2026-08-08 — feat-segui-tutti-i-canali-con-un-solo-import
 - Nuova rotta pubblica `/canali.opml`: elenco OPML 2.0 con un `<outline>` per ogni canale attivo
   (perché: seguire tutti i canali col lettore di feed era un gesto per canale, uno alla volta —

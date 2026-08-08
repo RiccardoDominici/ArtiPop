@@ -115,6 +115,45 @@ describe("GET /archivi", () => {
     expect(html).toContain("/archivi/island?date=2025-01-01");
     expect(html).not.toContain("/archivi/bloom?date=2025-02-01");
   });
+
+  it("?ordina=giorni: 200 con le card dal più ricco di giorni al meno ricco", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:island:2025-01-02", "1");
+    await env.KV.put("archive:island:2025-01-03", "1");
+    await env.KV.put("archive:bloom:2025-02-01", "1");
+
+    const res = await callWorker(env, "/archivi?ordina=giorni");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<option value="giorni" selected>');
+    expect(html.indexOf("/archivi/island?date=")).toBeLessThan(html.indexOf("/archivi/bloom?date="));
+  });
+
+  it("?ordina=<valore inventato>: mai 500, ordine di default (recenti)", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:bloom:2025-03-01", "1");
+
+    const res = await callWorker(env, "/archivi?ordina=inventato");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<option value="recenti" selected>');
+    expect(html.indexOf("/archivi/bloom?date=")).toBeLessThan(html.indexOf("/archivi/island?date="));
+  });
+
+  it("?cerca=isl&ordina=nome: 200 con la sola card che corrisponde e il criterio nome selezionato", async () => {
+    const env = makeEnv();
+    await env.KV.put("archive:island:2025-01-01", "1");
+    await env.KV.put("archive:bloom:2025-02-01", "1");
+
+    const res = await callWorker(env, "/archivi?cerca=isl&ordina=nome");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("/archivi/island?date=2025-01-01");
+    expect(html).not.toContain("/archivi/bloom?date=2025-02-01");
+    expect(html).toContain('<option value="nome" selected>');
+  });
 });
 
 // feat-il-giorno-d-archivio-si-apre-dentro-il-sito: /archivi/<id> apre UN

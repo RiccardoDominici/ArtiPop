@@ -24,6 +24,12 @@ describe("renderArchiviPage(storici)", () => {
     expect(html).toContain('href="/archivi/bloom?date=2025-02-03"');
   });
 
+  it("feat-l-elenco-degli-archivi-si-ordina-come-vuoi: firma retrocompatibile — renderArchiviPage(ESEMPIO) senza gli argomenti nuovi emette il <select> con selected su recenti e le card nell'ordine ricevuto", () => {
+    const html = renderArchiviPage(ESEMPIO);
+    expect(html).toContain('<option value="recenti" selected>');
+    expect(html.indexOf('/archivi/island?date=')).toBeLessThan(html.indexOf('/archivi/bloom?date='));
+  });
+
   it("nessuno <script> e nessuna fetch( nell'HTML: pagina server-rendered senza JS", () => {
     const html = renderArchiviPage(ESEMPIO);
     expect(html).not.toContain("<script");

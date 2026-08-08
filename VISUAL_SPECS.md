@@ -292,9 +292,18 @@ o componente nuovo.
   feat-cerca-il-canale-fra-gli-archivi): dentro `<header>`, sotto `.sub`, un
   `<form class="cerca" method="get" action="/archivi" role="search">` con un
   `<input type="search" name="cerca">` (placeholder «Cerca un canale», `aria-label`
-  «Cerca un canale per nome») e un `<button type="submit">Cerca</button>`. Il filtro è
-  **lato server**: il form ricarica `/archivi?cerca=<testo>` e la pagina resta senza alcuno
-  `<script>` e senza `fetch(` come già imposto sopra. Token: campo e bottone bordo
+  «Cerca un canale per nome»). Componente aggiuntivo «ordina l'elenco» (proposta ai sensi di §7,
+  feat-l-elenco-degli-archivi-si-ordina-come-vuoi): dentro lo stesso `form.cerca`, fra il campo di
+  ricerca e il bottone, un `<select name="ordina">` con `aria-label` «Ordina l'elenco degli
+  archivi» e tre `<option value="recenti|giorni|nome">` («Più recenti», «Più giorni», «Nome del
+  canale»), `selected` su quella corrente e su «Più recenti» quando il parametro è assente o non
+  riconosciuto. L'ordinamento è **lato server** come il filtro, la freccia nativa del controllo è
+  conservata (nessun componente disegnato nuovo). Stessi token del campo di ricerca già dichiarati
+  in questo paragrafo: bordo `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio
+  `10px`, testo `#f2f3f8`, `min-height: 44px` come da §5.5. Poi un
+  `<button type="submit">Cerca</button>`, che invia entrambi i campi. Il filtro è
+  **lato server**: il form ricarica `/archivi?cerca=<testo>&ordina=<criterio>` e la pagina resta
+  senza alcuno `<script>` e senza `fetch(` come già imposto sopra. Token: campo e bottone bordo
   `rgba(255,255,255,.10)`, sfondo `rgba(255,255,255,.03)`, raggio `10px`, testo `#f2f3f8`,
   placeholder `#9aa3b8`, etichetta del bottone `#8fd3ff`, `min-height: 44px` entrambi — nessun
   colore, dimensione o componente fuori da quelli già dichiarati in §2/§2.1. Presente solo con
