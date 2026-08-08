@@ -16,6 +16,14 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-08 — feat-l-aiuto-elenca-le-scorciatoie-da-tastiera
+- La FAQ «Come funziona la storia degli sfondi?» ora elenca anche le scorciatoie da tastiera
+  (frecce sinistra/destra su home e giorno d'archivio, Inizio/Fine per il primo e l'ultimo
+  giorno): esistevano già nel codice (`page.js`, `archivi.js`) ma non erano scritte da nessuna
+  parte, quindi le usava solo chi le scopriva per caso.
+- Nessuna voce FAQ nuova: si arricchisce la risposta esistente, non la domanda, per non toccare
+  gli id/permalink già condivisi e per non rompere i nove test che contano i 15 `<details>`.
+
 ## 2026-08-08 — feat-l-elenco-degli-archivi-si-ordina-come-vuoi
 - Nuovo `<select name="ordina">` nel form di ricerca già esistente di `/archivi` («Più recenti»,
   «Più giorni», «Nome del canale»): l'elenco è cresciuto (canali attivi + alias storici) e finora
