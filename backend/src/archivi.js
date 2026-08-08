@@ -363,18 +363,83 @@ function filtraStorici(storici, cerca) {
   });
 }
 
+const ORDINI = ["recenti", "giorni", "nome"];
+const ETICHETTE_ORDINE = { recenti: "Più recenti", giorni: "Più giorni", nome: "Nome del canale" };
+
+/**
+ * Criterio di ordinamento canonico a partire dal parametro grezzo `?ordina=`:
+ * uno di "recenti" | "giorni" | "nome", mai altro. Qualunque valore assente,
+ * vuoto, non stringa o inatteso (URL manipolata) ricade su "recenti" —
+ * l'ordine per data più recente che il chiamante ha già applicato. Un solo
+ * punto che decide, così l'ordinamento (`ordinaStorici`) e l'opzione
+ * `selected` del form (`formCerca`) non possono divergere.
+ */
+function normalizzaOrdine(ordina) {
+  const v = typeof ordina === "string" ? ordina.trim().toLowerCase() : "";
+  return ORDINI.includes(v) ? v : "recenti";
+}
+
+/** giorni ↓, poi ultima ↓ (stringhe AAAA-MM-GG, confronto lessicografico = cronologico),
+ *  poi id ↑ — tre chiavi perché l'ordine sia TOTALE e deterministico: con due canali
+ *  a pari giorni e pari data l'esito non deve dipendere dall'ordine d'ingresso. */
+function confrontaGiorni(a, b) {
+  const ga = Number(a?.giorni) || 0;
+  const gb = Number(b?.giorni) || 0;
+  if (ga !== gb) return gb - ga;
+  const ua = String(a?.ultima ?? "");
+  const ub = String(b?.ultima ?? "");
+  if (ua !== ub) return ua < ub ? 1 : -1;
+  return String(a?.id ?? "").localeCompare(String(b?.id ?? ""));
+}
+
+/** nome visibile ↑ (displayName), confronto italiano insensibile a maiuscole e accenti,
+ *  poi id ↑ a parità di nome. */
+function confrontaNome(a, b) {
+  const na = String(displayName(a?.id) ?? "");
+  const nb = String(displayName(b?.id) ?? "");
+  const d = na.localeCompare(nb, "it", { sensitivity: "base" });
+  if (d !== 0) return d;
+  return String(a?.id ?? "").localeCompare(String(b?.id ?? ""));
+}
+
+/**
+ * feat-l-elenco-degli-archivi-si-ordina-come-vuoi: NUOVA lista ordinata secondo
+ * `ordina` ("recenti" | "giorni" | "nome"), senza mutare l'array ricevuto —
+ * gemella di `filtraStorici`, applicata dopo il filtro. `storici` non-array
+ * restituisce `storici` invariato (il caso `null` lo gestisce già
+ * `renderArchiviPage`); un `ordina` non riconosciuto ricade su "recenti",
+ * cioè l'ordine ricevuto invariato (stessa identità, nessuna copia inutile).
+ */
+export function ordinaStorici(storici, ordina) {
+  if (!Array.isArray(storici)) return storici;
+  const criterio = normalizzaOrdine(ordina);
+  if (criterio === "recenti") return storici;
+  const copia = [...storici];
+  if (criterio === "giorni") return copia.sort(confrontaGiorni);
+  return copia.sort(confrontaNome);
+}
+
 /**
  * Campo di ricerca dell'elenco `/archivi`: `<form method="get">` puro HTML —
  * nessun JavaScript, la navigazione la fa il browser (criterio: la pagina
  * resta script-free). Emesso solo dal ramo con elenco disponibile: con
  * `storici === null` la pagina resta il solo messaggio d'indisponibilità, un
  * campo che non può filtrare nulla sarebbe un comando morto.
- * `value` ripresenta la query cercata, sempre passata da `esc()`.
+ * `value` ripresenta la query cercata, sempre passata da `esc()`. `ordina`
+ * (feat-l-elenco-degli-archivi-si-ordina-come-vuoi): criterio corrente del
+ * `<select name="ordina">` emesso a fianco del campo di ricerca; il valore
+ * grezzo non viene mai interpolato nell'HTML — le `<option>` nascono da
+ * `ORDINI`/`ETICHETTE_ORDINE`, costanti letterali del modulo.
  */
-function formCerca(cerca) {
+function formCerca(cerca, ordina = "") {
+  const corrente = normalizzaOrdine(ordina);
+  const opzioni = ORDINI
+    .map((v) => `<option value="${v}"${v === corrente ? " selected" : ""}>${ETICHETTE_ORDINE[v]}</option>`)
+    .join("");
   return `
     <form class="cerca" method="get" action="/archivi" role="search">
       <input type="search" name="cerca" value="${esc(cerca)}" placeholder="Cerca un canale" aria-label="Cerca un canale per nome" autocomplete="off" />
+      <select name="ordina" aria-label="Ordina l'elenco degli archivi">${opzioni}</select>
       <button type="submit">Cerca</button>
     </form>`;
 }
@@ -521,6 +586,13 @@ const ARCHIVI_STYLE = `
   }
   form.cerca input[type="search"]::placeholder { color: #9aa3b8; }
   form.cerca input[type="search"]:focus-visible { outline: 2px solid #8fd3ff; outline-offset: 2px; }
+  form.cerca select {
+    min-height: 44px; padding: 0 10px; flex-shrink: 0; max-width: 100%;
+    border: 1px solid rgba(255,255,255,.10); border-radius: 10px;
+    background: rgba(255,255,255,.03); color: #f2f3f8;
+    font: inherit; cursor: pointer;
+  }
+  form.cerca select:focus-visible { outline: 2px solid #8fd3ff; outline-offset: 2px; }
   form.cerca button {
     min-height: 44px; padding: 0 16px; flex-shrink: 0;
     border: 1px solid rgba(255,255,255,.10); border-radius: 10px;
@@ -706,10 +778,14 @@ const GIORNO_SCRIPT = `
  * diverso (vedi CRITERI del piano). `cerca` (feat-cerca-il-canale-fra-gli-archivi):
  * testo cercato dal parametro `?cerca=`, filtra le card per nome visibile o
  * id; con elenco disponibile ma nessuna corrispondenza mostra un messaggio
- * dedicato invece dell'elenco.
+ * dedicato invece dell'elenco. `ordina` (feat-l-elenco-degli-archivi-si-ordina-come-vuoi):
+ * criterio "recenti" | "giorni" | "nome" dal parametro `?ordina=`, applicato
+ * dopo il filtro di `cerca` — i due si compongono; qualunque valore assente,
+ * vuoto o non riconosciuto ricade su "recenti" (l'ordine per data più
+ * recente già applicato da chi chiama).
  */
-export function renderArchiviPage(storici, origin = null, dataOggi = null, cerca = "") {
-  const filtrati = filtraStorici(storici, cerca);
+export function renderArchiviPage(storici, origin = null, dataOggi = null, cerca = "", ordina = "") {
+  const filtrati = ordinaStorici(filtraStorici(storici, cerca), ordina);
   const cercaAttiva = String(cerca ?? "").trim() !== "";
   let corpo;
   if (storici === null) {
@@ -740,7 +816,7 @@ ${origin && dataOggi ? metaAnteprima(origin, dataOggi, "ArtiPop — archivi", "T
   <header>
     <a class="back" href="/">← torna ad ArtiPop</a>
     <h1>Archivi</h1>
-    <p class="sub">Tutti i canali con giorni in archivio, in corso e non: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>${storici === null ? "" : formCerca(cerca)}${linkOpml()}
+    <p class="sub">Tutti i canali con giorni in archivio, in corso e non: qui trovi l'elenco e il link all'ultimo giorno di ciascuno.</p>${storici === null ? "" : formCerca(cerca, ordina)}${linkOpml()}
   </header>
   ${corpo}
   <footer>

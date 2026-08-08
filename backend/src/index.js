@@ -1186,7 +1186,11 @@ export default {
         }
       }
       const cerca = url.searchParams.get("cerca") ?? "";
-      return new Response(conServiceWorker(renderArchiviPage(storici, url.origin, todayKey(), cerca)), {
+      // feat-l-elenco-degli-archivi-si-ordina-come-vuoi: parametro grezzo, la
+      // validazione vive in archivi.js (normalizzaOrdine) — qui nessuna logica,
+      // un valore inventato non deve mai diventare un errore di rotta.
+      const ordina = url.searchParams.get("ordina") ?? "";
+      return new Response(conServiceWorker(renderArchiviPage(storici, url.origin, todayKey(), cerca, ordina)), {
         headers: {
           "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
           ...SECURITY_HEADERS,
