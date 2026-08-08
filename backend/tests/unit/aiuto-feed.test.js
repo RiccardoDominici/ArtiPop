@@ -37,15 +37,15 @@ describe("renderHelpPage — spiegazione del feed del canale", () => {
     expect(primaOccorrenza).toBeLessThan(fineDetails);
   });
 
-  it("il numero di voci <details> resta invariato (15)", () => {
+  it("il numero di voci <details> resta invariato (16)", () => {
     const details = html.match(/<details[^>]*>/g) ?? [];
-    expect(details).toHaveLength(15);
+    expect(details).toHaveLength(16);
   });
 
   it("gli id delle ancore restano tutti distinti", () => {
     const ids = [...html.matchAll(/<details[^>]*\bid="([^"]*)"/g)].map((m) => m[1]);
-    expect(ids).toHaveLength(15);
-    expect(new Set(ids).size).toBe(15);
+    expect(ids).toHaveLength(16);
+    expect(new Set(ids).size).toBe(16);
   });
 
   it('l\'id dell\'ancora della voce arricchita è invariato', () => {

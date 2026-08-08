@@ -36,13 +36,13 @@ describe("/aiuto — contenuto allineato alla home attuale", () => {
     expect(body).toMatch(/3:00\s*UTC/);
   });
 
-  it("risponde 200 text/html con lo stesso numero di voci di prima (7 problemi + 8 FAQ)", async () => {
+  it("risponde 200 text/html con lo stesso numero di voci di prima (7 problemi + 9 FAQ)", async () => {
     const env = makeEnv();
     const res = await callWorker(env, "/aiuto");
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
     const body = await res.text();
     const summaryCount = (body.match(/<summary>/g) || []).length;
-    expect(summaryCount).toBe(15);
+    expect(summaryCount).toBe(16);
   });
 });

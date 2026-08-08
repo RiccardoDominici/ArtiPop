@@ -25,10 +25,10 @@ describe("renderHelpPage — indirizzabilità delle voci", () => {
     }
   });
 
-  it("gli id sono 15, tutti distinti fra loro", () => {
+  it("gli id sono 16, tutti distinti fra loro", () => {
     const ids = estraiDetails(html).map(estraiId);
-    expect(ids).toHaveLength(15);
-    expect(new Set(ids).size).toBe(15);
+    expect(ids).toHaveLength(16);
+    expect(new Set(ids).size).toBe(16);
   });
 
   it("gli id sono slug validi, mai spazi/maiuscole/accenti", () => {
@@ -55,7 +55,7 @@ describe("renderHelpPage — indirizzabilità delle voci", () => {
       expect(summary).toContain(`<a class="permalink" href="#${id}"`);
       count++;
     }
-    expect(count).toBe(15);
+    expect(count).toBe(16);
   });
 
   it("il permalink ha un aria-label", () => {
@@ -67,9 +67,9 @@ describe("renderHelpPage — indirizzabilità delle voci", () => {
     expect(html).toContain(".open = true");
   });
 
-  it("non regressione: contiene ancora 15 <summary>, i marker, la classe item hot", () => {
+  it("non regressione: contiene ancora 16 <summary>, i marker, la classe item hot", () => {
     const summaryCount = (html.match(/<summary>/g) ?? []).length;
-    expect(summaryCount).toBe(15);
+    expect(summaryCount).toBe(16);
     expect(html).toContain("＋");
     expect(html).toContain("－");
     expect(html).toContain("item hot");

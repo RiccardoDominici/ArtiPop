@@ -37,9 +37,9 @@ describe("renderHelpPage — spiegazione dell'installazione alla schermata Home"
     expect(primaOccorrenza).toBeLessThan(fineDetails);
   });
 
-  it("il numero di voci <details> resta invariato (15)", () => {
+  it("il numero di voci <details> resta invariato (16)", () => {
     const details = html.match(/<details[^>]*>/g) ?? [];
-    expect(details).toHaveLength(15);
+    expect(details).toHaveLength(16);
   });
 
   it("la vecchia frase «non c'è app da installare» non compare più", () => {

@@ -35,9 +35,9 @@ describe("renderHelpPage — campo di ricerca", () => {
     }
   });
 
-  it("il numero di voci <details> rese è invariato (15)", () => {
+  it("il numero di voci <details> rese è invariato (16)", () => {
     const details = html.match(/<details[^>]*>/g) ?? [];
-    expect(details).toHaveLength(15);
+    expect(details).toHaveLength(16);
   });
 
   it("gli id delle voci e i permalink restano invariati", () => {
@@ -45,7 +45,7 @@ describe("renderHelpPage — campo di ricerca", () => {
     let match;
     const ids = [];
     while ((match = idRe.exec(html))) ids.push(match[1]);
-    expect(ids).toHaveLength(15);
+    expect(ids).toHaveLength(16);
     for (const id of ids) {
       expect(html).toContain(`<a class="permalink" href="#${id}"`);
     }

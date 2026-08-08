@@ -31,9 +31,9 @@ describe("renderHelpPage — spiegazione dello sfoglio del viaggio", () => {
     }
   });
 
-  it("il numero di voci <details> resta invariato (15)", () => {
+  it("il numero di voci <details> resta invariato (16)", () => {
     const details = html.match(/<details[^>]*>/g) ?? [];
-    expect(details).toHaveLength(15);
+    expect(details).toHaveLength(16);
   });
 
   it("l'id dell'ancora della voce arricchita è invariato", () => {

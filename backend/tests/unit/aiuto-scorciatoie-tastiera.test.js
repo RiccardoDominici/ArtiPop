@@ -51,12 +51,12 @@ describe("renderHelpPage — scorciatoie da tastiera", () => {
     expect(count).toBe(2);
   });
 
-  it("nessuna voce nuova: i <details> restano 15 con id invariati", () => {
+  it("nessuna voce nuova: i <details> restano 16 con id invariati", () => {
     const details = html.match(/<details/g) ?? [];
-    expect(details.length).toBe(15);
+    expect(details.length).toBe(16);
     const ids = [...html.matchAll(/<details[^>]*\sid="([^"]+)"/g)].map((m) => m[1]);
-    expect(ids.length).toBe(15);
-    expect(new Set(ids).size).toBe(15);
+    expect(ids.length).toBe(16);
+    expect(new Set(ids).size).toBe(16);
     expect(html).toContain('id="d-come-funziona-la-storia-degli-sfondi"');
   });
 

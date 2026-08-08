@@ -16,6 +16,12 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-08 — feat-l-aiuto-spiega-il-promemoria-nel-calendario
+- Nuova voce FAQ su /aiuto per `/promemoria.ics`: la rotta è in produzione dal ciclo 179 ma la
+  pagina che l'utente consulta non la nominava — chi cercava «promemoria» non trovava nulla.
+- Conteggi di non-regressione delle voci dell'aiuto 15 → 16 negli undici test che li fissano:
+  contenuto e conteggio devono restare allineati (stessa manutenzione del ciclo 173).
+
 ## 2026-08-08 — feat-il-promemoria-del-wallpaper-va-nel-calendario
 - Nuova rotta `GET /promemoria.ics`: calendario iCalendar sottoscrivibile con un evento
   giornaliero ricorrente all'orario del cron, perché l'orario del wallpaper nuovo deve poter
