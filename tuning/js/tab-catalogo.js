@@ -7,6 +7,12 @@
 // utente (concept ed element custom) tramite AP.store.dati.catalogo; la lista
 // dei canali attivi (per il campo "canale" dell'element) viene da
 // AP.store.dati.canali — non più dalla vecchia costante CANALI scritta a mano.
+//
+// Concept ed element seguono lo STESSO ciclo vita (seleziona → modifica →
+// salva/elimina) su endpoint gemelli (/catalogo/concept, /catalogo/element):
+// tutta l'orchestrazione è scritta UNA volta parametrizzata sul tipo, mentre
+// ciò che diverge davvero (campi del form, regole di validazione, testo degli
+// usi) resta in funzioni per-tipo piccole e affiancate.
 window.AP = window.AP || {};
 AP.tabs = AP.tabs || {};
 
@@ -29,6 +35,29 @@ let catTipo = "concept";
    di segmented non deve azzerargli la ricerca sotto le mani. */
 let catCerca = "";
 
+/* ---------- stato di selezione, per tipo ----------
+   sel: id della voce selezionata in lista (null = nessuna selezione);
+   form: voce in edit (deep clone, mai un riferimento alla lista);
+   isNew: true solo fra "Nuovo/Duplica" e il primo salvataggio riuscito. */
+const STATO = {
+  concept: { sel: null, form: null, isNew: false },
+  element: { sel: null, form: null, isNew: false },
+};
+const TIPI = ["concept", "element"];
+
+/* nomi sistematici derivati dal tipo: chiavi dello store, endpoint, id dei nodi
+   DOM del form (conceptFormStatus / elementErrors / f-c-id / f-e-id, …). */
+const LISTA_KEY = { concept: "concepts", element: "elements" };
+const PREFISSO_CAMPI = { concept: "c", element: "e" };
+const ATTR_TAPPE = { concept: "tappa", element: "etappa" };
+
+function vociDel(tipo) {
+  return AP.store.dati.catalogo?.[LISTA_KEY[tipo]] || [];
+}
+function trovaVoce(tipo, id) {
+  return vociDel(tipo).find((x) => x.id === id);
+}
+
 function syncSegButtons() {
   document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => b.classList.toggle("active", b.dataset.tipo === catTipo));
 }
@@ -40,7 +69,7 @@ function syncSegButtons() {
    si riscriverebbe un hash già corretto, innocuo ma inutile. */
 function scriviHashCatalogo(opts = {}) {
   if (opts.skipHashWrite) return;
-  const id = catTipo === "concept" ? conceptSel : elementSel;
+  const id = STATO[catTipo].sel;
   const params = { tipo: catTipo };
   if (id) params.id = id;
   AP.util.route.vai("catalogo", params);
@@ -121,6 +150,7 @@ function usoElementTxt(id) {
   const genTxt = u.giorni ? `${u.archi.length} arc${u.archi.length === 1 ? "o" : "hi"} · ${u.giorni} giorn${u.giorni === 1 ? "o" : "i"}` : "mai generato";
   return `${nativoTxt} · ${pubTxt} · ${genTxt}`;
 }
+const USO_TXT = { concept: usoConceptTxt, element: usoElementTxt };
 
 /* Messaggi di conferma per le cancellazioni (azione irreversibile, v. PLAN.md
    ciclo POLISH "eliminare dal catalogo dice prima cosa si perde"): stessa
@@ -164,6 +194,7 @@ function messaggioEliminaConcept(id, nome) {
   }
   return righe.length ? `${base}\n\n${righe.join("\n")}` : base;
 }
+const MSG_ELIMINA = { concept: messaggioEliminaConcept, element: messaggioEliminaElement };
 
 /* filtro della lista Catalogo: puro, senza DOM e senza stato — tutta la logica di
    ricerca sta qui, così i test la esercitano senza sandbox. Corrispondenza su nome
@@ -187,79 +218,122 @@ function listaVuotaHTML(tuttiCount, vuotoTxt) {
   return `<div class="hint">${vuotoTxt}</div>`;
 }
 
-/* ================================================================== */
-/* ---------- LISTA + FORM: CONCEPT ---------- */
-/* ================================================================== */
-let conceptSel = null;    // id del concept selezionato in lista (null = nessuna selezione)
-let conceptForm = null;   // stato in edit: null finché non si sceglie/crea qualcosa
-let conceptIsNew = false;
-
-function renderConceptList() {
-  const wrap = $("catList");
-  const cat = AP.store.dati.catalogo;
-  if (CATALOGO_ERROR) { wrap.innerHTML = `<div class="hint">${esc(CATALOGO_ERROR)}</div>`; return; }
-  if (!catalogoArrivato) { wrap.innerHTML = `<div class="hint">catalogo non ancora caricato.</div>`; return; }
-  wrap.innerHTML = "";
-  const tutti = [...cat.concepts].sort((a, b) => (a.custom === b.custom ? 0 : a.custom ? 1 : -1) || a.nome.localeCompare(b.nome));
-  const items = filtraVoci(tutti, catCerca);
-  for (const c of items) {
-    const row = document.createElement("div");
-    row.className = "itemrow" + (c.id === conceptSel ? " active" : "");
-    row.innerHTML = `<span>${esc(c.nome)}<br><code>${esc(c.id)}</code><br><span class="hint" style="font-size:11px">${usoConceptTxt(c.id)}</span></span>
-      <span class="badges"><span class="badge ${c.custom ? 'custom' : ''}">${c.custom ? 'custom' : 'built-in'}</span>${c.sospeso === true ? '<span class="badge sospeso">sospeso</span>' : ''}</span>`;
-    row.onclick = () => selectConcept(c.id);
-    wrap.appendChild(row);
-  }
-  if (!items.length) wrap.innerHTML = listaVuotaHTML(tutti.length, "nessun concept nel catalogo.");
-}
-
-function selectConcept(id, opts = {}) {
-  const c = AP.store.dati.catalogo?.concepts.find((x) => x.id === id);
-  if (!c) return;
-  catTipo = "concept";
-  conceptSel = id;
-  conceptIsNew = false;
-  conceptForm = deepClone(c);
-  afterCatSelectionChange(opts);
-}
-
-function newConcept() {
-  catTipo = "concept";
-  conceptSel = null;
-  conceptIsNew = true;
-  conceptForm = {
+/* ==================================================================
+   SELEZIONE / CREAZIONE / DUPLICAZIONE — un solo flusso per entrambi i tipi.
+   Ciò che diverge (la voce di partenza di "Nuovo", gli extra di "Duplica")
+   sta nelle due tabelle qui sotto; tutto il resto è identico per natura.
+   ================================================================== */
+const CORPO_NUOVO = {
+  concept: () => ({
     id: "", nome: "", custom: true, conserva: "",
     tappe: Array.from({ length: 7 }, () => [""]),
     extra: [],
     profilo: { estensione: [7, 28], intensita: [9, 26], compattezza: [0.4, 0.85], monotona: true },
     maxDeriva: null, maxDegrado: null,
-  };
+  }),
+  element: () => ({
+    id: "", nome: "", custom: true, s: "", soggetto: "",
+    setting: "", style: "", palette: "",
+    famigliaNativa: AP.store.dati.catalogo?.concepts?.[0]?.id || "",
+    tappe: null, extra: null, pubblicato: false, canale: null,
+  }),
+};
+
+function selezionaVoce(tipo, id, opts = {}) {
+  const voce = trovaVoce(tipo, id);
+  if (!voce) return;
+  catTipo = tipo;
+  const st = STATO[tipo];
+  st.sel = id;
+  st.isNew = false;
+  st.form = deepClone(voce);
+  afterCatSelectionChange(opts);
+}
+
+function nuovaVoce(tipo) {
+  catTipo = tipo;
+  const st = STATO[tipo];
+  st.sel = null;
+  st.isNew = true;
+  st.form = CORPO_NUOVO[tipo]();
   afterCatSelectionChange();
 }
 
-function duplicateConcept() {
-  if (!conceptForm) return alert("Seleziona prima un concept dalla lista da usare come base.");
-  const base = deepClone(conceptForm);
+function duplicaVoce(tipo) {
+  const st = STATO[tipo];
+  if (!st.form) return alert(`Seleziona prima un ${tipo} dalla lista da usare come base.`);
+  const base = deepClone(st.form);
   base.id = "";
   base.nome = (base.nome || "") + " (copia)";
   base.custom = true;
-  catTipo = "concept";
-  conceptSel = null;
-  conceptIsNew = true;
-  conceptForm = base;
+  // la copia nasce sempre non pubblicata: pubblicarla sarebbe un effetto
+  // collaterale silenzioso su un canale di produzione.
+  if (tipo === "element") { base.pubblicato = false; base.canale = null; }
+  catTipo = tipo;
+  st.sel = null;
+  st.isNew = true;
+  st.form = base;
   afterCatSelectionChange();
 }
 
+/* ==================================================================
+   LISTA — un solo renderer parametrizzato: ordine (custom dopo built-in,
+   poi nome), filtro di ricerca, righe con usi e badges. Le differenze
+   visive fra i tipi stanno tutto in badgeVociHTML().
+   ================================================================== */
+function badgeVociHTML(tipo, voce) {
+  const customBadge = `<span class="badge ${voce.custom ? 'custom' : ''}">${voce.custom ? 'custom' : 'built-in'}</span>`;
+  if (tipo === "element") {
+    return `<span class="badges">
+        ${customBadge}
+        ${voce.pubblicato ? `<span class="badge pub">${esc(voce.canale || 'pubblicato')}</span>` : ''}
+        ${voce.sospeso === true ? '<span class="badge sospeso">sospeso</span>' : ''}
+      </span>`;
+  }
+  return `<span class="badges">${customBadge}${voce.sospeso === true ? '<span class="badge sospeso">sospeso</span>' : ''}</span>`;
+}
+
+function renderListaVoci(tipo) {
+  const wrap = $("catList");
+  const cat = AP.store.dati.catalogo;
+  if (CATALOGO_ERROR) { wrap.innerHTML = `<div class="hint">${esc(CATALOGO_ERROR)}</div>`; return; }
+  if (!catalogoArrivato) { wrap.innerHTML = `<div class="hint">catalogo non ancora caricato.</div>`; return; }
+  wrap.innerHTML = "";
+  const tutti = [...cat[LISTA_KEY[tipo]]].sort((a, b) => (a.custom === b.custom ? 0 : a.custom ? 1 : -1) || a.nome.localeCompare(b.nome));
+  const items = filtraVoci(tutti, catCerca);
+  for (const voce of items) {
+    const row = document.createElement("div");
+    row.className = "itemrow" + (voce.id === STATO[tipo].sel ? " active" : "");
+    row.innerHTML = `<span>${esc(voce.nome)}<br><code>${esc(voce.id)}</code><br><span class="hint" style="font-size:11px">${USO_TXT[tipo](voce.id)}</span></span>
+      ${badgeVociHTML(tipo, voce)}`;
+    row.onclick = () => selezionaVoce(tipo, voce.id);
+    wrap.appendChild(row);
+  }
+  if (!items.length) wrap.innerHTML = listaVuotaHTML(tutti.length, `nessun ${tipo} nel catalogo.`);
+}
+
+/* nomi storici mantenuti come punti d'ingresso per-tipo (li importano anche i
+   test sandbox): sono ora delle specializzazioni del renderer unico. */
+function renderConceptList() { renderListaVoci("concept"); }
+function renderElementList() { renderListaVoci("element"); }
+
+/* ==================================================================
+   FORM — le due schede restano distinte perché i CAMPI sono davvero
+   diversi (tappe+profilo vs soggetto/setting/style/palette); condividono
+   l'impianto: stesso scheletro readOnly/idLocked, stessi id sistematici
+   (`${tipo}Save`, `${tipo}Errors`, `f-${prefisso}-…`), stesse azioni.
+   ================================================================== */
 function renderConceptForm() {
   const box = $("catForm");
-  if (!conceptForm) {
+  const st = STATO.concept;
+  if (!st.form) {
     box.innerHTML = `<div class="hint">Seleziona un concept dalla lista per vederne i dettagli, crea un "Nuovo" concept da zero,
       oppure seleziona un built-in e premi "Duplica" per partire da uno schema già scritto.</div>`;
     return;
   }
-  const f = conceptForm;
-  const readOnly = !conceptIsNew && !f.custom; // built-in esistente: sola lettura
-  const idLocked = !conceptIsNew;              // id modificabile solo alla creazione
+  const f = st.form;
+  const readOnly = !st.isNew && !f.custom; // built-in esistente: sola lettura
+  const idLocked = !st.isNew;              // id modificabile solo alla creazione
   const dis = readOnly ? "disabled" : "";
   const idDis = (readOnly || idLocked) ? "disabled" : "";
 
@@ -337,191 +411,24 @@ function renderConceptForm() {
     ${readOnly ? "" : `
     <div class="formactions">
       <button id="conceptSave" class="primary">💾 Salva nel Worker</button>
-      ${(!conceptIsNew && f.custom) ? '<button id="conceptDelete" class="ghost">🗑 Elimina</button>' : ""}
+      ${(!st.isNew && f.custom) ? '<button id="conceptDelete" class="ghost">🗑 Elimina</button>' : ""}
       <span class="status" id="conceptFormStatus"></span>
     </div>`}
   `;
-  if (!readOnly) {
-    $("conceptSave").onclick = saveConcept;
-    const del = $("conceptDelete"); if (del) del.onclick = deleteConcept;
-    // in creazione: appena l'utente ritocca l'id, l'eventuale segnalazione "id già
-    // esistente" non è più detto che valga ancora — la si toglie e si rifà il
-    // controllo vero al prossimo tentativo di salvataggio.
-    if (conceptIsNew) $("f-c-id").oninput = () => showIdFieldError($("f-c-id"), $("f-c-idErr"), "");
-  }
-}
-
-function showConceptErrors(list) {
-  $("conceptErrors").innerHTML = list.length
-    ? `<div class="errbox"><b>Il Worker segnala:</b><ul>${list.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : "";
-}
-
-function validateConceptLocal(b) {
-  const errs = [];
-  if (!ID_RE.test(b.id)) errs.push("id: minuscolo, lettere/numeri/-/_, 2-32 caratteri, non iniziare con - o _");
-  if (!b.nome || b.nome.length > 40) errs.push("nome: obbligatorio, 1-40 caratteri");
-  if (!b.conserva || b.conserva.length > 300) errs.push("conserva: obbligatorio, max 300 caratteri");
-  if (!Array.isArray(b.tappe) || b.tappe.length !== 7) errs.push("tappe: servono esattamente 7 tappe");
-  else b.tappe.forEach((righe, i) => {
-    if (!righe.length || righe.length > 3) errs.push(`tappa ${i + 1}: serve 1-3 frasi`);
-    if (righe.some((r) => r.length > 400)) errs.push(`tappa ${i + 1}: una frase supera i 400 caratteri`);
-  });
-  if (b.extra.length > 6) errs.push("extra: massimo 6 frasi");
-  if (b.extra.some((r) => r.length > 400)) errs.push("extra: una frase supera i 400 caratteri");
-  const [elo, ehi] = b.profilo.estensione;
-  if (!(elo >= 0 && ehi <= 100 && elo <= ehi)) errs.push("estensione: range non valido (0-100, min ≤ max)");
-  const [ilo, ihi] = b.profilo.intensita;
-  if (!(ilo >= 0 && ihi <= 100 && ilo <= ihi)) errs.push("intensità: range non valido (0-100, min ≤ max)");
-  const [clo, chi] = b.profilo.compattezza;
-  if (!(clo >= 0 && chi <= 1 && clo <= chi)) errs.push("compattezza: range non valido (0-1, min ≤ max)");
-  return errs;
-}
-
-async function saveConcept() {
-  if (!key()) return setStatus($("conceptFormStatus"), "serve la chiave admin");
-  const idInput = $("f-c-id");
-  const id = idInput.value.trim();
-
-  const allIds = AP.store.dati.catalogo ? [...AP.store.dati.catalogo.concepts] : [];
-  if (idAlreadyTaken(id, conceptIsNew, allIds)) {
-    showIdFieldError(idInput, $("f-c-idErr"),
-      `esiste già un concept con id "${id}" — scegli un id diverso, oppure apri quello esistente dalla lista per modificarlo.`);
-    return;
-  }
-  showIdFieldError(idInput, $("f-c-idErr"), "");
-
-  const errs = [];
-  const nome = $("f-c-nome").value.trim();
-  const conserva = $("f-c-conserva").value.trim();
-  const tappe = [...document.querySelectorAll('[data-tappa]')]
-    .sort((a, b) => +a.dataset.tappa - +b.dataset.tappa)
-    .map((ta) => ta.value.split("\n").map((s) => s.trim()).filter(Boolean));
-  const extra = $("f-c-extra").value.split("\n").map((s) => s.trim()).filter(Boolean);
-  const profilo = {
-    estensione: [readNum($("f-c-est-0"), errs, "estensione min"), readNum($("f-c-est-1"), errs, "estensione max")],
-    intensita: [readNum($("f-c-int-0"), errs, "intensità min"), readNum($("f-c-int-1"), errs, "intensità max")],
-    compattezza: [readNum($("f-c-cmp-0"), errs, "compattezza min"), readNum($("f-c-cmp-1"), errs, "compattezza max")],
-    monotona: $("f-c-mono").checked,
-  };
-  const maxDeriva = readOptionalNum($("f-c-maxd"), errs, "maxDeriva");
-  const maxDegrado = readOptionalNum($("f-c-maxg"), errs, "maxDegrado");
-  if (errs.length) return showConceptErrors(errs);
-
-  const body = { id, nome, conserva, tappe, extra, profilo, maxDeriva, maxDegrado, soloSeNuovo: conceptIsNew };
-  const localErrs = validateConceptLocal(body);
-  if (localErrs.length) return showConceptErrors(localErrs);
-
-  try {
-    setStatus($("conceptFormStatus"), "salvo…");
-    showConceptErrors([]);
-    const res = await api("/catalogo/concept", { method: "PUT", body: JSON.stringify(body) });
-    setStatus($("conceptFormStatus"), "salvato ✓");
-    toast(`concept "${nome}" salvato`, "ok");
-    conceptIsNew = false;
-    const savedId = res.id || id;
-    await ricaricaDopoScrittura();
-    selectConcept(savedId);
-  } catch (e) {
-    showConceptErrors(errFromCatch(e));
-    setStatus($("conceptFormStatus"), "");
-    toastErrore(e, "salvataggio concept");
-  }
-}
-
-async function deleteConcept() {
-  if (!key()) return setStatus($("conceptFormStatus"), "serve la chiave admin");
-  if (!conceptForm || !conceptForm.id) return;
-  if (!confirm(messaggioEliminaConcept(conceptForm.id, conceptForm.nome))) return;
-  try {
-    setStatus($("conceptFormStatus"), "elimino…");
-    await api(`/catalogo/concept?id=${encodeURIComponent(conceptForm.id)}`, { method: "DELETE" });
-    conceptForm = null; conceptSel = null;
-    await ricaricaDopoScrittura();
-    afterCatSelectionChange();
-  } catch (e) {
-    showConceptErrors(errFromCatch(e));
-    setStatus($("conceptFormStatus"), "");
-  }
-}
-
-/* ================================================================== */
-/* ---------- LISTA + FORM: ELEMENT ---------- */
-/* ================================================================== */
-let elementSel = null;
-let elementForm = null;
-let elementIsNew = false;
-
-function renderElementList() {
-  const wrap = $("catList");
-  const cat = AP.store.dati.catalogo;
-  if (CATALOGO_ERROR) { wrap.innerHTML = `<div class="hint">${esc(CATALOGO_ERROR)}</div>`; return; }
-  if (!catalogoArrivato) { wrap.innerHTML = `<div class="hint">catalogo non ancora caricato.</div>`; return; }
-  wrap.innerHTML = "";
-  const tutti = [...cat.elements].sort((a, b) => (a.custom === b.custom ? 0 : a.custom ? 1 : -1) || a.nome.localeCompare(b.nome));
-  const items = filtraVoci(tutti, catCerca);
-  for (const e of items) {
-    const row = document.createElement("div");
-    row.className = "itemrow" + (e.id === elementSel ? " active" : "");
-    row.innerHTML = `<span>${esc(e.nome)}<br><code>${esc(e.id)}</code><br><span class="hint" style="font-size:11px">${usoElementTxt(e.id)}</span></span>
-      <span class="badges">
-        <span class="badge ${e.custom ? 'custom' : ''}">${e.custom ? 'custom' : 'built-in'}</span>
-        ${e.pubblicato ? `<span class="badge pub">${esc(e.canale || 'pubblicato')}</span>` : ''}
-        ${e.sospeso === true ? '<span class="badge sospeso">sospeso</span>' : ''}
-      </span>`;
-    row.onclick = () => selectElement(e.id);
-    wrap.appendChild(row);
-  }
-  if (!items.length) wrap.innerHTML = listaVuotaHTML(tutti.length, "nessun element nel catalogo.");
-}
-
-function selectElement(id, opts = {}) {
-  const e = AP.store.dati.catalogo?.elements.find((x) => x.id === id);
-  if (!e) return;
-  catTipo = "element";
-  elementSel = id;
-  elementIsNew = false;
-  elementForm = deepClone(e);
-  afterCatSelectionChange(opts);
-}
-
-function newElement() {
-  catTipo = "element";
-  elementSel = null;
-  elementIsNew = true;
-  elementForm = {
-    id: "", nome: "", custom: true, s: "", soggetto: "",
-    setting: "", style: "", palette: "",
-    famigliaNativa: AP.store.dati.catalogo?.concepts?.[0]?.id || "",
-    tappe: null, extra: null, pubblicato: false, canale: null,
-  };
-  afterCatSelectionChange();
-}
-
-function duplicateElement() {
-  if (!elementForm) return alert("Seleziona prima un element dalla lista da usare come base.");
-  const base = deepClone(elementForm);
-  base.id = "";
-  base.nome = (base.nome || "") + " (copia)";
-  base.custom = true;
-  base.pubblicato = false;
-  base.canale = null;
-  catTipo = "element";
-  elementSel = null;
-  elementIsNew = true;
-  elementForm = base;
-  afterCatSelectionChange();
+  collegaAzioniForm("concept", readOnly, st.isNew);
 }
 
 function renderElementForm() {
   const box = $("catForm");
-  if (!elementForm) {
+  const st = STATO.element;
+  if (!st.form) {
     box.innerHTML = `<div class="hint">Seleziona un element dalla lista per vederne i dettagli, crea un "Nuovo" element da zero,
       oppure seleziona un built-in e premi "Duplica" per partire da un soggetto già scritto.</div>`;
     return;
   }
-  const f = elementForm;
-  const readOnly = !elementIsNew && !f.custom;
-  const idLocked = !elementIsNew;
+  const f = st.form;
+  const readOnly = !st.isNew && !f.custom;
+  const idLocked = !st.isNew;
   const dis = readOnly ? "disabled" : "";
   const idDis = (readOnly || idLocked) ? "disabled" : "";
   const conceptOptions = (AP.store.dati.catalogo?.concepts || [])
@@ -585,21 +492,56 @@ function renderElementForm() {
     ${readOnly ? "" : `
     <div class="formactions">
       <button id="elementSave" class="primary">💾 Salva nel Worker</button>
-      ${(!elementIsNew && f.custom) ? '<button id="elementDelete" class="ghost">🗑 Elimina</button>' : ""}
+      ${(!st.isNew && f.custom) ? '<button id="elementDelete" class="ghost">🗑 Elimina</button>' : ""}
       <span class="status" id="elementFormStatus"></span>
     </div>`}
   `;
-  if (!readOnly) {
-    $("elementSave").onclick = saveElement;
-    const del = $("elementDelete"); if (del) del.onclick = deleteElement;
-    $("f-e-pub").onchange = (ev) => { $("f-e-canale").disabled = !ev.target.checked; };
-    if (elementIsNew) $("f-e-id").oninput = () => showIdFieldError($("f-e-id"), $("f-e-idErr"), "");
+  collegaAzioniForm("element", readOnly, st.isNew);
+}
+
+/* cablaggio condiviso dei pulsanti del form (identico per i due tipi grazie
+   agli id sistematici): salva, elimina, sblocco canale su "pubblicato" e
+   cancellazione della segnalazione "id già preso" appena l'id cambia. */
+function collegaAzioniForm(tipo, readOnly, isNew) {
+  if (readOnly) return;
+  $(`${tipo}Save`).onclick = () => salvaVoce(tipo);
+  const del = $(`${tipo}Delete`); if (del) del.onclick = () => eliminaVoce(tipo);
+  const pub = $(`f-${PREFISSO_CAMPI[tipo]}-pub`);
+  if (pub) pub.onchange = (ev) => { $(`f-${PREFISSO_CAMPI[tipo]}-canale`).disabled = !ev.target.checked; };
+  // in creazione: appena l'utente ritocca l'id, l'eventuale segnalazione "id già
+  // esistente" non è più detto che valga ancora — la si toglie e si rifà il
+  // controllo vero al prossimo tentativo di salvataggio.
+  if (isNew) {
+    const idInput = $(`f-${PREFISSO_CAMPI[tipo]}-id`);
+    idInput.oninput = () => showIdFieldError(idInput, $(`f-${PREFISSO_CAMPI[tipo]}-idErr`), "");
   }
 }
 
-function showElementErrors(list) {
-  $("elementErrors").innerHTML = list.length
+/* errori del Worker (o della validazione locale) nel contenitore del tipo. */
+function showErrorsVoce(tipo, list) {
+  $(`${tipo}Errors`).innerHTML = list.length
     ? `<div class="errbox"><b>Il Worker segnala:</b><ul>${list.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : "";
+}
+
+function validateConceptLocal(b) {
+  const errs = [];
+  if (!ID_RE.test(b.id)) errs.push("id: minuscolo, lettere/numeri/-/_, 2-32 caratteri, non iniziare con - o _");
+  if (!b.nome || b.nome.length > 40) errs.push("nome: obbligatorio, 1-40 caratteri");
+  if (!b.conserva || b.conserva.length > 300) errs.push("conserva: obbligatorio, max 300 caratteri");
+  if (!Array.isArray(b.tappe) || b.tappe.length !== 7) errs.push("tappe: servono esattamente 7 tappe");
+  else b.tappe.forEach((righe, i) => {
+    if (!righe.length || righe.length > 3) errs.push(`tappa ${i + 1}: serve 1-3 frasi`);
+    if (righe.some((r) => r.length > 400)) errs.push(`tappa ${i + 1}: una frase supera i 400 caratteri`);
+  });
+  if (b.extra.length > 6) errs.push("extra: massimo 6 frasi");
+  if (b.extra.some((r) => r.length > 400)) errs.push("extra: una frase supera i 400 caratteri");
+  const [elo, ehi] = b.profilo.estensione;
+  if (!(elo >= 0 && ehi <= 100 && elo <= ehi)) errs.push("estensione: range non valido (0-100, min ≤ max)");
+  const [ilo, ihi] = b.profilo.intensita;
+  if (!(ilo >= 0 && ihi <= 100 && ilo <= ihi)) errs.push("intensità: range non valido (0-100, min ≤ max)");
+  const [clo, chi] = b.profilo.compattezza;
+  if (!(clo >= 0 && chi <= 1 && clo <= chi)) errs.push("compattezza: range non valido (0-1, min ≤ max)");
+  return errs;
 }
 
 function validateElementLocal(b) {
@@ -619,76 +561,115 @@ function validateElementLocal(b) {
   if (b.pubblicato && !b.canale) errs.push("canale: obbligatorio se l'element è pubblicato");
   return errs;
 }
+const VALIDA_LOCALE = { concept: validateConceptLocal, element: validateElementLocal };
 
-async function saveElement() {
-  if (!key()) return setStatus($("elementFormStatus"), "serve la chiave admin");
-  const idInput = $("f-e-id");
+/* lettura del form in un body per il Worker: parte specifica di ogni tipo
+   (quali campi esistono e come si normalizzano). Gli errori di parsing numerico
+   finiscono nello stesso `errs` del resto della pipeline. */
+function leggiBodyConcept(errs) {
+  const p = PREFISSO_CAMPI.concept;
+  return {
+    nome: $(`f-${p}-nome`).value.trim(),
+    conserva: $(`f-${p}-conserva`).value.trim(),
+    tappe: [...document.querySelectorAll("[data-tappa]")]
+      .sort((a, b) => +a.dataset.tappa - +b.dataset.tappa)
+      .map((ta) => ta.value.split("\n").map((s) => s.trim()).filter(Boolean)),
+    extra: $(`f-${p}-extra`).value.split("\n").map((s) => s.trim()).filter(Boolean),
+    profilo: {
+      estensione: [readNum($("f-c-est-0"), errs, "estensione min"), readNum($("f-c-est-1"), errs, "estensione max")],
+      intensita: [readNum($("f-c-int-0"), errs, "intensità min"), readNum($("f-c-int-1"), errs, "intensità max")],
+      compattezza: [readNum($("f-c-cmp-0"), errs, "compattezza min"), readNum($("f-c-cmp-1"), errs, "compattezza max")],
+      monotona: $("f-c-mono").checked,
+    },
+    maxDeriva: readOptionalNum($("f-c-maxd"), errs, "maxDeriva"),
+    maxDegrado: readOptionalNum($("f-c-maxg"), errs, "maxDegrado"),
+  };
+}
+
+function leggiBodyElement() {
+  const p = PREFISSO_CAMPI.element;
+  const s = $(`f-${p}-s`).value.trim();
+  const tappeRaw = [...document.querySelectorAll("[data-etappa]")]
+    .sort((a, b) => +a.dataset.etappa - +b.dataset.etappa)
+    .map((ta) => ta.value.split("\n").map((x) => x.trim()).filter(Boolean));
+  const extraRaw = $(`f-${p}-extra`).value.split("\n").map((x) => x.trim()).filter(Boolean);
+  const pubblicato = $(`f-${p}-pub`).checked;
+  return {
+    nome: $(`f-${p}-nome`).value.trim(),
+    s,
+    soggetto: s,
+    setting: $(`f-${p}-setting`).value.trim(),
+    style: $(`f-${p}-style`).value.trim(),
+    palette: $(`f-${p}-palette`).value.trim(),
+    famigliaNativa: $(`f-${p}-fam`).value,
+    // per l'element tappe/extra vuote significano "eredita dal concept": al
+    // Worker va trasmesso null, non un array di array vuoti.
+    tappe: tappeRaw.some((r) => r.length) ? tappeRaw : null,
+    extra: extraRaw.length ? extraRaw : null,
+    pubblicato,
+    canale: pubblicato ? ($(`f-${p}-canale`).value || null) : null,
+  };
+}
+const LEGGI_BODY = { concept: leggiBodyConcept, element: leggiBodyElement };
+
+async function salvaVoce(tipo) {
+  const st = STATO[tipo];
+  const p = PREFISSO_CAMPI[tipo];
+  if (!key()) return setStatus($(`${tipo}FormStatus`), "serve la chiave admin");
+  const idInput = $(`f-${p}-id`);
   const id = idInput.value.trim();
 
-  const allIds = AP.store.dati.catalogo ? [...AP.store.dati.catalogo.elements] : [];
-  if (idAlreadyTaken(id, elementIsNew, allIds)) {
-    showIdFieldError(idInput, $("f-e-idErr"),
-      `esiste già un element con id "${id}" — scegli un id diverso, oppure apri quello esistente dalla lista per modificarlo.`);
+  if (idAlreadyTaken(id, st.isNew, vociDel(tipo))) {
+    showIdFieldError(idInput, $(`f-${p}-idErr`),
+      `esiste già un ${tipo} con id "${id}" — scegli un id diverso, oppure apri quello esistente dalla lista per modificarlo.`);
     return;
   }
-  showIdFieldError(idInput, $("f-e-idErr"), "");
+  showIdFieldError(idInput, $(`f-${p}-idErr`), "");
 
-  const nome = $("f-e-nome").value.trim();
-  const s = $("f-e-s").value.trim();
-  const setting = $("f-e-setting").value.trim();
-  const style = $("f-e-style").value.trim();
-  const palette = $("f-e-palette").value.trim();
-  const famigliaNativa = $("f-e-fam").value;
-  const tappeRaw = [...document.querySelectorAll('[data-etappa]')]
-    .sort((a, b) => +a.dataset.etappa - +b.dataset.etappa)
-    .map((ta) => ta.value.split("\n").map((s) => s.trim()).filter(Boolean));
-  const tappe = tappeRaw.some((r) => r.length) ? tappeRaw : null;
-  const extraRaw = $("f-e-extra").value.split("\n").map((s) => s.trim()).filter(Boolean);
-  const extra = extraRaw.length ? extraRaw : null;
-  const pubblicato = $("f-e-pub").checked;
-  const canale = pubblicato ? ($("f-e-canale").value || null) : null;
-
-  const body = { id, nome, s, soggetto: s, setting, style, palette, famigliaNativa, tappe, extra, pubblicato, canale, soloSeNuovo: elementIsNew };
-  const localErrs = validateElementLocal(body);
-  if (localErrs.length) return showElementErrors(localErrs);
+  const errs = [];
+  const body = { id, ...LEGGI_BODY[tipo](errs), soloSeNuovo: st.isNew };
+  if (errs.length) return showErrorsVoce(tipo, errs);
+  const localErrs = VALIDA_LOCALE[tipo](body);
+  if (localErrs.length) return showErrorsVoce(tipo, localErrs);
 
   try {
-    setStatus($("elementFormStatus"), "salvo…");
-    showElementErrors([]);
-    const res = await api("/catalogo/element", { method: "PUT", body: JSON.stringify(body) });
-    setStatus($("elementFormStatus"), "salvato ✓");
-    toast(`element "${nome}" salvato`, "ok");
-    elementIsNew = false;
+    setStatus($(`${tipo}FormStatus`), "salvo…");
+    showErrorsVoce(tipo, []);
+    const res = await api(`/catalogo/${tipo}`, { method: "PUT", body: JSON.stringify(body) });
+    setStatus($(`${tipo}FormStatus`), "salvato ✓");
+    toast(`${tipo} "${body.nome}" salvato`, "ok");
+    st.isNew = false;
     const savedId = res.id || id;
     await ricaricaDopoScrittura();
-    selectElement(savedId);
+    selezionaVoce(tipo, savedId);
   } catch (e) {
-    showElementErrors(errFromCatch(e));
-    setStatus($("elementFormStatus"), "");
-    toastErrore(e, "salvataggio element");
+    showErrorsVoce(tipo, errFromCatch(e));
+    setStatus($(`${tipo}FormStatus`), "");
+    toastErrore(e, `salvataggio ${tipo}`);
   }
 }
 
-async function deleteElement() {
-  if (!key()) return setStatus($("elementFormStatus"), "serve la chiave admin");
-  if (!elementForm || !elementForm.id) return;
-  if (!confirm(messaggioEliminaElement(elementForm.id, elementForm.nome))) return;
+async function eliminaVoce(tipo) {
+  const st = STATO[tipo];
+  if (!key()) return setStatus($(`${tipo}FormStatus`), "serve la chiave admin");
+  if (!st.form || !st.form.id) return;
+  if (!confirm(MSG_ELIMINA[tipo](st.form.id, st.form.nome))) return;
   try {
-    setStatus($("elementFormStatus"), "elimino…");
-    await api(`/catalogo/element?id=${encodeURIComponent(elementForm.id)}`, { method: "DELETE" });
-    elementForm = null; elementSel = null;
+    setStatus($(`${tipo}FormStatus`), "elimino…");
+    await api(`/catalogo/${tipo}?id=${encodeURIComponent(st.form.id)}`, { method: "DELETE" });
+    st.form = null; st.sel = null;
     await ricaricaDopoScrittura();
     afterCatSelectionChange();
   } catch (e) {
-    showElementErrors(errFromCatch(e));
-    setStatus($("elementFormStatus"), "");
+    showErrorsVoce(tipo, errFromCatch(e));
+    setStatus($(`${tipo}FormStatus`), "");
   }
 }
 
 /* ================================================================== */
 /* ---------- ORCHESTRAZIONE: selettore tipo, lista e form unificati ---------- */
 /* ================================================================== */
-function renderCatList() { if (catTipo === "element") renderElementList(); else renderConceptList(); }
+function renderCatList() { renderListaVoci(catTipo); }
 function renderCatForm() { if (catTipo === "element") renderElementForm(); else renderConceptForm(); }
 
 document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => {
@@ -697,8 +678,8 @@ document.querySelectorAll("#catTipoSel .segbtn").forEach((b) => {
     afterCatSelectionChange();
   };
 });
-$("catNew").onclick = () => (catTipo === "element" ? newElement() : newConcept());
-$("catDup").onclick = () => (catTipo === "element" ? duplicateElement() : duplicateConcept());
+$("catNew").onclick = () => nuovaVoce(catTipo);
+$("catDup").onclick = () => duplicaVoce(catTipo);
 $("catReload").onclick = () => AP.store.carica();
 /* ricerca: sola lettura pura sullo stato già in memoria — nessuna chiamata al Worker,
    nessuna scrittura, la selezione corrente e il form di dettaglio restano dove sono
@@ -773,41 +754,48 @@ function elencoArchiHTML(archi, paraPerArco) {
   </ul>`;
 }
 
-function doveUsatoConceptHTML(id) {
-  const nome = AP.comp.conceptNomeById(id);
-  const u = AP.store.usi?.concept?.[id] || { archi: [], giorni: 0, buoni: 0, scarti: 0, elementiNativi: [] };
-  const ultimoUso = u.archi.length ? u.archi.reduce((max, a) => (a.al > max ? a.al : max), u.archi[0].al) : null;
+/* il guscio della card è identico per i due tipi: cambiano solo i dati che vi
+   finiscono dentro (canali, archi, ultimo uso, giudizi). */
+function doveUsatoCardHTML({ titolo, canaliHTML, archi, archiHTML, ultimoUso, giudizi }) {
   return `<div class="card" style="margin-bottom:14px">
-    <h3 style="margin-bottom:6px">Dove è usato · ${esc(nome)}</h3>
+    <h3 style="margin-bottom:6px">Dove è usato · ${esc(titolo)}</h3>
     <div class="hint" style="margin-bottom:4px">canali attivi nel cui pool di produzione è presente, e perché:</div>
-    ${elencoCanaliHTML(canaliConMotivoPerConcept(id))}
-    <div class="hint" style="margin-bottom:4px">archi generati (${u.archi.length}):</div>
-    ${elencoArchiHTML(u.archi, (a) => ({ concept: id, element: a.element }))}
+    ${canaliHTML}
+    <div class="hint" style="margin-bottom:4px">archi generati (${archi.length}):</div>
+    ${archiHTML}
     <div class="row"><label>ultimo uso</label><div>${ultimoUso ? esc(ultimoUso) : "mai"}</div></div>
-    <div class="row"><label>giudizi</label><div>${u.buoni} buon${u.buoni === 1 ? "o" : "i"} · ${u.scarti} scart${u.scarti === 1 ? "o" : "i"}</div></div>
+    <div class="row"><label>giudizi</label><div>${giudizi}</div></div>
     <div class="formactions">
       <button class="ghost" data-act="vaiArchivio">vedi in archivio</button>
       <button data-act="provaLab">⚗ prova nel Lab</button>
     </div>
   </div>`;
 }
+const GIUDIZI_DEFAULT = { archi: [], giorni: 0, buoni: 0, scarti: 0 };
+
+function doveUsatoConceptHTML(id) {
+  const u = AP.store.usi?.concept?.[id] || { ...GIUDIZI_DEFAULT, elementiNativi: [] };
+  const ultimoUso = u.archi.length ? u.archi.reduce((max, a) => (a.al > max ? a.al : max), u.archi[0].al) : null;
+  return doveUsatoCardHTML({
+    titolo: AP.comp.conceptNomeById(id),
+    canaliHTML: elencoCanaliHTML(canaliConMotivoPerConcept(id)),
+    archi: u.archi,
+    archiHTML: elencoArchiHTML(u.archi, (a) => ({ concept: id, element: a.element })),
+    ultimoUso,
+    giudizi: `${u.buoni} buon${u.buoni === 1 ? "o" : "i"} · ${u.scarti} scart${u.scarti === 1 ? "o" : "i"}`,
+  });
+}
 function doveUsatoElementHTML(id) {
   const el = (AP.store.dati.catalogo?.elements || []).find((e) => e.id === id);
-  const nome = el?.nome || AP.comp.elementNomeById(id);
-  const u = AP.store.usi?.element?.[id] || { archi: [], giorni: 0, buoni: 0, scarti: 0, ultimoUso: null };
-  return `<div class="card" style="margin-bottom:14px">
-    <h3 style="margin-bottom:6px">Dove è usato · ${esc(nome)}</h3>
-    <div class="hint" style="margin-bottom:4px">canali attivi nel cui pool di produzione è presente, e perché:</div>
-    ${elencoCanaliHTML(canaliConMotivoPerElement(id))}
-    <div class="hint" style="margin-bottom:4px">archi generati (${u.archi.length}):</div>
-    ${elencoArchiHTML(u.archi, (a) => ({ concept: a.concept, element: id }))}
-    <div class="row"><label>ultimo uso</label><div>${u.ultimoUso ? esc(u.ultimoUso) : "mai"}</div></div>
-    <div class="row"><label>giudizi</label><div>${u.buoni} buon${u.buoni === 1 ? "o" : "i"} · ${u.scarti} scart${u.scarti === 1 ? "o" : "i"}</div></div>
-    <div class="formactions">
-      <button class="ghost" data-act="vaiArchivio">vedi in archivio</button>
-      <button data-act="provaLab">⚗ prova nel Lab</button>
-    </div>
-  </div>`;
+  const u = AP.store.usi?.element?.[id] || GIUDIZI_DEFAULT;
+  return doveUsatoCardHTML({
+    titolo: el?.nome || AP.comp.elementNomeById(id),
+    canaliHTML: elencoCanaliHTML(canaliConMotivoPerElement(id)),
+    archi: u.archi,
+    archiHTML: elencoArchiHTML(u.archi, (a) => ({ concept: a.concept, element: id })),
+    ultimoUso: u.ultimoUso || null,
+    giudizi: `${u.buoni} buon${u.buoni === 1 ? "o" : "i"} · ${u.scarti} scart${u.scarti === 1 ? "o" : "i"}`,
+  });
 }
 
 function wireDoveUsato(box, id) {
@@ -846,7 +834,7 @@ function wireDoveUsato(box, id) {
 function renderDoveUsato() {
   const box = $("catDoveUsato");
   if (!box) return;
-  const id = catTipo === "concept" ? conceptSel : elementSel;
+  const id = STATO[catTipo].sel;
   if (!id || !catalogoArrivato) { box.innerHTML = ""; return; }
   box.innerHTML = catTipo === "concept" ? doveUsatoConceptHTML(id) : doveUsatoElementHTML(id);
   wireDoveUsato(box, id);
@@ -860,8 +848,10 @@ AP.store.on("catalogo", () => {
   setStatus($("catStatus"), `caricato · ${cat.concepts.length} concept (${cat.concepts.filter((c) => c.custom).length} custom) · ${cat.elements.length} element (${cat.elements.filter((e) => e.custom).length} custom)`);
   // se la selezione corrente si riferisce a un item sparito (es. eliminato da
   // un'altra scheda), il form torna al placeholder invece di mostrare dati stantii.
-  if (conceptSel && !cat.concepts.some((c) => c.id === conceptSel)) { conceptSel = null; conceptForm = null; }
-  if (elementSel && !cat.elements.some((e) => e.id === elementSel)) { elementSel = null; elementForm = null; }
+  for (const tipo of TIPI) {
+    const st = STATO[tipo];
+    if (st.sel && !vociDel(tipo).some((v) => v.id === st.sel)) { st.sel = null; st.form = null; }
+  }
   renderCatList();
   renderCatForm();
   renderDoveUsato();
@@ -878,7 +868,7 @@ AP.store.on("canali", () => {
   // i canali attivi alimentano sia il <select> "canale" dell'element pubblicato
   // sia le righe del pannello "dove è usato": se arrivano DOPO il catalogo,
   // form e pannello vanno ridisegnati per mostrarli.
-  if (elementForm) renderCatForm();
+  if (STATO.element.form) renderCatForm();
   renderDoveUsato();
 });
 // "usi" arriva a fine caricamento (rendering progressivo di TUTTI gli archivi
@@ -892,8 +882,7 @@ AP.tabs.catalogo = {
     catTipo = (params.tipo === "element") ? "element" : "concept";
     syncSegButtons();
     if (params.id) {
-      if (catTipo === "element") selectElement(params.id, { skipHashWrite: true });
-      else selectConcept(params.id, { skipHashWrite: true });
+      selezionaVoce(catTipo, params.id, { skipHashWrite: true });
     } else {
       // nessun id nell'hash: non tocca una selezione già in corso in questa
       // sessione (utile tornando sul Catalogo da un'altra tab), ma ridisegna
