@@ -12,6 +12,7 @@
 import { ACTIVE_CHANNELS } from "./channels.js";
 import { CONFIG } from "./config.js";
 import { INSTALL_TAGS, metaAnteprima, canonicalTag } from "./head.js";
+import { esc } from "./util.js";
 
 /** Voci di troubleshooting: sintomo → causa → rimedio. `priority` le mette in cima. */
 const PROBLEMI = [
@@ -218,13 +219,6 @@ const FAQ = [
       iscritto, il calendario si aggiorna da solo.`,
   },
 ];
-
-/** Escape minimo per il testo dinamico inserito nell'HTML. */
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
-}
 
 /**
  * Slug kebab-case da un testo di sintomo/domanda: minuscolo, accenti e
