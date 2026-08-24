@@ -26,8 +26,9 @@ import { loadCatalog, resolveConcept } from "./catalog.js";
  * Errore "di dominio": porta con sé lo status HTTP che il router deve usare.
  * Serve a tenere i codici di risposta attaccati alla causa invece di
  * ricostruirli nel router con una catena di if.
+ * Interno del modulo: il router la intercetta per tipo, non per import.
  */
-export class ErroreDominio extends Error {
+class ErroreDominio extends Error {
   constructor(messaggio, status = 400) {
     super(messaggio);
     this.name = "ErroreDominio";
