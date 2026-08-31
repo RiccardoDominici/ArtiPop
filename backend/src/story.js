@@ -63,8 +63,15 @@ function dayNumberOf(dateKey) {
  * `catalog` (facoltativo) allarga il pool con gli element custom pubblicati
  * su questo flusso (vedi catalog.js: poolForWith). Senza catalogo si pesca
  * solo fra i built-in, come prima.
+ *
+ * `preferito` (facoltativo) impone il concept del nuovo arco: è il punto in
+ * cui un concept inventato apposta per quest'arco entra nella storia. Se è
+ * una stringa presente nel pool vince su qualunque pescata — è una richiesta
+ * ESPLICITA per quest'arco, quindi vale anche se il suo id era già in `usati`.
+ * Fuori dal pool (o non una stringa) si ignora e si pesca come sempre: meglio
+ * un concept di libreria che uno che il flusso non saprebbe mostrare.
  */
-export function pickConcept(channel, prevState, arcIndex, catalog = null) {
+export function pickConcept(channel, prevState, arcIndex, catalog = null, preferito = null) {
   const pool = poolForWith(channel, catalog);
   if (pool.length === 0) throw new Error(`flusso ${channel.id}: nessun concept disponibile`);
 
@@ -74,7 +81,17 @@ export function pickConcept(channel, prevState, arcIndex, catalog = null) {
   const scelti = liberi.length > 0 ? liberi : pool.filter((c) => c.id !== ultimo);
   const candidati = scelti.length > 0 ? scelti : pool;
 
-  const concept = candidati[fnv1a(`${channel.id}:arc:${arcIndex}`) % candidati.length];
+  const voluto = typeof preferito === "string" ? pool.find((c) => c.id === preferito) : undefined;
+  let concept;
+  if (voluto) {
+    console.log(`[story] ${channel.id}: uso il concept preferito "${preferito}" per l'arco ${arcIndex}`);
+    concept = voluto;
+  } else {
+    if (typeof preferito === "string") {
+      console.log(`[story] ${channel.id}: concept preferito "${preferito}" ignorato: non è nel pool di questo flusso`);
+    }
+    concept = candidati[fnv1a(`${channel.id}:arc:${arcIndex}`) % candidati.length];
+  }
 
   // Memoria dei visti: si tiene una finestra lunga quanto il serbatoio meno uno,
   // così resta sempre almeno un concept libero da pescare.
@@ -179,9 +196,12 @@ function interoOppure(v, ripiego) {
 /**
  * Apre un arco nuovo: concept nuovo, keyframe pulito, seed nuovo.
  * `arcIndex` cresce all'infinito e serve solo a variare la pescata.
+ * `preferito` (facoltativo) viene inoltrato a pickConcept: è come il chiamante
+ * impone il concept di quest'arco — per esempio uno inventato al momento —
+ * senza dover toccare la pescata di tutti gli altri casi.
  */
-function startArc(channel, prevState, dateKey, arcIndex, catalog) {
-  const { concept, usati } = pickConcept(channel, prevState, arcIndex, catalog);
+function startArc(channel, prevState, dateKey, arcIndex, catalog, preferito = null) {
+  const { concept, usati } = pickConcept(channel, prevState, arcIndex, catalog, preferito);
   const dayNumber = dayNumberOf(dateKey);
   return {
     lastDate: dateKey,
@@ -204,6 +224,53 @@ function startArc(channel, prevState, dateKey, arcIndex, catalog) {
 }
 
 /**
+ * Prevede se a questa data il flusso APRIRA' un arco nuovo — cioè se
+ * evolveStory, chiamata ora con questi stessi argomenti, finirebbe in uno dei
+ * suoi rami di apertura: primo giorno in assoluto, rollover settimanale o
+ * concept orfano. Risponde false anche nel caso in cui evolveStory NON apra
+ * nulla: stessa data già salvata (rigenerazione a mano con ?force=1), dove
+ * la tappa non si muove e l'arco nemmeno.
+ *
+ * Perché esiste: chi vuole aprire l'arco con un concept apposta inventato
+ * deve saperlo PRIMA di chiamare evolveStory (l'invenzione costa una chiamata
+ * di rete, va fatta solo quando davvero serve) e la condizione di apertura
+ * dev'essere scritta UNA volta sola — qui. evolveStory non la duplica: la
+ * consuma. Due copie della stessa condizione prima o poi diverrebbero due
+ * regole diverse, e la previsione smetterebbe di combaciare col fatto.
+ *
+ * Mai lancia: è una previsione, non un passo del pipeline. In dubbio risponde
+ * false — il peggio che può succedere è un arco che si apre pescando dalla
+ * libreria invece che sul concept inventato, mai un flusso bloccato.
+ */
+export function serveConceptNuovo(prevState, dateKey, catalog = null) {
+  try {
+    // Primo giorno in assoluto: nessuno stato, o uno stato che non punta a
+    // nessun concept.
+    if (!prevState || !prevState.conceptId) return true;
+
+    // Stessa aritmetica di evolveStory, stessa difesa per gli stati salvati
+    // da versioni prive di `dayNumber` (ripiengo "un giorno solo").
+    const dayNumber = dayNumberOf(dateKey);
+    const prevDayNumber = interoOppure(prevState.dayNumber, dayNumber - 1);
+    const elapsed = Math.max(0, dayNumber - prevDayNumber);
+
+    // Stessa data già salvata: né tappa né arco si muovono, non si inventa nulla.
+    if (elapsed === 0) return false;
+
+    const dayInArc = interoOppure(prevState.dayInArc, 0) + elapsed;
+
+    // Arco concluso (o superato perché il cron ha saltato dei giorni): rollover.
+    if (dayInArc >= CONFIG.ARC_LENGTH_DAYS) return true;
+
+    // Concept sparito dalla libreria (rinominato o rimosso): orfano.
+    return !resolveConcept(prevState.conceptId, catalog);
+  } catch (e) {
+    console.error(`[story] serveConceptNuovo: previsione fallita (${e?.message ?? e}), rispondo false`);
+    return false;
+  }
+}
+
+/**
  * Calcola lo stato di oggi a partire da quello di ieri.
  *
  * `esito` è come è andato ieri secondo le misure ("ok" | "poco" | "troppo" |
@@ -216,6 +283,11 @@ function startArc(channel, prevState, dateKey, arcIndex, catalog) {
  * stato di ieri quando punta a una combinazione pubblicata dal catalogo
  * (resolveConcept) — un flusso può benissimo essere a metà arco su un
  * element custom.
+ *
+ * `preferito` (facoltativo) viene inoltrato ai rami di apertura d'arco: è
+ * come il chiamante fa sì che l'arco nuovo nasca su un concept specifico
+ * (per esempio uno inventato al momento), sempre che sia nel pool del
+ * flusso. Nei giorni normali è ignorato.
  *
  * IDEMPOTENZA SULLO STESSO GIORNO. Il cron normale chiama questa funzione al
  * più una volta per `dateKey` (la guardia sta in runChannel, index.js), ma
@@ -230,11 +302,11 @@ function startArc(channel, prevState, dateKey, arcIndex, catalog) {
  * vedi dosePartenza) continua quindi ad aggiornarsi in base all'esito anche a
  * tappa ferma — è la sola cosa per cui una rigenerazione ha senso.
  */
-export function evolveStory(channel, prevState, dateKey, esito = null, catalog = null) {
+export function evolveStory(channel, prevState, dateKey, esito = null, catalog = null, preferito = null) {
   const dayNumber = dayNumberOf(dateKey);
 
   // Primo giorno in assoluto del flusso.
-  if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, 0, catalog);
+  if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, 0, catalog, preferito);
 
   // Il ripiego a `dayNumber - 1` copre solo gli stati salvati da versioni
   // precedenti prive del campo `dayNumber`: lì non si sa quanti giorni siano
@@ -259,20 +331,24 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
 
   const dayInArc = interoOppure(prevState.dayInArc, 0) + elapsed;
 
-  // Arco concluso (o superato perché il cron ha saltato dei giorni): si cambia
-  // mondo. Non si "recuperano" i giorni persi di un arco finito: la settimana
-  // successiva comincia comunque da un keyframe pulito.
-  if (dayInArc >= CONFIG.ARC_LENGTH_DAYS) {
-    return startArc(channel, prevState, dateKey, interoOppure(prevState.arcIndex, 0) + 1, catalog);
+  // Arco concluso (o superato perché il cron ha saltato dei giorni) oppure
+  // concept sparito dalla libreria (rinominato o rimosso): in entrambi i casi
+  // si cambia mondo invece di rompersi o "recuperare" i giorni persi di un
+  // arco finito — la settimana successiva comincia comunque da un keyframe
+  // pulito. La CONDIZIONE di apertura non sta qui: vive tutta in
+  // serveConceptNuovo, che la offre anche a chi deve PREVEDERE l'apertura
+  // prima che accada; due copie della stessa condizione prima o poi diverrebbero
+  // due regole diverse. Qui resta solo la differenza fra i due motivi: l'orfano
+  // avvisa in log, il rollover tace. `arcIndex` è per entrambi il precedente + 1.
+  if (serveConceptNuovo(prevState, dateKey, catalog)) {
+    if (!resolveConcept(prevState.conceptId, catalog)) {
+      console.warn(`[story] ${channel.id}: concept "${prevState.conceptId}" non più in libreria, riparto`);
+    }
+    return startArc(channel, prevState, dateKey, interoOppure(prevState.arcIndex, 0) + 1, catalog, preferito);
   }
 
+  // Qui il concept esiste di sicuro: serveConceptNuovo false esclude l'orfano.
   const concept = resolveConcept(prevState.conceptId, catalog);
-  if (!concept) {
-    // Il concept è sparito dalla libreria (rinominato o rimosso): invece di
-    // rompersi, il flusso apre un arco nuovo.
-    console.warn(`[story] ${channel.id}: concept "${prevState.conceptId}" non più in libreria, riparto`);
-    return startArc(channel, prevState, dateKey, interoOppure(prevState.arcIndex, 0) + 1, catalog);
-  }
 
   const ultimaTappa = concept.tappe.length - 1;
   const tappaIeri = interoOppure(prevState.stage, dayInArc - 1);
