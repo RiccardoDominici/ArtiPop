@@ -12,7 +12,10 @@
 // confronto a scatola nera delle risposte HTTP prima/dopo lo spostamento.
 
 import { ACTIVE_CHANNELS, requireActiveChannel } from "./channels.js";
-import { evolveStory, clausesFor, todayKey } from "./story.js";
+import { evolveStory, clausesFor, todayKey, serveConceptNuovo, prossimoArcIndex } from "./story.js";
+// L'invenzione del concept della settimana (inventa.js): chiamata da runChannel
+// solo quando serveConceptNuovo prevede che l'arco si apra stanotte.
+import { inventaElement, nomiRecenti } from "./inventa.js";
 import { generateDay } from "./daygen.js";
 import { getState, putState, putImage, getGiorno, listArchiveDates } from "./storage.js";
 import { classify, encodeFingerprint, formatMeasures } from "./metrics.js";
@@ -20,7 +23,8 @@ import { buildInfoGiorno } from "./giorno.js";
 import { loadTuning, resolveProfilo } from "./profiles.js";
 import { getElement } from "./concepts.js";
 import { FAMILIES } from "./families.js";
-import { loadCatalog, resolveConcept } from "./catalog.js";
+import { loadCatalog, resolveConcept, potaGenerati } from "./catalog.js";
+import { CONFIG } from "./config.js";
 
 /**
  * Errore "di dominio": porta con sé lo status HTTP che il router deve usare.
@@ -186,21 +190,77 @@ export async function runChannel(env, channelId, { force = false } = {}) {
   // com'e' andata ieri sia per collaudare oggi. Il catalogo (concept/element
   // custom, vedi catalog.js) si legge una volta sola per la stessa ragione: un
   // flusso puo' pescare o essere a meta' arco su una combinazione pubblicata.
-  const catalog = await loadCatalog(env);
+  // `let` e non `const`: se l'invenzione qui sotto riesce, il catalogo viene
+  // RICARICATO per includere l'element appena scritto.
+  let catalog = await loadCatalog(env);
   const tuning = await loadTuning(env);
   const conceptPrec = prevState?.conceptId ? resolveConcept(prevState.conceptId, catalog) : null;
   const esito = conceptPrec
     ? classify(prevState?.misure, resolveProfilo(conceptPrec.famiglia, tuning))
     : null;
 
-  // 2. La storia avanza di un giorno, tenendo conto dell'esito.
-  const state = evolveStory(channel, prevState, date, esito, catalog);
+  // 2-bis. Se stanotte si apre un arco nuovo, PRIMA di avanzare la storia si
+  // prova a INVENTARE il concept dell'arco (inventa.js): un element nuovo
+  // scritto da un modello di testo, salvato nel catalogo e imposto al nuovo
+  // arco tramite `preferito`.
+  //
+  // Perché l'invenzione sta QUI e non dentro il pool (poolForWith/pickConcept):
+  // la pesca è SINCRONA e viene chiamata dentro i .map() delle rotte di sola
+  // lettura /api/channels e /health, dove il pool serve solo a CONTARE i
+  // concept disponibili. Renderla asincrona — mettere una chiamata al modello
+  // di testo in mezzo a un conteggio — romperebbe una decina di file di test
+  // e due rotte che oggi non toccano mai la rete. Qui invece l'invenzione
+  // gira una volta al giorno per canale, e solo sul ramo in cui l'arco si
+  // apre davvero: nei giorni normali questo blocco non esiste.
+  //
+  // Perché il fallimento è silenzioso: inventaElement non lancia mai (contratto
+  // in testa a inventa.js) — se l'invenzione non va in porto, `preferito`
+  // resta null ed evolveStory pesca dalla libreria come ha sempre fatto. È il
+  // RIPIEGO voluto: uno sfondo preso dalla libreria vale infinitamente più di
+  // nessuno sfondo (principio 3 di CLAUDE.md), quindi nessun guasto di questo
+  // blocco deve potersi trasformare in un giorno perso. Il try/catch è la
+  // rete di sicurezza finale sul contratto: anche se un domani qualcosa qui
+  // lanciasse, il chiamante (cron o /run) deve comunque ottenere il suo
+  // sfondo di oggi.
+  let preferito = null;
+  if (serveConceptNuovo(prevState, date, catalog)) {
+    try {
+      const inventato = await inventaElement(env, channel, {
+        catalog,
+        // Lo STESSO indice che evolveStory assegnerà all'arco che si apre:
+        // il conto vive in un solo posto (prossimoArcIndex, vedi story.js),
+        // altrimenti l'element potrebbe nascere con l'id di un arco diverso.
+        arcIndex: prossimoArcIndex(prevState),
+        daEvitare: nomiRecenti(prevState, catalog, channel),
+        adesso: new Date().toISOString(),
+      });
+      if (inventato) {
+        preferito = inventato.id;
+        // Ricarico il catalogo: l'element appena salvato in KV esiste solo lì
+        // dentro, e solo così il pool lo contiene e pickConcept può sceglierlo.
+        catalog = await loadCatalog(env);
+      }
+    } catch (err) {
+      console.error(`[run] ${id}: invenzione del concept fallita, ripiego sulla libreria: ${err?.message ?? err}`);
+    }
+  }
+
+  // 2. La storia avanza di un giorno, tenendo conto dell'esito. `preferito`
+  //    (null nei giorni normali) impone il concept dell'arco nuovo quando
+  //    l'invenzione è riuscita.
+  const state = evolveStory(channel, prevState, date, esito, catalog, preferito);
   const conceptBase = resolveConcept(state.conceptId, catalog);
   const concept = { ...conceptBase, profilo: resolveProfilo(conceptBase.famiglia, tuning) };
   state.improntaPrec = prevState?.impronta ?? null;
 
+  // "INVENTATO" solo se il concept di oggi è davvero quello appena inventato:
+  // il confronto con `preferito` è la prova, perché `preferito` può combaciare
+  // solo con l'id nato in questo run. Se pickConcept avesse ignorato il veto
+  // (non dovrebbe mai accadere: il catalogo è stato appena ricaricato), qui si
+  // leggerebbe PESCATO — e sarebbe la verità.
+  const origineConcept = preferito === concept.id ? "INVENTATO" : "PESCATO";
   console.log(
-    `[run] ${id} ${date}: concept "${concept.id}" arco ${state.arcIndex} ` +
+    `[run] ${id} ${date}: concept "${concept.id}" (${origineConcept}) arco ${state.arcIndex} ` +
     `giorno ${state.dayInArc} tappa ${state.stage + 1}/${concept.tappe.length} — "${state.scene}"`
   );
 
@@ -239,6 +299,30 @@ export async function runChannel(env, channelId, { force = false } = {}) {
     // una generazione AI per niente (vedi PLAN.md di questo ciclo).
     console.error(`[run] ${id} ${date}: immagine pubblicata ma stato non salvato: ${err.message}`);
     statoNonSalvato = true;
+  }
+
+  // 5. Potatura degli element generati (catalog.js), SOLO se oggi ne è stato
+  //    inventato uno — nei giorni normali non c'è nulla da potare e si
+  //    risparmia pure la lettura del catalogo. E SOLO adesso, dopo che
+  //    immagine e stato sono stati salvati: l'immagine del giorno è già
+  //    pubblicata, quindi una potatura che fallisce non deve trasformarsi in
+  //    un errore del run (stessa ragione del try/catch qui sopra per lo
+  //    stato). `protetti` raccoglie il conceptId corrente di TUTTI i canali
+  //    attivi: un arco in corso su un altro canale sta ancora usando il suo
+  //    element, e potarlo glielo toglierebbe da sotto i piedi alla ripresa di
+  //    domani. Quello di questo canale c'è già di diritto: il suo stato è
+  //    stato salvato due righe fa e punta al concept appena aperto.
+  if (preferito !== null) {
+    try {
+      const protetti = [];
+      for (const ch of ACTIVE_CHANNELS) {
+        const statoAltro = await getState(env, ch.id);
+        if (statoAltro?.conceptId) protetti.push(statoAltro.conceptId);
+      }
+      await potaGenerati(env, { tieni: CONFIG.GENERATI_PER_CANALE, protetti });
+    } catch (err) {
+      console.error(`[run] ${id} ${date}: potatura post-invenzione fallita (ignorata): ${err?.message ?? err}`);
+    }
   }
 
   const risultato = {
@@ -290,6 +374,12 @@ export async function backfillChannel(env, channelId, days, { conGate = true } =
     const esito = conceptPrec
       ? classify(state?.misure, resolveProfilo(conceptPrec.famiglia, tuning))
       : null;
+    // NIENTE invenzione qui, a differenza di runChannel: il backfill
+    // ricostruisce giorni PASSATI — spendere chiamate al modello per inventare
+    // concept (o creare element nel catalogo) sarebbe un costo buttato e
+    // cambierebbe la storia che si sta rifacendo. I rollover del backfill
+    // pescano dalla libreria come hanno sempre fatto, e nessun `preferito`
+    // viene imposto a evolveStory.
     state = evolveStory(channel, state, date, esito, catalog);
     const conceptBase = resolveConcept(state.conceptId, catalog);
     const concept = { ...conceptBase, profilo: resolveProfilo(conceptBase.famiglia, tuning) };

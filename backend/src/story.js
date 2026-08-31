@@ -194,6 +194,27 @@ function interoOppure(v, ripiego) {
 }
 
 /**
+ * L'indice che porterebbe l'arco che SI APRE ora: 0 se non c'è uno stato
+ * precedente utile, il precedente + 1 altrimenti.
+ *
+ * Perché esiste: runChannel deve conoscere questo numero PRIMA di chiamare
+ * evolveStory — gli serve per passarlo a inventaElement, che lo usa per
+ * costruire l'id dell'element da inventare (gen-<canale>-<arco>) e per
+ * scegliere la famiglia di turno. Prima il conto viveva in DUE copie qui
+ * dentro (ramo del primo giorno in assoluto e ramo del rollover): se una
+ * delle due fosse divergita dal numero passato all'invenzione, l'element
+ * sarebbe nato con l'indice di un arco diverso da quello che si apre davvero —
+ * un id sbagliato nel catalogo e l'alternanza delle famiglie fuori passo.
+ * Ora il numero si calcola in un solo posto e evolveStory lo consuma, come
+ * già fa con la condizione di apertura di serveConceptNuovo. Nessun
+ * comportamento osservabile cambia: stessi valori che uscivano dalle copie.
+ */
+export function prossimoArcIndex(prevState) {
+  if (!prevState || !prevState.conceptId) return 0;
+  return interoOppure(prevState.arcIndex, 0) + 1;
+}
+
+/**
  * Apre un arco nuovo: concept nuovo, keyframe pulito, seed nuovo.
  * `arcIndex` cresce all'infinito e serve solo a variare la pescata.
  * `preferito` (facoltativo) viene inoltrato a pickConcept: è come il chiamante
@@ -305,8 +326,9 @@ export function serveConceptNuovo(prevState, dateKey, catalog = null) {
 export function evolveStory(channel, prevState, dateKey, esito = null, catalog = null, preferito = null) {
   const dayNumber = dayNumberOf(dateKey);
 
-  // Primo giorno in assoluto del flusso.
-  if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, 0, catalog, preferito);
+  // Primo giorno in assoluto del flusso: indice 0, che è esattamente ciò che
+  // prossimoArcIndex ritorna per uno stato precedente assente o inutile.
+  if (!prevState || !prevState.conceptId) return startArc(channel, prevState, dateKey, prossimoArcIndex(prevState), catalog, preferito);
 
   // Il ripiego a `dayNumber - 1` copre solo gli stati salvati da versioni
   // precedenti prive del campo `dayNumber`: lì non si sa quanti giorni siano
@@ -349,7 +371,10 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
     if (dayInArc < CONFIG.ARC_LENGTH_DAYS && !resolveConcept(prevState.conceptId, catalog)) {
       console.warn(`[story] ${channel.id}: concept "${prevState.conceptId}" non più in libreria, riparto`);
     }
-    return startArc(channel, prevState, dateKey, interoOppure(prevState.arcIndex, 0) + 1, catalog, preferito);
+    // Stesso conto che runChannel ha usato per chiamare inventaElement: vive
+    // in un solo posto (prossimoArcIndex), così l'element inventato porta per
+    // costruzione l'indice dell'arco che qui si apre davvero.
+    return startArc(channel, prevState, dateKey, prossimoArcIndex(prevState), catalog, preferito);
   }
 
   // Qui il concept esiste di sicuro: serveConceptNuovo false esclude l'orfano.
