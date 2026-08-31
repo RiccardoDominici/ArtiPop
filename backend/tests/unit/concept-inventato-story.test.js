@@ -14,7 +14,7 @@
 // Stile della casa: nessun mock di modulo — catalogo fittizio passato come
 // ARGOMENTO (come in story.test.js) e date fisse come argomento, quindi zero
 // dipendenza dall'orologio di sistema.
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { serveConceptNuovo, pickConcept, evolveStory } from "../../src/story.js";
 import { CONFIG } from "../../src/config.js";
 
@@ -157,6 +157,29 @@ describe("coerenza fra serveConceptNuovo ed evolveStory", () => {
       const previsione = serveConceptNuovo(stato, data, catalog);
       const risultato = evolveStory(channel, stato, data, null, catalog);
       expect(previsione, nome).toBe(risultato.dayInArc === 0 && risultato.stage === 0);
+    }
+  });
+
+  it("il warn dell'orfano resta legato al SOLO caso orfano: un arco concluso tace anche se il concept è sparito", () => {
+    const { channel, catalog } = setupFittizio(3);
+    const s1 = evolveStory(channel, null, "2026-07-01", null, catalog);
+    const orfano = { ...s1, conceptId: "id-mai-esistito-nel-catalogo" };
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      // Rollover e orfano INSIEME (arco concluso E concept scomparsa): come da
+      // comportamento storico il ramo del rollover precedeva quello dell'orfano
+      // e non guardava mai la libreria, quindi silenzio — non un warn in più.
+      const rollover = evolveStory(channel, orfano, "2026-07-08", null, catalog);
+      expect(rollover.dayInArc).toBe(0);
+      expect(rollover.arcIndex).toBe(s1.arcIndex + 1);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      // L'orfano PURO continua ad avvisare, com'è sempre stato.
+      warnSpy.mockClear();
+      evolveStory(channel, orfano, "2026-07-02", null, catalog);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      warnSpy.mockRestore();
     }
   });
 });

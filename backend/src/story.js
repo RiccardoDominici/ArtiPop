@@ -341,7 +341,12 @@ export function evolveStory(channel, prevState, dateKey, esito = null, catalog =
   // due regole diverse. Qui resta solo la differenza fra i due motivi: l'orfano
   // avvisa in log, il rollover tace. `arcIndex` è per entrambi il precedente + 1.
   if (serveConceptNuovo(prevState, dateKey, catalog)) {
-    if (!resolveConcept(prevState.conceptId, catalog)) {
+    // Il warn resta legato al SOLO motivo orfano: un arco già concluso tace
+    // anche se il suo concept nel frattempo è sparito — com'era prima della
+    // previsione (il ramo del rollover precedeva quello dell'orfano e non
+    // guardava mai la libreria). Se l'arco NON è concluso, l'unico motivo
+    // residuo per cui serveConceptNuovo ha detto sì è l'orfano: si avvisa.
+    if (dayInArc < CONFIG.ARC_LENGTH_DAYS && !resolveConcept(prevState.conceptId, catalog)) {
       console.warn(`[story] ${channel.id}: concept "${prevState.conceptId}" non più in libreria, riparto`);
     }
     return startArc(channel, prevState, dateKey, interoOppure(prevState.arcIndex, 0) + 1, catalog, preferito);
