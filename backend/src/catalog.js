@@ -54,7 +54,7 @@
 import { CONFIG, FAMIGLIE_SOSPESE, ELEMENT_SOSPESI } from "./config.js";
 import { FAMILIES } from "./families.js";
 import { ELEMENTS, getConcept, getElement, conceptsForFamilies } from "./concepts.js";
-import { validaRangeProfilo, validaMonotona, validaScalareONull } from "./validazione.js";
+import { validaRangeProfilo, validaMonotona, validaScalareONull, LIMITI_ELEMENT } from "./validazione.js";
 
 const CATALOG_KEY = "catalogo:custom";
 
@@ -258,14 +258,16 @@ export async function saveElement(env, obj) {
   if (!ID_RE.test(id)) errori.push(`id "${id}": deve rispettare ^[a-z0-9][a-z0-9_-]{1,31}$`);
   else if (getElement(id)) errori.push(`id "${id}": collide con un element predefinito, scegline un altro`);
 
-  if (!isNonEmptyString(obj.nome, 40)) errori.push("nome: 1..40 caratteri");
-  if (!isNonEmptyString(obj.s, 120)) errori.push("s: obbligatorio, fino a 120 caratteri");
-  if (obj.soggetto !== undefined && obj.soggetto !== null && !isNonEmptyString(obj.soggetto, 120)) {
+  // Le lunghezze massime vengono da LIMITI_ELEMENT (validazione.js): unica
+  // fonte di verità, condivisa con chi prepara corpi da validare (inventa.js).
+  if (!isNonEmptyString(obj.nome, LIMITI_ELEMENT.nome)) errori.push("nome: 1..40 caratteri");
+  if (!isNonEmptyString(obj.s, LIMITI_ELEMENT.s)) errori.push("s: obbligatorio, fino a 120 caratteri");
+  if (obj.soggetto !== undefined && obj.soggetto !== null && !isNonEmptyString(obj.soggetto, LIMITI_ELEMENT.soggetto)) {
     errori.push("soggetto: se presente, fino a 120 caratteri");
   }
-  if (!isNonEmptyString(obj.setting, 400)) errori.push("setting: obbligatorio, fino a 400 caratteri");
-  if (!isNonEmptyString(obj.style, 400)) errori.push("style: obbligatorio, fino a 400 caratteri");
-  if (!isNonEmptyString(obj.palette, 400)) errori.push("palette: obbligatorio, fino a 400 caratteri");
+  if (!isNonEmptyString(obj.setting, LIMITI_ELEMENT.setting)) errori.push("setting: obbligatorio, fino a 400 caratteri");
+  if (!isNonEmptyString(obj.style, LIMITI_ELEMENT.style)) errori.push("style: obbligatorio, fino a 400 caratteri");
+  if (!isNonEmptyString(obj.palette, LIMITI_ELEMENT.palette)) errori.push("palette: obbligatorio, fino a 400 caratteri");
 
   const catalog = await loadCatalog(env);
   const famiglie = allFamilies(catalog);
@@ -322,7 +324,7 @@ export async function saveElement(env, obj) {
   // data è irrilevante (la pota non lo guarda mai); per uno auto, mancare di
   // data lo pone nel gruppo dei più vecchi — scelta prudente: non sapendo
   // quando è nato, non ha titoli per restare a spese dei più giovani.
-  const creatoIl = isNonEmptyString(obj.creatoIl, 40) ? obj.creatoIl : null;
+  const creatoIl = isNonEmptyString(obj.creatoIl, LIMITI_ELEMENT.creatoIl) ? obj.creatoIl : null;
 
   if (obj.soloSeNuovo === true && catalog.elements[id]) {
     errori.push(`esiste già un element con id "${id}"`);

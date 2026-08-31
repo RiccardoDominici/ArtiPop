@@ -19,6 +19,23 @@
 export const LIMITI_RANGE = { estensione: [0, 100], intensita: [0, 100], compattezza: [0, 1] };
 
 /**
+ * Limiti di lunghezza dei campi di un ELEMENT: è il contratto di saveElement
+ * in catalog.js, esposto qui perché lo stesso contratto venga consumato da
+ * chi PREPARA un corpo da far validare — inventa.js taglia i campi del concept
+ * inventato dall'LLM su questi numeri, invece di riscriverli a mano in un
+ * secondo posto (due copie della stessa soglia prima o poi divergono).
+ */
+export const LIMITI_ELEMENT = {
+  nome: 40,
+  s: 120,
+  soggetto: 120,
+  setting: 400,
+  style: 400,
+  palette: 400,
+  creatoIl: 40,
+};
+
+/**
  * Valida i tre range di un profilo. Scrive in uscita solo i campi validi;
  * gli errori vanno in `errori` con il prefisso indicato (es. "profilo" o
  * "profili.<id>"). Non scrive `monotona`: se ne occupa validaMonotona.

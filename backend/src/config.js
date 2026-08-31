@@ -27,12 +27,35 @@ export const CONFIG = {
   // e comunque il giorno dopo si torna al modello primario.
   POLLINATIONS_URL: "https://image.pollinations.ai/prompt/",
 
-  // NOTA: qui vivevano TEXT_MODELS (evoluzione testuale via LLM, disattivata
-  // da tempo: zero riferimenti nel repo) e VISION_MODELS (il modello che
+  // Modelli TESTO Workers AI, per INVENTARE il concept della settimana
+  // (inventa.js): il primario è il più capace, il fallback è piccolo ed
+  // economico per quando il primario non risponde. Tornano qui dopo che
+  // TEXT_MODELS era stato rimosso per inutilizzo (zero riferimenti nel repo):
+  // ora un consumatore reale c'è, quindi la costante torna ad avere senso.
+  // Niente response_format / JSON schema: NON è garantito su questi modelli —
+  // il JSON si chiede nel prompt e la risposta si interpreta in modo
+  // tollerante (interpretaRisposta in inventa.js).
+  TEXT_MODEL_PRIMARY: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  TEXT_MODEL_FALLBACK: "@cf/meta/llama-3.1-8b-instruct-fast",
+
+  // Tentativi complessivi per l'invenzione di un concept (primario + fallback
+  // = 2): l'invenzione è un arricchimento opzionale del giro settimanale, non
+  // deve mai mangiare tempo né budget — se fallisce si pesca dalla libreria
+  // fissa e all'utente non arriva niente di rotto.
+  INVENZIONE_MAX_TENTATIVI: 2,
+
+  // Quanti element generati dalla macchina (auto:true) tenere AL MASSIMO per
+  // canale nel catalogo: è la soglia `tieni` che il generatore settimanale
+  // passa a potaGenerati() (catalog.js) dopo ogni invenzione. È ciò che tiene
+  // `catalogo:custom` (UNA chiave KV) da crescere all'infinito: 40 archi
+  // settimanali per canale di storia prima che la pota cominci a circolare.
+  GENERATI_PER_CANALE: 40,
+
+  // NOTA: qui vivevano anche VISION_MODELS (il modello che
   // leggeva lo sfondo di ieri per capire a che tappa fosse arrivata la
   // storia, sostituito dalle misure di metrics.js — vedi il commento in
   // testa a index.js — e rimosso insieme a vision.js e alle sue sonde
-  // /test-vision, /test-ask).
+  // /test-vision, /test-ask). Quelli restano rimossi: nessun consumatore.
 
   // --- CANCELLO DI COLLAUDO (vedi metrics.js) ---
   // Quanti tentativi al massimo per far rientrare il cambiamento nel profilo del
