@@ -243,6 +243,12 @@ export async function removeConcept(env, id) {
  * `saveConcept` — con `true`, un `id` già presente nel catalogo custom fa
  * fallire la richiesta invece di sovrascriverlo. Assente o `false`: upsert
  * normale, comportamento di sempre.
+ *
+ * `obj.auto` e `obj.creatoIl` (facoltativi): i due campi che distinguono un
+ * element creato DALLA MACCHINA (una generazione automatica, uno a settimana
+ * per canale, non ancora costruita) da uno scritto a mano. Vedi i commenti
+ * inline più avanti per le regole precise di validazione e per il perché del
+ * "un salvataggio manuale riporta l'element a auto:false".
  */
 export async function saveElement(env, obj) {
   const errori = [];
@@ -290,6 +296,34 @@ export async function saveElement(env, obj) {
     }
   }
 
+  // `auto` marca gli element nati dalla macchina: è la bandierina che
+  // potaGenerati() usa per sapere cosa è potabile — un element scritto a mano
+  // non si tocca mai. NIENTE Boolean(...): stessa ragione di `pubblicato`
+  // poco sopra — su un input esterno coercerebbe silenziosamente QUALUNQUE
+  // stringa non vuota (compresa la stringa "false"!) a `true`, e un element
+  // finirebbe classificato come roba della macchina senza che nessuno l'abbia
+  // davvero deciso. Si accetta solo un booleano vero; qualunque altro tipo è
+  // un errore di validazione esplicito. UNICA differenza da `pubblicato`:
+  // qui l'ASSENZA del campo è lecita e vale `false`, perché è il caso
+  // normale di un salvataggio fatto dall'utente dal tool di tuning, che di
+  // `auto` non sa e non deve saperne. E la conseguenza è VOLUTA: chi modifica
+  // a mano un element generato lo sta adottando — non è più roba della
+  // macchina, e da quel momento la pota non lo tocca più.
+  if (obj.auto !== undefined && typeof obj.auto !== "boolean") {
+    errori.push(`auto: deve essere un booleano (true/false), non ${JSON.stringify(obj.auto)}`);
+  }
+  const auto = obj.auto === true;
+
+  // `creatoIl` è il marchio temporale dei soli element generati (timestamp
+  // ISO: in 40 caratteri ci sta comodo) — serve a potaGenerati() per decidere
+  // chi sono i più vecchi da rimuovere. Un element manuale non lo manda e NON
+  // è un errore: assente, null o senza senso (tipo sbagliato, oltre 40
+  // caratteri, vuoto) si salva come `null`. Per un element che non è auto la
+  // data è irrilevante (la pota non lo guarda mai); per uno auto, mancare di
+  // data lo pone nel gruppo dei più vecchi — scelta prudente: non sapendo
+  // quando è nato, non ha titoli per restare a spese dei più giovani.
+  const creatoIl = isNonEmptyString(obj.creatoIl, 40) ? obj.creatoIl : null;
+
   if (obj.soloSeNuovo === true && catalog.elements[id]) {
     errori.push(`esiste già un element con id "${id}"`);
   }
@@ -310,9 +344,11 @@ export async function saveElement(env, obj) {
     extra: haExtra ? obj.extra : null,
     pubblicato,
     canale,
+    auto,
+    creatoIl,
   };
   await saveCatalogDoc(env, catalog);
-  console.log(`[catalog] element custom salvato: "${id}"${pubblicato ? ` (pubblicato su ${canale})` : ""}`);
+  console.log(`[catalog] element custom salvato: "${id}"${pubblicato ? ` (pubblicato su ${canale})` : ""}${auto ? " (auto)" : ""}`);
   return { ok: true, id, errori: [] };
 }
 
@@ -328,6 +364,89 @@ export async function removeElement(env, id) {
   await saveCatalogDoc(env, catalog);
   console.log(`[catalog] element custom rimosso: "${id}"`);
   return { ok: true, rimosso: id };
+}
+
+/* ===================== POTATURA: ELEMENT AUTO-GENERATI ===================== */
+
+/**
+ * Pota gli element AUTO-GENERATI (auto === true) più vecchi oltre soglia,
+ * ragionando PER CANALE: per ogni canale tiene i `tieni` element auto più
+ * recenti (deciso su `creatoIl`; chi non ce l'ha conta come il più vecchio di
+ * tutti) e rimuove gli altri. Gli element scritti a mano e i built-in non si
+ * toccano mai, e un id che compare in `protetti` non viene MAI rimosso — è
+ * l'elenco degli element che un arco in corso sta ancora usando: toglierglielo
+ * da sotto i piedi romperebbe la ripresa dell'arco.
+ *
+ * Chiamata dal futuro generatore settimanale subito dopo aver creato un
+ * element nuovo: è l'unico modo per tenere il catalogo (`catalogo:custom`,
+ * UNA sola chiave KV) da crescere all'infinito. Ritorna l'array degli id
+ * rimossi. Non lancia MAI: un errore (KV illeggibile, scrittura rifiutata,
+ * argomento fuori forma) si logga e vale array vuoto — una potatura che non
+ * parte non è un danno, il catalogo può anche aspettare la settimana dopo;
+ * se invece lanciasse, porterebbe giù la generazione che l'ha chiamata.
+ *
+ * Se non c'è niente da rimuovere NON scrive affatto in KV: una scrittura
+ * inutile su ogni tick settimanale è solo usura (e rischio) senza beneficio.
+ * Quando c'è da rimuovere, una SOLA scrittura: saveCatalogDoc è già l'unità
+ * atomica di questo modulo (vedi la scelta n.1 in testa al file).
+ */
+export async function potaGenerati(env, { tieni, protetti = [] } = {}) {
+  try {
+    // Guardia su `tieni`: undefined/NaN passato per sbaglio altrimenti farebbe
+    // di slice() un "tieni zero" silenzioso — cioè cancellare TUTTI gli
+    // element generati. Meglio non potare affatto che potare tutto.
+    if (!Number.isInteger(tieni) || tieni < 0) {
+      console.error(`[catalog] potaGenerati: soglia "tieni" non valida (${JSON.stringify(tieni)}), potatura annullata`);
+      return [];
+    }
+    const protettiSet = new Set(Array.isArray(protetti) ? protetti : []);
+    const catalog = await loadCatalog(env);
+
+    // Solo gli element della macchina: quelli scritti a mano (auto !== true,
+    // inclusi i vecchi salvati prima che `auto` esistesse) restano fuori.
+    const generati = Object.values(catalog.elements).filter((el) => el.auto === true);
+
+    // Raggruppa per canale: la generazione è uno a settimana PER canale, quindi
+    // senza il raggruppamento un canale molto produttivo mangerebbe i posti
+    // dei canali più lenti. Un element auto senza canale (mai pubblicato)
+    // finisce nel gruppo "" e viene potato lì, con le sue stesse regole.
+    const perCanale = new Map();
+    for (const el of generati) {
+      const canale = el.canale ?? "";
+      if (!perCanale.has(canale)) perCanale.set(canale, []);
+      perCanale.get(canale).push(el);
+    }
+
+    const daRimuovere = new Set();
+    for (const gruppo of perCanale.values()) {
+      // "Più recente" su creatoIl letto come data (Date.parse), non come
+      // stringa: più onesto se un giorno cambiasse formato; chi non ce l'ha —
+      // o ce l'ha illeggibile — vale -Infinity, cioè il più vecchio di tutti.
+      // Tiebreak su id così che a parità di data l'esito sia deterministico.
+      const ordinati = gruppo
+        .map((el) => ({ el, t: el.creatoIl ? Date.parse(el.creatoIl) : NaN }))
+        .sort((a, b) => {
+          const ta = Number.isNaN(a.t) ? -Infinity : a.t;
+          const tb = Number.isNaN(b.t) ? -Infinity : b.t;
+          if (tb !== ta) return tb - ta;
+          return a.el.id < b.el.id ? -1 : a.el.id > b.el.id ? 1 : 0;
+        });
+      for (const { el } of ordinati.slice(tieni)) {
+        if (protettiSet.has(el.id)) continue; // un arco in corso lo sta usando
+        daRimuovere.add(el.id);
+      }
+    }
+
+    if (daRimuovere.size === 0) return [];
+
+    for (const id of daRimuovere) delete catalog.elements[id];
+    await saveCatalogDoc(env, catalog);
+    console.log(`[catalog] potati ${daRimuovere.size} element auto-generati: ${[...daRimuovere].join(", ")}`);
+    return [...daRimuovere];
+  } catch (err) {
+    console.error(`[catalog] potaGenerati fallita, niente rimosso: ${err.message}`);
+    return [];
+  }
 }
 
 /* ===================== VISTE UNIFICATE (built-in + custom) ===================== */
