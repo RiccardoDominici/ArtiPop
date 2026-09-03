@@ -16,12 +16,12 @@ describe("home — selettore di data 'salta al giorno che cerchi'", () => {
     expect(inputTag).toContain('aria-label="Vai a un giorno specifico dell\'archivio"');
   });
 
-  it("il CSS di .daypick usa solo i token §1.1 e color-scheme: dark", () => {
+  it("il CSS di .daypick usa solo i token §1.1 e color-scheme: light", () => {
     const cssMatch = html.match(/\.daypick \{[\s\S]*?\n\s*\}/)[0];
     expect(cssMatch).toContain("var(--bg)");
     expect(cssMatch).toContain("var(--text)");
     expect(cssMatch).toContain("var(--dim)");
-    expect(cssMatch).toContain("color-scheme: dark");
+    expect(cssMatch).toContain("color-scheme: light");
   });
 
   it("updateDayNav valorizza min/max/value del selettore sull'unione delle date note del canale", () => {

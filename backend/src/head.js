@@ -2,19 +2,20 @@
 // per i tag di `<head>` condivisi da più pagine (icona + anteprima social),
 // così le quattro pagine HTML del worker non duplicano lo stesso markup.
 //
-// Solo token già presenti in VISUAL_SPECS §1.1 (`--bg` #0a0b10, accenti
-// natura #7ec8a9/#f2b878): nessun colore nuovo, nessuna risorsa esterna.
+// Solo token già presenti in VISUAL_SPECS §1.1 (`--bg` #DCE2D2 Salvia,
+// goccia muschio #5C6E58, sole erba #7A7A52): nessun colore nuovo, nessuna
+// risorsa esterna.
 
-// Icona: cerchio di sfondo `--bg` con un glifo a goccia nel gradiente
-// natura. `ICON_SVG` è la sorgente unica (markup SVG vero, `#` non
+// Icona: cerchio inchiostro Salvia con un glifo a goccia muschio/erba.
+// `ICON_SVG` è la sorgente unica (markup SVG vero, `#` non
 // codificato) — serve sia come file a sé (feat-aggiungi-artipop-alla-
 // schermata-home: rotta `/icona.svg` per il manifest, che non può puntare a
 // un `data:` inline) sia per la favicon inline qui sotto.
 export const ICON_SVG =
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>` +
-  `<circle cx='32' cy='32' r='32' fill='#0a0b10'/>` +
-  `<path d='M32 12c10 12 16 20 16 28a16 16 0 1 1-32 0c0-8 6-16 16-28z' fill='#7ec8a9'/>` +
-  `<circle cx='32' cy='42' r='8' fill='#f2b878'/>` +
+  `<circle cx='32' cy='32' r='32' fill='#2B3028'/>` +
+  `<path d='M32 12c10 12 16 20 16 28a16 16 0 1 1-32 0c0-8 6-16 16-28z' fill='#5C6E58'/>` +
+  `<circle cx='32' cy='42' r='8' fill='#7A7A52'/>` +
   `</svg>`;
 
 // Data-URI URL-encoded a mano (niente encodeURIComponent qui: servono solo
@@ -32,7 +33,7 @@ export const FAVICON_TAG = `<link rel="icon" href="data:image/svg+xml,${FAVICON_
  */
 export const INSTALL_TAGS = `${FAVICON_TAG}
 <link rel="manifest" href="/manifest.webmanifest" />
-<meta name="theme-color" content="#0a0b10" />
+<meta name="theme-color" content="#DCE2D2" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="ArtiPop" />`;

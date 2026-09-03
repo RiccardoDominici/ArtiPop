@@ -8,36 +8,58 @@ a queste regole, mai come gusto personale. Tre superfici, tre sistemi:
 ## 1. Sito worker — `/` (sorgente: backend/src/page.js)
 
 ### 1.1 Palette (esatta, custom properties)
+Palette Salvia — mockup vincitore "Salvia", pianta Biglietto Swipe
+(proposta di modifica §7, ciclo feat-home-salvia-biglietto-swipe): tema
+chiaro caldo, carta tinta unita, niente blob ambient.
 | Token | Valore | Uso |
 |---|---|---|
-| `--bg` | `#0a0b10` | sfondo pagina e `theme-color` |
-| `--card` | `rgba(255,255,255,.055)` | fondo card |
-| `--card-border` | `rgba(255,255,255,.12)` | bordo card |
-| `--text` | `#f2f3f8` | testo primario |
-| `--dim` | `#9aa3b8` | testo secondario |
-| `--a1`/`--a2` | dinamici per canale | accenti (gradiente) |
+| `--bg` | `#DCE2D2` | sfondo pagina e `theme-color` |
+| `--card` | `#F6F8F1` | fondo card e carta della guida |
+| `--card-border` | `#2B3028` | bordo inchiostro (card, bottoni) |
+| `--text` | `#2B3028` | testo primario e bottoni primari |
+| `--dim` | `#68725F` | testo secondario |
+| `--soft` | `#5C6552` | testo passi della guida |
+| `--erba` | `#7A7A52` | accento erba secca (icona, sole) |
+| `--muschio` | `#5C6E58` | accento muschio (link, pick, badge) |
+| `--dots` | `#B3BBA4` | dots inattivi |
+| `--guida` | `#C6CDB6` | connettore passi e code inline |
 
-Accenti per canale (da channels.js): natura `#7ec8a9→#f2b878` ·
-città `#4568dc→#b06ab3` · quiete `#c98d5a→#8a7fb5`.
+Icona (`head.js`): cerchio inchiostro `#2B3028`, goccia muschio `#5C6E58`,
+sole erba `#7A7A52`.
+Extra funzionali (non token, ammessi ai sensi di §5.6): `#000`/`#fff` solo
+dentro il mockup iPhone (cornice, dynamic island, orologio lock) e
+`rgba(43,48,40,*)` solo per ombre offset e hover su carta — mai per testo.
+Accenti per canale (da channels.js, solo dati/testi — non più colori
+applicati): natura · città · quiete.
 **Regola**: nessun colore nuovo fuori da questi token senza aggiornare questa spec.
 
 ### 1.2 Tipografia
 - Stack: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif`. Nessun webfont.
-- Scala: h1 `clamp(2.6rem,7vw,3.6rem)/800` con gradient-clip · hero p `1.02rem/1.55` ·
-  card h2 `1.28rem/750` · tagline `.84rem` · scene `.8rem` corsivo ·
-  setup h2 `1.6rem/750` · step h4 `1rem` · journey h3 `.82rem` uppercase ls `.12em` ·
-  hint/footer `.78rem`.
+- Scala: h1 `clamp(2rem,7vw,2.6rem)/800` inchiostro pieno · hero p `.93rem/1.6` ·
+  riga di rotta `.72rem/800` uppercase ls `.14em` + timbro muschio ·
+  card h2 `.9rem/800` · tagline `.84rem` · scene `.8rem` corsivo ·
+  dots `8px` (attivo pill `26px`) · pick `.82rem/700` · tondi Mio/Scarta `3.5rem` ·
+  bottoni `.93rem/800` raggio `12px` min-height `48px` ·
+  guida h2 `1.2rem/800` · sub `.85rem` · step h4 `.93rem` · step `.87rem` ·
+  journey h3 `.82rem` uppercase ls `.12em` · hint/footer `.78rem`.
 - **Regola**: nuove dimensioni solo se già presenti nella scala; altrimenti proporre modifica alla spec.
 
 ### 1.3 Layout e spaziatura
 - Mobile-first, `viewport-fit=cover` (safe-area rispettata sempre).
-- Colonna singola centrata, `main max-width:1100px`; deck `min(340px,86vw)`, `360px` da 760px.
-- Raggio card: `--radius: 26px`.
+- Colonna singola centrata, `main max-width:560px` (colonna del mockup);
+  deck `min(320px,86vw)`, `360px` da 760px.
+- Raggio card: `22px` (Biglietto Swipe; `--radius: 26px` resta per `.ns-item`).
 
 ### 1.4 Componenti canonici
-Deck di card trascinabili + dots · mockup iPhone (dynamic island, orologio live) ·
-bottoni pill primary (gradiente canale) e ghost (vetro, `backdrop-filter: blur(14px)`) ·
-step numerati con badge a gradiente · toast pill bottom-center · blob ambient animati ·
+Deck di card trascinabili (carta `#F6F8F1`, bordo inchiostro `1.5px`,
+raggio `22px`, ombra offset `4px 4px 0`) + dots salvia (`8px`, attivo
+pill `26px` inchiostro) + riga "Canale scelto" (`.pick`, nome in muschio)
++ tondi Mio/Scarta (`3.5rem`, Mio in muschio) · mockup iPhone (dynamic
+island, orologio live, cornice inchiostro) · bottoni rettangolari primary
+(inchiostro pieno) e ghost (bordo inchiostro, fondo trasparente) ·
+step numerati con badge inchiostro tondo e connettore `--guida` ·
+toast pill inchiostro bottom-center · blob ambient SPENTI
+(`display:none`, markup invariato — carta tinta unita) ·
 nota di freschezza (`.stale`, testo `.8rem` colore `--dim`, dentro `.cinfo` subito dopo
 `.scene`): compare solo quando il canale è in ritardo (l'ultima immagine in archivio è
 di un giorno precedente a oggi), dice la data reale; invisibile e senza alcun nodo nel
@@ -77,8 +99,8 @@ perché il browser non renderizza né scarica il contenuto di `<noscript>` in qu
 
 Selettore di data (`#dayPick`, `<input type="date">`, feat-salta-al-giorno-che-cerchi —
 proposta ai sensi di §7): campo nativo nella riga di navigazione del giorno, accanto alle
-frecce ‹ ›. Sfondo `--bg`, testo `--text`, bordo `--dim`, `color-scheme: dark` per far
-rendere in scuro anche i controlli nativi del browser (calendario/frecce del picker),
+frecce ‹ ›. Sfondo `--bg`, testo `--text`, bordo `--dim`, `color-scheme: light` per far
+rendere in chiaro anche i controlli nativi del browser (calendario/frecce del picker),
 altezza minima pari a quella di `.dayctrl` (`2.3rem`). Nessun colore o token nuovo oltre
 §1.1. `min`/`max`/`value` seguono sempre l'archivio del canale mostrato (più vecchio, più
 recente, giorno corrente); invisibile insieme al resto di `.daynav` quando non c'è un
@@ -142,7 +164,7 @@ dall'annullamento dell'utente.
 Riga dell'eredità (`.eredita`, feat-la-home-dice-da-dove-viene-questo-canale — proposta ai
 sensi di §7): dentro `.cinfo`, in coda dopo l'eventuale `.stale` — stessa coppia di token
 (testo `.8rem`, colore `--dim`). Elenca i vecchi id che il canale ha ereditato, con un
-link sottolineato (colore `--a1`, già in uso per i link della pagina) a `/archivi`.
+link sottolineato (colore `--muschio`, già in uso per i link della pagina) a `/archivi`.
 Assente e senza alcun nodo nel DOM per i canali senza alias storici.
 
 Nota di connessione (`#netstate`, feat-la-home-dice-quando-sei-senza-rete): riga `.hint`
@@ -156,7 +178,7 @@ Riga del promemoria (`#icslink`, feat-il-promemoria-del-wallpaper-va-nel-calenda
 ai sensi di §7): riga `.hint` dentro l'hero, in coda dopo `#netstate`, con un solo link
 testuale a `/promemoria.ics?c=<canale in cima>`. Nessun token nuovo: `.hint` (`.78rem`,
 colore `--dim`) per la riga e, per il link, la coppia già usata da `.eredita a` — colore
-`--a1` e sottolineatura. Link inline come quello di `.eredita`, non una pill `.btn`: non
+`--muschio` e sottolineatura. Link inline come quello di `.eredita`, non una pill `.btn`: non
 entra nella fila `.actions` e non richiede il tap target da 44px dei comandi (§5.5).
 
 Fila dei comandi (`.actions`, proposta ai sensi di §7, feat-i-comandi-del-viaggio-non-si-
@@ -184,16 +206,20 @@ verticalmente sia `<button>` sia `<a class="btn ...">` nella stessa fila; il `:n
 display autore flex/grid vincerebbe sullo stile UA e li mostrerebbe anche da nascosti — è ciò
 che teneva i pannelli sempre aperti.
 
-Blob ambient (aggiornamento ai sensi di §7, stesso ciclo): i due `.blob` cambiano colore
-insieme al canale in cima **senza dissolvenza** (via la `transition: background 1.2s`). La
-dissolvenza obbligava il browser a ricalcolare per 1,2 s un `blur(90px)` su due superfici da
-65vmax proprio mentre la card vola via, e rendeva scattoso il cambio canale: principio 1
-(utilizzabilità) prima del principio 2. Il passaggio graduale resta dove non costa nulla —
-`h1` con gradient-clip e pill `.btn` conservano la loro `transition: background 1.2s ease`.
-Geometria, opacità e token dei blob restano identici.
+Blob ambient (Salvia, proposta §7 feat-home-salvia-biglietto-swipe): i due
+`.blob` e `.ambient` sono SPENTI (`display:none`, markup invariato) — la
+carta Salvia è tinta unita, nessun gradiente animato dietro le card.
+La motivazione resta quella del ciclo precedente (il `blur(90px)` su due
+superfici da 65vmax rendeva scattoso il cambio canale), portata alla
+conclusione: principio 1 (utilizzabilità) prima del principio 2.
+Restano spenti anche hover/dissolvenze scure (`.playbtn:hover`,
+`.dayctrl:hover` usano `rgba(43,48,40,.08)`); `.playbtn.playing` è
+muschio pieno, non più gradiente canale.
 
 ### 1.5 Modalità colore
-Solo dark, hardcoded. Introdurre light mode è FUORI SCOPE (v. Esclusioni ROADMAP).
+Tema chiaro Salvia, hardcoded (`color-scheme: light` su `html`,
+`color-scheme: light` sul picker nativo `#dayPick`). Introdurre una
+seconda modalità è FUORI SCOPE (v. Esclusioni ROADMAP).
 
 ## 2. Pagina `/aiuto` (sorgente: backend/src/help.js)
 
@@ -546,6 +572,8 @@ Non si giudica il contenuto artistico (instabile), solo vincoli meccanici:
 4. **Sovrapposizioni**: elementi interattivi che si coprono a vicenda alle viewport chiave.
 5. **Tap target**: bottoni/link < 44×44 px effettivi su mobile (sito e /aiuto; il tuning tool è esente).
 6. **Colori fuori palette**: hex non presenti in questa spec (tolleranza: ±0 — la spec si aggiorna, non si ignora).
+   Sulla home (§1) valgono anche gli extra funzionali dichiarati in §1.1 (`#000`/`#fff` nel solo
+   mockup iPhone, `rgba(43,48,40,*)` per sole ombre/hover): non sono nuovi colori di superficie.
 7. **Safe-area violata**: contenuto del sito sotto notch/home-indicator a 390×844 con viewport-fit=cover.
 8. **Regressione baseline**: differenza strutturale rispetto a tests/visual/baseline/ non giustificata
    dal piano del ciclo (il verifier confronta a occhio gli screenshot, non pixel-perfect diff:
