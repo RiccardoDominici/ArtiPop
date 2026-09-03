@@ -2072,3 +2072,19 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   voci resta blindato), id/permalink invariati.
 - Zero modifiche a `backend/src` fuori dal testo della FAQ, zero test toccati: le suite che
   leggono GUIDA.md e /aiuto restano verdi senza asserzioni cambiate.
+
+## 2026-09-03 — tondi-mio-scarta-timbro-senza-emoji
+- I tondi home non sono piu i pollici unicode: `backend/src/icons.js` (NUOVO) tiene le 2 icone
+  timbro come data-URI base64 (PNG 224x224 generati con Workers AI su preview, 2 generazioni su
+  un tetto di 10, prompt fissi stile timbro — Mio crema su muschio, Scarta inchiostro su carta —
+  solo token §1.1), `page.js` le rende come `<img>` dentro `.ctrl` (alt vuoto, aria-label resta
+  sul bottone; l'img riempie il tondo, hint a parole "Scarta/Mio"). Zero rotte, zero KV, zero rete.
+- Tutte le altre emoji spariscono dall'HTML reso (home, aiuto, archivi: pollici, frecce down,
+  stelle, dado, lucchetto, tramonto, lampadina, salvagente, torcia/fotocamera mockup, scintilla,
+  emoji canale in card/pick/noscript/righe erede) — senza sostituti, i due cerchi `.lbtn` del
+  mockup restano vuoti. Il campo `emoji` di `channels.js` RESTA nei dati (lo serve `/api/channels`,
+  che consumano Shortcut/feed e tuning via file://): rimozione solo UI, mai dati.
+- `VISUAL_SPECS.md` §1.4 + riga `.arcdate` + `#dayrand` + righe erede aggiornate (niente emoji,
+  icone timbro canoniche). Test: `archivi-canali-attivi` ora asserisce il nome (non l'emoji),
+  NUOVO `home-senza-emoji` (home/aiuto/archivi/giorno senza il range emoji + pin sui tondi e
+  sull'hint), pulite le emoji dai commenti dei test toccati. Suite 160/1263 verde.

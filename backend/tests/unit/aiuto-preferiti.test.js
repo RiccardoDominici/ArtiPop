@@ -1,6 +1,6 @@
 // feat-l-aiuto-spiega-i-giorni-preferiti: la FAQ esistente «Che fine fanno
 // gli sfondi vecchi?» si arricchisce con la spiegazione dei preferiti — come
-// si segnano con ☆, dove vivono (localStorage, per canale, su questo
+// si segnano col comando "segna preferito", dove vivono (localStorage, per canale, su questo
 // dispositivo) e come si portano su un altro telefono col link di
 // trasferimento. Nessuna voce nuova: si tocca solo la risposta, non la
 // domanda. Test puro su renderHelpPage() — nessun binding, nessuna

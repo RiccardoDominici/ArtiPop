@@ -17,6 +17,7 @@
 //  - Nessuna risorsa esterna: font di sistema, CSS e JS inline.
 
 import { ACTIVE_CHANNELS, LEGACY_ALIASES } from "./channels.js";
+import { ICON_MIO, ICON_SCARTA } from "./icons.js";
 import { INSTALL_TAGS, metaAnteprima, feedLinkTag, canonicalTag } from "./head.js";
 import { esc } from "./util.js";
 
@@ -52,7 +53,7 @@ function noscriptBlocco(metas) {
       ? `<img src="/w/${esc(c.id)}?v=${esc(data)}" alt="Wallpaper di oggi del canale ${esc(c.name)} (${esc(data)})" loading="lazy">`
       : "";
     return `<li class="ns-item">
-      <strong>${esc(c.emoji)} ${esc(c.name)}</strong>
+      <strong>${esc(c.name)}</strong>
       ${img}
       <a href="/s/${esc(c.id)}.shortcut">Scarica la Shortcut</a>
       <a href="/w/${esc(c.id)}">Vedi il wallpaper</a>
@@ -90,11 +91,12 @@ export function renderPage(metas, origin, dateKey, condiviso = null, feedUrl = n
     (legacyByTarget[targetId] ||= []).push(oldId);
   }
 
-  // Dati pubblici passati al JS client (niente campi interni).
+  // Dati pubblici passati al JS client (niente campi interni). Niente
+  // `emoji`: dal Task #7 il sito non rende piu emoji — il campo resta solo
+  // in channels.js e /api/channels, per Shortcut/feed e tuning via file://.
   const channelData = ACTIVE_CHANNELS.map((c) => ({
     id: c.id,
     name: c.name,
-    emoji: c.emoji,
     accent: c.accent,
     tagline: c.tagline,
     eredita: legacyByTarget[c.id] || [],
@@ -272,7 +274,13 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
     color: var(--text); font-size: 1.3rem;
     cursor: pointer; transition: transform .15s ease, background .2s ease;
     display: grid; place-items: center;
+    /* Task #7: il tondo contiene un'icona timbro a fondo pieno (data-URI da
+       icons.js) — niente padding così il fondo dell'icona arriva fino ai
+       bordi e il ritaglio tondo lo fa il border-radius. */
+    padding: 0; overflow: hidden;
   }
+  /* L'icona riempie il tondo: quadrata, ritagliata dal border-radius. */
+  .ctrl img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
   .ctrl:hover { transform: scale(1.09); }
   .ctrl:active { transform: scale(.94); }
   .ctrl#next { background: var(--muschio); color: #F6F8F1; border-color: var(--muschio); }
@@ -475,12 +483,12 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
     <div class="deck" id="deck" aria-label="Canali — trascina per sfogliare"></div>
 
     <div class="controls">
-      <button class="ctrl" id="prev" aria-label="Scarta">👎</button>
+      <button class="ctrl" id="prev" aria-label="Scarta"><img src="${ICON_SCARTA}" alt=""></button>
       <div class="dots" id="dots"></div>
-      <button class="ctrl" id="next" aria-label="Mio">👍</button>
+      <button class="ctrl" id="next" aria-label="Mio"><img src="${ICON_MIO}" alt=""></button>
     </div>
     <p class="pick">Canale scelto: <b id="pick"></b></p>
-    <p class="hint">👎 trascina a sinistra per cambiare canale · 👍 per scaricare e attivare</p>
+    <p class="hint">Scarta: trascina a sinistra per cambiare canale · Mio: per scaricare e attivare</p>
 
     <div class="actions">
       <!-- Niente attributo "download" (attenzione: qui dentro siamo in un
@@ -488,7 +496,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
            a salvare il file in silenzio nei Download. Senza, il tap NAVIGA sul
            file e iOS propone di aprirlo — un passaggio in meno prima di
            Comandi rapidi. -->
-      <a class="btn primary" id="dlShortcut" href="/s/natura.shortcut">⬇️ Scarica la Shortcut</a>
+      <a class="btn primary" id="dlShortcut" href="/s/natura.shortcut">Scarica la Shortcut</a>
       <a class="btn ghost" href="#setup">Come si attiva</a>
       <button class="btn ghost" id="copyurl">copia l'indirizzo del canale</button>
       <a class="btn ghost" id="feedlink" href="/feed/${esc(feedChannelId)}.xml">segui col lettore di feed</a>
@@ -582,12 +590,12 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
              #dayshare/#dayopen — nessun giorno da sfogliare, nessun giorno da
              segnare. Etichetta e aria-pressed seguono lo stato del giorno
              mostrato (v. renderJourney/updateDayNav). -->
-        <button class="btn ghost" id="dayfav" aria-pressed="false" hidden>☆ segna preferito</button>
+        <button class="btn ghost" id="dayfav" aria-pressed="false" hidden>segna preferito</button>
         <!-- feat-riscopri-un-giorno-a-caso: stesso hasJourney degli altri
              comandi, IN AND con l'archivio noto (arcsCache, fallback
              archiveCache) che ha almeno 2 date — con una sola data nota non
              c'è nessun altro giorno da riscoprire (v. renderJourney). -->
-        <button class="btn ghost" id="dayrand" hidden>🎲 un giorno a caso</button>
+        <button class="btn ghost" id="dayrand" hidden>un giorno a caso</button>
         <!-- feat-torna-a-oggi-da-qualunque-giorno: nessun percorso di ritorno
              diretto esisteva prima di questo ciclo — stepDay muove di un
              giorno, goToNextArc di un arco: chi è sceso di più passi doveva
@@ -638,10 +646,10 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
         <div class="n">1</div>
         <h4>Scarica e importa la Shortcut</h4>
         <p>Scegli il canale sfogliando le card e tocca
-        <strong>⬇️ Scarica la Shortcut</strong>. Apri il file scaricato:
+        <strong>Scarica la Shortcut</strong>. Apri il file scaricato:
         si apre <strong>Comandi rapidi</strong> → tocca
         <strong>Aggiungi comando</strong>.<br><br>
-        🔒 Se iOS la blocca: vai in <em>Impostazioni → Scorciatoie</em> e attiva
+        Se iOS la blocca: vai in <em>Impostazioni → Scorciatoie</em> e attiva
         <strong>Consenti scorciatoie non attendibili</strong>
         (se non vedi la voce, esegui prima una scorciatoia qualsiasi), poi
         riapri il file.</p>
@@ -665,13 +673,13 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
         scegli <strong>Tramonto</strong> → ripeti <strong>Ogni giorno</strong> →
         seleziona <strong>Esegui immediatamente</strong> → <em>Avanti</em> →
         scegli la tua Shortcut ArtiPop → <em>Fine</em>.<br><br>
-        🌇 Da stasera il tuo sfondo cambia da solo, e ogni giorno la storia
+        Da stasera il tuo sfondo cambia da solo, e ogni giorno la storia
         avanza di un pezzetto.</p>
       </div>
     </div>
     <p class="note">
-      💡 Preferisci la mattina? Nell'automazione scegli <em>Alba</em> o un orario fisso.<br>
-      🛟 Qualcosa non funziona? C'è una pagina apposta:
+      Preferisci la mattina? Nell'automazione scegli <em>Alba</em> o un orario fisso.<br>
+      Qualcosa non funziona? C'è una pagina apposta:
       <a href="/aiuto"><strong>Aiuto e problemi comuni</strong></a> — soprattutto se
       <em>a mano funziona ma in automazione no</em>.
     </p>
@@ -1072,7 +1080,7 @@ function cardHTML(ch) {
       <div class="lock">
         <div class="ldate"></div>
         <div class="ltime"></div>
-        <div class="lbottom"><div class="lbtn">🔦</div><div class="lbtn">📷</div></div>
+        <div class="lbottom"><div class="lbtn"></div><div class="lbtn"></div></div>
       </div>
       <!-- ?v=\${ch.date} non è un cache-buster decorativo: è ciò che il worker
            usa per distinguere questa richiesta (il sito, cacheabile un'ora)
@@ -1081,7 +1089,7 @@ function cardHTML(ch) {
       <img class="wall" src="/w/\${ch.id}?v=\${ch.date}" alt="\${descrizioneWallpaper(ch, ch.date, !ch.inRitardo)}" draggable="false" />
     </div>
     <div class="cinfo">
-      <h2>\${ch.emoji} \${ch.name}</h2>
+      <h2>\${ch.name}</h2>
       <div class="tag">\${ch.tagline}</div>
       <div class="scene">\${ch.concept ? "<b>Questa settimana:</b> " + ch.concept + (ch.giorno ? " — giorno " + ch.giorno + " di 7" : "") + "<br>" : ""}\${ch.scene ? ch.scene : "in preparazione…"}</div>
       \${ch.inRitardo ? '<p class="stale">Il wallpaper di oggi non è ancora arrivato: questa è l\\'ultima immagine disponibile, del ' + fmtDataEstesa(ch.date) + ".</p>" : ""}
@@ -1167,7 +1175,7 @@ function updateChrome() {
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
   /* Biglietto Swipe: "Canale scelto" sotto i dots, stesso canale in cima. */
   const pickEl = document.getElementById("pick");
-  if (pickEl) pickEl.textContent = ch.emoji + " " + ch.name;
+  if (pickEl) pickEl.textContent = ch.name;
   previewDate = null;
   loadArchive(ch.id);
   ricordaCanale(ch.id); // memorizza il canale in cima: alla prossima visita si riapre da qui
@@ -1299,7 +1307,7 @@ function scegliCanale() {
 function advance(dir) {
   const top = deckEl.querySelector(".card.top");
   if (!top) return;
-  if (dir > 0) { scegliCanale(); return; } // swipe a destra / 👍 / freccia destra
+  if (dir > 0) { scegliCanale(); return; } // swipe a destra / Mio / freccia destra
   top.classList.add("animated");
   flyOut(top, dir);
 }
@@ -1514,7 +1522,7 @@ function renderJourney(chId) {
   dayRandEl.hidden = !hasJourney || knownCount < 2;
   updateArcNav(chId);
   if (!hasJourney) {
-    jmsgEl.textContent = "il viaggio inizia oggi ✨";
+    jmsgEl.textContent = "il viaggio inizia oggi";
     dcapEl.hidden = true;
     storytoggleEl.hidden = true;
     arcstoryEl.hidden = true;
@@ -1727,7 +1735,7 @@ arcPickEl.addEventListener("click", () => {
    sempre coerenti senza duplicare la logica di stato. */
 function updateDayFavButton(chId, date) {
   const attivo = isPreferito(chId, date);
-  dayFavEl.textContent = attivo ? "★ preferito" : "☆ segna preferito";
+  dayFavEl.textContent = attivo ? "preferito" : "segna preferito";
   dayFavEl.setAttribute("aria-pressed", String(attivo));
 }
 dayFavEl.addEventListener("click", () => {
@@ -1834,7 +1842,7 @@ function renderFavList(chId) {
     row.className = "arcrow";
     const label = document.createElement("span");
     label.className = "arcdate";
-    label.textContent = ch ? ch.emoji : "⤳";
+    label.textContent = "⤳";
     const text = document.createElement("span");
     text.className = "arctext";
     const n = voce.giorni.length;

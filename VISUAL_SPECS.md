@@ -54,8 +54,14 @@ applicati): natura · città · quiete.
 Deck di card trascinabili (carta `#F6F8F1`, bordo inchiostro `1.5px`,
 raggio `22px`, ombra offset `4px 4px 0`) + dots salvia (`8px`, attivo
 pill `26px` inchiostro) + riga "Canale scelto" (`.pick`, nome in muschio)
-+ tondi Mio/Scarta (`3.5rem`, Mio in muschio) · mockup iPhone (dynamic
-island, orologio live, cornice inchiostro) · bottoni rettangolari primary
++ tondi Mio/Scarta (`3.5rem`, icone timbro a fondo pieno da
+`backend/src/icons.js`: Mio = pollice in su crema `#F6F8F1` su muschio
+`#5C6E58`, Scarta = pollice in giu inchiostro `#2B3028` su carta
+`#F6F8F1`; l'`<img>` riempie il tondo
+`width:100%;height:100%;object-fit:cover;border-radius:50%`, il tondo ha
+`padding:0;overflow:hidden`) · mockup iPhone (dynamic
+island, orologio live, cornice inchiostro; i due cerchi `.lbtn` in basso
+sono vuoti, senza glifi) · bottoni rettangolari primary
 (inchiostro pieno) e ghost (bordo inchiostro, fondo trasparente) ·
 step numerati con badge inchiostro tondo e connettore `--guida` ·
 toast pill inchiostro bottom-center · blob ambient SPENTI
@@ -133,7 +139,7 @@ Righe degli altri canali (proposta ai sensi di §7, feat-i-preferiti-degli-altri
 perdono): in coda a `#favlist`, dopo la riga «↗ copia il link dei tuoi preferiti», una `.arcrow`
 per ciascun altro canale con almeno un giorno segnato — stessa forma delle righe esistenti (tap
 target min 44px), senza miniatura: la riga riassume più giorni, non ne rappresenta uno solo.
-Colonna `.arcdate`: l'emoji del canale se ancora fra le card mostrate, altrimenti il segno «⤳».
+Colonna `.arcdate`: il segno «⤳» (niente emoji: il sito non ne rende piu nessuna).
 Colonna `.arctext`: il nome del canale se noto, altrimenti l'id, seguito da «— N giorni segnati»
 (singolare/plurale corretti). Al tocco porta al preferito più recente di quel canale: `/?c=<id>&
 d=<data>` (stesso meccanismo dei link condivisi) se il canale è ancora fra le card, `/archivi/<id
@@ -143,7 +149,7 @@ queste righe, nessuna riga «copia il link» (non ci sarebbe nulla da trasferire
 token o componente nuovo: cambia solo il contenuto della riga.
 
 Un giorno a caso (`#dayrand`, feat-riscopri-un-giorno-a-caso — proposta ai sensi di §7):
-comando ghost `#dayrand` ("🎲 un giorno a caso") nella fila dei comandi del pannello, accanto
+comando ghost `#dayrand` ("un giorno a caso") nella fila dei comandi del pannello, accanto
 a "segna preferito" — stessa pill `.btn.ghost` già canonica, nessun colore, token o misura
 nuovi. Invisibile insieme al resto dei comandi del giorno quando non c'è un viaggio da
 sfogliare, E quando l'archivio noto del canale mostrato ha meno di due date. Al tocco apre un
@@ -265,9 +271,9 @@ o componente nuovo.
   link "Riapri l'ultimo giorno →" (verso `/archivi/<id>?date=<ultima>`,
   §2.2) in `#8fd3ff`. Terza riga, mutuamente esclusiva, stessi token (`<div class="riga3
   continua">`, testo `#9aa3b8`, link `#8fd3ff`): quando il canale storico ha un erede attivo
-  (`LEGACY_ALIASES` di backend/src/channels.js) «la storia continua in {emoji} {nome} →» verso
+  (`LEGACY_ALIASES` di backend/src/channels.js) «la storia continua in {nome} →» verso
   `/?c=<erede>`; quando il canale è esso stesso ancora attivo (proposta ai sensi di §7,
-  feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio) «canale in corso — vai a {emoji}
+  feat-anche-i-canali-di-oggi-hanno-la-loro-pagina-d-archivio) «canale in corso — vai a
   {nome} →» verso `/?c=<id>`. Nessuna riga aggiuntiva quando né l'uno né l'altro caso si applica —
   stessi token, nessun colore o componente nuovo.
 - Nessun `<script>`, nessuna `fetch(` nell'HTML servito: la lista arriva già pronta dal server

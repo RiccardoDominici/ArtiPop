@@ -137,9 +137,9 @@ const FAQ = [
       «Il viaggio finora» (ci arrivi toccando le sue frecce <strong>‹ ›</strong> o con
       <strong>Tab</strong>), <strong>freccia sinistra</strong> e <strong>freccia destra</strong>
       passano al giorno precedente e al successivo; fuori dal viaggio la
-      <strong>freccia sinistra</strong> cambia canale (come 👎 / trascinare a
+      <strong>freccia sinistra</strong> cambia canale (come Scarta / trascinare a
       sinistra) e la <strong>freccia destra</strong> scarica la Shortcut del
-      canale mostrato e scende al tutorial (come 👍 / trascinare a destra). Sulla pagina di un giorno d'archivio
+      canale mostrato e scende al tutorial (come Mio / trascinare a destra). Sulla pagina di un giorno d'archivio
       (<code>/archivi/&lt;canale&gt;?date=…</code>) freccia sinistra e freccia destra fanno di
       nuovo giorno precedente e successivo, e <strong>Inizio</strong> (Home) e
       <strong>Fine</strong> (End) saltano al primo e all'ultimo giorno di quell'archivio. Lì le
@@ -178,7 +178,7 @@ const FAQ = [
       che indica anche quale canale attivo ne raccoglie l'eredità.
       <br><br>
       Se un giorno passato ti piace in particolare, mentre lo sfogli dalla home tocca
-      <strong>«☆ segna preferito»</strong>: lo ritrovi poi nel pannello
+      <strong>«segna preferito»</strong>: lo ritrovi poi nel pannello
       <strong>«i tuoi preferiti»</strong>. È una memoria del browser (localStorage), tenuta
       per canale solo su questo dispositivo: svuotare i dati del sito la cancella, e un altro
       telefono non la vede.
