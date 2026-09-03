@@ -18,6 +18,7 @@
 
 import { ACTIVE_CHANNELS, LEGACY_ALIASES } from "./channels.js";
 import { INSTALL_TAGS, metaAnteprima, feedLinkTag, canonicalTag } from "./head.js";
+import { esc } from "./util.js";
 
 // feat-quando-arriva-il-prossimo-wallpaper: specchio di triggers.crons in
 // backend/wrangler.jsonc (ambiente di produzione) — il cron di generazione
@@ -34,12 +35,6 @@ export const ORA_CRON_UTC = 3;
 // iniziare a usarla sui campi del template senza che sia una scelta a parte,
 // perché cambierebbe cosa il sito mostra.
 
-/** Escape minimo per il testo dinamico del blocco <noscript> (stesso di archivi.js/help.js). */
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
-}
 
 /**
  * Ripiego statico per chi apre la pagina con JavaScript disattivato (content

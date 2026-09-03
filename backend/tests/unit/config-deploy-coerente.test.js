@@ -9,7 +9,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { leggiWrangler } from "../helpers/jsonc.js";
 
-const DEPLOY_SH_PATH = fileURLToPath(new URL("../../../scripts/deploy.sh", import.meta.url));
+// ciclo 40 puntava a scripts/deploy.sh; dal porting autoloop la pipeline vive in adapters/deploy.sh
+const DEPLOY_SH_PATH = fileURLToPath(new URL("../../../adapters/deploy.sh", import.meta.url));
 const DEPLOY_SH_SRC = readFileSync(DEPLOY_SH_PATH, "utf8");
 
 const { config: CONFIG } = leggiWrangler();

@@ -527,7 +527,8 @@ Tool interno desktop-first: densità alta è una scelta, non un difetto.
   filmstrip orizzontali; non pensato per mobile (nessun requisito mobile).
 - Componenti: card piatte senza ombre · pill di stato on/off/warn · tab piatte ·
   chip con pallino colore · lightbox · segmented a 2 stati · `button.warn`/`.warnbox`
-  per azioni distruttive · toast bottom-right · spinner CSS.
+  per azioni distruttive · toast bottom-right · spinner CSS · campo di ricerca testuale
+  nella barra strumenti (scheda Catalogo).
 - Azioni distruttive (pubblica in produzione, sovrascrivi range): SEMPRE stile warn + conferma.
 
 ## 4. Wallpaper generati (endpoint /w/*)

@@ -36,7 +36,7 @@ In alto a sinistra:
 |---|---|
 | **Archivio** *(home)* | Cos'ha prodotto il sistema finora, e come è nato ciascuno sfondo? |
 | **Lab** | Proviamo una combinazione concept×element — sapendo cosa è già successo con lei |
-| **Catalogo** | Quali concept ed element esistono, e chi è usato dove? |
+| **Catalogo** | Quali concept ed element esistono, e chi è usato dove? Il campo di ricerca della barra strumenti filtra la lista per pezzo di nome o di id. |
 | **Range** | Come giudica il cancello oggi, e cosa rischio se cambio un range? |
 
 La tab attiva e i filtri vivono nell'hash dell'URL (es.

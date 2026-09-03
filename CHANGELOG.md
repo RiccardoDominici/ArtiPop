@@ -16,6 +16,14 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
   per il caso d'uso attuale (essenzialità). -->
 
+## 2026-08-08 — feat-il-catalogo-si-cerca-per-nome
+- Campo di ricerca (`#catCerca`) nella barra strumenti della scheda Catalogo: la lista
+  Concept/Element si filtra per pezzo di nome o di id, invece di scorrere tutto l'elenco.
+- Il testo cercato è unico per i due tipi e non si azzera col segmented: chi cerca una
+  parola la vede sia fra i concept sia fra gli element.
+- Filtro in sola lettura (`filtraVoci`, pura): nessuna chiamata al Worker, selezione e form
+  di dettaglio invariati; se non corrisponde nulla la lista lo dice invece di restare muta.
+
 ## 2026-08-08 — feat-l-aiuto-spiega-il-promemoria-nel-calendario
 - Nuova voce FAQ su /aiuto per `/promemoria.ics`: la rotta è in produzione dal ciclo 179 ma la
   pagina che l'utente consulta non la nominava — chi cercava «promemoria» non trovava nulla.
@@ -2026,3 +2034,32 @@ di un ciclo del loop avviato per errore in parallelo, recuperati integralmente d
   sempre il canale corrente, ordina le date del più recente al più vecchio, scarta date non
   valide e canali che ne restano privi; `renderFavList` emette i due rami `/?c=`/`/archivi/` con
   `encodeURIComponent`; la nuova condizione di visibilità di `#favpick`; nessuna classe CSS nuova.
+
+## 2026-08-31 — docs-la-documentazione-descrive-l-invenzione
+- Con l'invenzione del concept (T3/T4) i canali non pescano più il soggetto della settimana da
+  una libreria fissa: lo INVENTANO (`inventa.js`), con tappe ereditate dalla famiglia e ripiego
+  silenzioso sulla libreria al fallimento. La documentazione raccontava ancora il meccanismo
+  vecchio — e nascondeva la scelta chiave: i range tarati sulla famiglia restano validi anche per
+  un soggetto mai visto prima, proprio perché le tappe non si inventano.
+- `README.md` e `GUIDA.md` §1.1/§1.2: «pesca dalla libreria» sostituito dall'invenzione
+  settimanale (soggetto nuovo, tappe della famiglia); nessuna frase che prometta più un elenco
+  finito di storie. La nota sugli indirizzi storici (`/w/island`, `/w/studio`, `/w/bloom`) resta:
+  è un fatto di retrocompatibilità, non di libreria.
+- `GUIDA.md` §2.5 riscritta sui tre strati veri: indole (fissa) → famiglia/schema di evoluzione
+  (fissa, porta le sette tappe e il profilo di range) → element/soggetto (inventato ogni
+  settimana). Aggiunti il ripiego silenzioso, il backfill che non inventa, e gli element `auto`
+  visibili nel tab **Catalogo** del tool — modificarli a mano significa adottarli, cioè uscire
+  dalla potatura di `potaGenerati`. Intatti il vocabolario CONCEPT/ELEMENT, la tabella delle
+  indoli, la disgiunzione, il catalogo estendibile a caldo e il blocco sulle sospensioni (presidiato
+  da `guida-sospensioni.test.js`, come `guida-segnaposto.test.js` presidia §1.6).
+- `backend/README.md`: `inventa.js` in architettura e tabella moduli — i due modelli di testo
+  (`TEXT_MODEL_PRIMARY`/`TEXT_MODEL_FALLBACK`), costo di sola testo trascurabile contro i ~290
+  neuroni di un'immagine (una chiamata a settimana per canale), fallimento sempre silenzioso con
+  ripiego sulla libreria; più `potaGenerati`, i campi `auto`/`creatoIl` e `GET /catalogo` che ora
+  espone `auto`.
+- `backend/src/help.js`: la FAQ «Come funziona la storia degli sfondi?» dice ora che la base
+  nuova è **inventata apposta** per quella settimana, quindi non si ripete mai — poche parole nel
+  registro della pagina, senza LLM/modelli/KV/catalogo. Nessuna voce nuova (il conteggio di 16
+  voci resta blindato), id/permalink invariati.
+- Zero modifiche a `backend/src` fuori dal testo della FAQ, zero test toccati: le suite che
+  leggono GUIDA.md e /aiuto restano verdi senza asserzioni cambiate.

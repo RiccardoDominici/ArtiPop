@@ -367,6 +367,7 @@ function labRunsRemove(id) {
   const list = labRunsList().filter((r) => r.id !== id);
   localStorage.setItem(LAB_RUNS_KEY, JSON.stringify(list));
 }
-function labRunsClear() { localStorage.removeItem(LAB_RUNS_KEY); }
 
-AP.store.labRuns = { list: labRunsList, add: labRunsAdd, remove: labRunsRemove, clear: labRunsClear };
+// Niente `clear`: lo storico del Lab si svuota voce per voce (nessuna UI lo
+// usa e cancellare tutto in un colpo solo è troppo facile da fare per sbaglio).
+AP.store.labRuns = { list: labRunsList, add: labRunsAdd, remove: labRunsRemove };

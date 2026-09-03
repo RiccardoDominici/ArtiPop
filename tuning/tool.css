@@ -18,7 +18,7 @@ h1 { margin:0 0 10px; font-size:18px; font-weight:700; letter-spacing:-.01em; }
 h1 small { color:var(--dim); font-weight:400; font-size:13px; margin-left:8px; }
 .conn { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 input, select, button, textarea { font:inherit; color:var(--text); }
-input[type=text], input[type=password], input[type=number], select {
+input[type=text], input[type=password], input[type=number], input[type=search], select {
   background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 9px; }
 input[type=number] { width:74px; text-align:right; }
 .conn input[type=text] { width:340px; }
@@ -40,6 +40,8 @@ button:disabled { opacity:.5; cursor:default; }
 main { padding:22px; max-width:1500px; margin:0 auto; }
 .hint { color:var(--dim); font-size:12.5px; line-height:1.5; }
 .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; align-items:center; }
+/* larghezza contenuta: la toolbar è già affollata, .status deve restare leggibile a destra */
+#catCerca { width:210px; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:14px; }
 .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:15px 16px; }
 .card h3 { margin:0 0 3px; font-size:15px; display:flex; align-items:center; gap:8px; }
