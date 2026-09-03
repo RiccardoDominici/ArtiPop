@@ -11,6 +11,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - <modifica 2: cosa e perché>
 ```
 
+## 2026-09-03 — feat-timbri-swipe
+- Durante il trascinamento della card compaiono due timbri stile Tinder: "Scarica" (Mio,
+  muschio, a destra) e "Scorri" (Scarta, inchiostro, a sinistra), con opacità proporzionale
+  a dx — solo quello della direzione di trascinamento si accende, entrambi spenti a riposo
+  e a fine swipe. Solo token Salvia §1.1, `aria-hidden` perché decorativi, zero emoji.
+- Test: 4 nuovi in `home-timbri-swipe.test.js`; suite 161/1267 verde, probe Playwright su
+  HTML live: timbri 0 a riposo, 0.74 durante il drag nella sola direzione giusta, 0 dopo
+  il rilascio, zero errori JS.
+
 ## 2026-09-03 — feat-mio-scarica-scarta-cambia-canale
 - Il mazzo home era simmetrico (entrambi i versi ruotavano), ma 👍/destra è una scelta non uno
   scarto: ora `scegliCanale()` clicca `#dlShortcut` e scende con scroll morbido a `#setup`,

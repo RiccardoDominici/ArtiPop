@@ -59,7 +59,11 @@ pill `26px` inchiostro) + riga "Canale scelto" (`.pick`, nome in muschio)
 `#5C6E58`, Scarta = pollice in giu inchiostro `#2B3028` su carta
 `#F6F8F1`; l'`<img>` riempie il tondo
 `width:100%;height:100%;object-fit:cover;border-radius:50%`, il tondo ha
-`padding:0;overflow:hidden`) · mockup iPhone (dynamic
+`padding:0;overflow:hidden`) · timbri swipe stile Tinder (`.swipe-stamp`:
+`top:.9rem`, bordo `3px` currentColor, uppercase ls `.12em`, fondo carta 88%,
+ruotati ±12° — Mio muschio a destra con "Scarica", Scarta inchiostro a sinistra
+con "Scorri"; `opacity:0` a riposo, proporzionale a dx solo durante il drag)
+· mockup iPhone (dynamic
 island, orologio live, cornice inchiostro; i due cerchi `.lbtn` in basso
 sono vuoti, senza glifi) · bottoni rettangolari primary
 (inchiostro pieno) e ghost (bordo inchiostro, fondo trasparente) ·

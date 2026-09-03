@@ -231,6 +231,20 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .card.behind { pointer-events: none; }
   .card.animated { transition: transform .45s cubic-bezier(.2,.8,.25,1.1), opacity .45s ease; }
 
+  /* ---------- timbri swipe stile Tinder ----------
+     Visibili SOLO mentre il dito trascina la card (opacity pilotata da dx in
+     agganciaDrag): a destra "Scarica" (Mio), a sinistra "Scorri" (Scarta).
+     A riposo opacity 0 — nessun impatto sul layout, solo token §1.1. */
+  .swipe-stamp {
+    position: absolute; top: .9rem; z-index: 5;
+    font-size: .95rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    padding: .3rem .7rem; border-radius: 10px; border: 3px solid currentColor;
+    background: rgba(246,248,241,.88);
+    opacity: 0; pointer-events: none;
+  }
+  .swipe-stamp.mio { right: .9rem; color: var(--muschio); transform: rotate(12deg); }
+  .swipe-stamp.scarta { left: .9rem; color: var(--text); transform: rotate(-12deg); }
+
   /* ---------- mockup iPhone ----------
      Salvia: il mockup resta il phone reale (wall veri, orologio live) ma la
      cornice scura diventa inchiostro Salvia — stesso componente canonico. */
@@ -1075,6 +1089,11 @@ function elencoIt(ids) {
 }
 function cardHTML(ch) {
   return \`
+    <!-- Timbri swipe stile Tinder: visibili solo durante il drag (opacity
+         pilotata da agganciaDrag), aria-hidden perche decorativi — la
+         direzione la dice gia l'hint sotto il mazzo. -->
+    <div class="swipe-stamp mio" aria-hidden="true">Scarica</div>
+    <div class="swipe-stamp scarta" aria-hidden="true">Scorri</div>
     <div class="phone" aria-hidden="true">
       <div class="island"></div>
       <div class="lock">
@@ -1200,6 +1219,22 @@ function attachDrag() {
   for (const card of deckEl.children) agganciaDrag(card);
 }
 
+/* Timbri swipe stile Tinder: solo il timbro della direzione di trascinamento
+   appare, con opacita proporzionale a dx (pieno a soglia raggiunta); l'altro
+   resta spento. A riposo entrambi a 0 — solo token §1.1 dal CSS, zero JS sui
+   colori. Stessa soglia di end() cosi il timbro e pieno quando lo swipe scatta. */
+function mostraTimbri(card, dx) {
+  const threshold = Math.min(120, deckEl.offsetWidth * 0.34);
+  const intensita = Math.min(1, Math.abs(dx) / threshold);
+  const mio = card.querySelector(".swipe-stamp.mio");
+  const scarta = card.querySelector(".swipe-stamp.scarta");
+  if (mio) mio.style.opacity = dx > 0 ? intensita : 0;
+  if (scarta) scarta.style.opacity = dx < 0 ? intensita : 0;
+}
+function nascondiTimbri(card) {
+  for (const t of card.querySelectorAll(".swipe-stamp")) t.style.opacity = 0;
+}
+
 function agganciaDrag(el) {
   if (el.dataset.drag) return; // già agganciata: mai due volte sullo stesso nodo
   el.dataset.drag = "1";
@@ -1217,11 +1252,13 @@ function agganciaDrag(el) {
     drag.dy = e.clientY - drag.y0;
     drag.el.style.transform =
       \`translate(\${drag.dx}px, \${drag.dy * 0.25}px) rotate(\${drag.dx * 0.055}deg)\`;
+    mostraTimbri(drag.el, drag.dx); // fascia stile Tinder: solo durante lo swipe
   });
   const end = () => {
     if (!drag || drag.el !== el) return;
     const { el: card, dx } = drag;
     drag = null;
+    nascondiTimbri(card); // lo swipe e finito: i timbri spariscono comunque vada
     const threshold = Math.min(120, deckEl.offsetWidth * 0.34);
     card.classList.add("animated");
     if (dx > threshold) { card.style.transform = ""; scegliCanale(); } // swipe a destra = Mio
