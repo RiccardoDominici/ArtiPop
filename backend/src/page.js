@@ -406,8 +406,8 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
      noscript, hint, footer) e restano verdi; cambia solo ciò che si vede.
      La card centra il contenuto in verticale: senza tag/scene in .cinfo
      resterebbe un vuoto in basso. */
-  header.hero { display: none; }
-  .card { justify-content: center; }
+  /* Titolo + spiegazione sopra l'anteprima: richiesti dall'utente (2026-09-03),
+     restano visibili. */  .card { justify-content: center; }
   .cinfo .tag, .cinfo .scene, .cinfo .stale, .cinfo .eredita { display: none; }
   .hint { display: none; }
   /* Stato offline: non è contenuto ma un segnale d'errore, resta visibile. */
