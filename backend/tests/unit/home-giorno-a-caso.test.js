@@ -1,4 +1,4 @@
-// feat-riscopri-un-giorno-a-caso: la home guadagna un comando "🎲 un giorno
+// feat-riscopri-un-giorno-a-caso: la home guadagna un comando "un giorno
 // a caso" che pesca a caso un giorno qualunque dell'archivio già scaricato
 // del canale mostrato e ci salta, riusando goToArc — nessuna fetch nuova,
 // nessuna seconda implementazione del salto. Test puro su renderPage() —

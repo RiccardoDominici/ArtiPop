@@ -51,7 +51,7 @@ function rigaErede(id) {
   const flussoErede = erede(id);
   if (!flussoErede) return "";
   return `
-        <div class="riga3 continua">la storia continua in <a class="continua" href="/?c=${encodeURIComponent(flussoErede.id)}">${esc(flussoErede.emoji)} ${esc(flussoErede.name)} →</a></div>`;
+        <div class="riga3 continua">la storia continua in <a class="continua" href="/?c=${encodeURIComponent(flussoErede.id)}">${esc(flussoErede.name)} →</a></div>`;
 }
 
 /**
@@ -78,7 +78,7 @@ function rigaInCorso(id, data = null) {
     : `/?c=${encodeURIComponent(channel.id)}`;
   const testo = dataValida ? "canale in corso — continua da questo giorno" : "canale in corso — vai a";
   return `
-        <div class="riga3 continua">${testo} <a class="continua" href="${href}">${esc(channel.emoji)} ${esc(channel.name)} →</a></div>`;
+        <div class="riga3 continua">${testo} <a class="continua" href="${href}">${esc(channel.name)} →</a></div>`;
 }
 
 /**

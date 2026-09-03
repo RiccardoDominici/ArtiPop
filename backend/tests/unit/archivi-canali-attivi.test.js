@@ -17,7 +17,6 @@ describe("renderArchiviPage — canali attivi", () => {
     ]);
     expect(html).toContain("canale in corso");
     expect(html).toContain(`href="/?c=${canale.id}"`);
-    expect(html).toContain(canale.emoji);
     expect(html).toContain(canale.name);
     expect(html).not.toContain("la storia continua in");
   });

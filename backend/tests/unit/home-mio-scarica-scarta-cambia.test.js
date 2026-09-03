@@ -1,5 +1,5 @@
-// feat-mio-scarica-scarta-cambia-canale: 👍 / swipe a destra sul canale
-// in cima scarica la Shortcut e scende al tutorial (#setup), 👎 / swipe a
+// feat-mio-scarica-scarta-cambia-canale: Mio / swipe a destra sul canale
+// in cima scarica la Shortcut e scende al tutorial (#setup), Scarta / swipe a
 // sinistra cambia davvero canale (flyOut). Test puro su renderPage() —
 // nessun binding, nessuna rete, stessa tecnica dei test home-*.test.js.
 import { describe, it, expect } from "vitest";

@@ -1,5 +1,5 @@
 // ROADMAP: `/s/<flusso>.shortcut` non deve MAI rispondere JSON grezzo a Safari
-// (che apre questa rotta dal bottone "⬇️ Scarica la Shortcut" e dai link del
+// (che apre questa rotta dal bottone "Scarica la Shortcut" e dai link del
 // README) — stesso principio già chiuso da M4 su `/w/`, qui applicato alla
 // rotta gemella di download.
 import { describe, it, expect } from "vitest";
