@@ -136,8 +136,10 @@ const FAQ = [
       Le stesse mosse si fanno da <strong>tastiera</strong>. Sulla home, quando il fuoco è dentro
       «Il viaggio finora» (ci arrivi toccando le sue frecce <strong>‹ ›</strong> o con
       <strong>Tab</strong>), <strong>freccia sinistra</strong> e <strong>freccia destra</strong>
-      passano al giorno precedente e al successivo; fuori dal viaggio le stesse frecce sfogliano
-      invece il mazzo dei canali. Sulla pagina di un giorno d'archivio
+      passano al giorno precedente e al successivo; fuori dal viaggio la
+      <strong>freccia sinistra</strong> cambia canale (come 👎 / trascinare a
+      sinistra) e la <strong>freccia destra</strong> scarica la Shortcut del
+      canale mostrato e scende al tutorial (come 👍 / trascinare a destra). Sulla pagina di un giorno d'archivio
       (<code>/archivi/&lt;canale&gt;?date=…</code>) freccia sinistra e freccia destra fanno di
       nuovo giorno precedente e successivo, e <strong>Inizio</strong> (Home) e
       <strong>Fine</strong> (End) saltano al primo e all'ultimo giorno di quell'archivio. Lì le
