@@ -23,6 +23,12 @@ describe("renderHelpPage — scorciatoie da tastiera", () => {
     }
   });
 
+  it("fuori dal viaggio la destra scarica e la sinistra cambia canale", () => {
+    const voce = estraiVoce(html, "Come funziona la storia degli sfondi?");
+    expect(voce).toContain("scarica la Shortcut");
+    expect(voce).toContain("cambia canale");
+  });
+
   it("nomina Inizio/Fine come salto al primo e all'ultimo giorno", () => {
     const voce = estraiVoce(html, "Come funziona la storia degli sfondi?");
     for (const termine of ["Inizio", "Home", "Fine", "End", "primo", "ultimo", "archivio"]) {

@@ -480,7 +480,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
       <button class="ctrl" id="next" aria-label="Mio">👍</button>
     </div>
     <p class="pick">Canale scelto: <b id="pick"></b></p>
-    <p class="hint">👈 trascina una card di lato · oppure tocca i pulsanti</p>
+    <p class="hint">👎 trascina a sinistra per cambiare canale · 👍 per scaricare e attivare</p>
 
     <div class="actions">
       <!-- Niente attributo "download" (attenzione: qui dentro siamo in un
@@ -1216,7 +1216,8 @@ function agganciaDrag(el) {
     drag = null;
     const threshold = Math.min(120, deckEl.offsetWidth * 0.34);
     card.classList.add("animated");
-    if (Math.abs(dx) > threshold) flyOut(card, Math.sign(dx));
+    if (dx > threshold) { card.style.transform = ""; scegliCanale(); } // swipe a destra = Mio
+    else if (dx < -threshold) flyOut(card, -1); // swipe a sinistra = Scarta
     else card.style.transform = ""; // depth 0 = trasformazione identità
   };
   el.addEventListener("pointerup", end);
@@ -1280,9 +1281,25 @@ function rotateDeck(el) {
   tickClock();
 }
 
+/* Mio = "sì, questo canale": la card resta dov'è e parte il download
+   della Shortcut del canale in cima, poi la pagina scende al tutorial
+   (#setup) che spiega come importarla. Scarta = "prossimo": la card vola
+   via e il mazzo ruota sul canale successivo. */
+function scegliCanale() {
+  const dl = document.getElementById("dlShortcut");
+  if (!dl) return;
+  // Download reale via click sintetico (href già sync da updateChrome sul
+  // canale in cima), poi scroll morbido al tutorial. scroll-behavior: smooth
+  // è già in CSS (html rule); scrollIntoView resta il ripiego per i browser
+  // che lo ignorano.
+  dl.click();
+  const guida = document.getElementById("setup");
+  if (guida) guida.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 function advance(dir) {
   const top = deckEl.querySelector(".card.top");
   if (!top) return;
+  if (dir > 0) { scegliCanale(); return; } // swipe a destra / 👍 / freccia destra
   top.classList.add("animated");
   flyOut(top, dir);
 }

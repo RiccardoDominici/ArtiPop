@@ -11,6 +11,15 @@ delle modifiche — non solo il cosa. Scritta dall'Executor ad ogni ciclo che pr
 - <modifica 2: cosa e perché>
 ```
 
+## 2026-09-03 — feat-mio-scarica-scarta-cambia-canale
+- Il mazzo home era simmetrico (entrambi i versi ruotavano), ma 👍/destra è una scelta non uno
+  scarto: ora `scegliCanale()` clicca `#dlShortcut` e scende con scroll morbido a `#setup`,
+  mentre solo 👎/sinistra fa volare la card e ruota il mazzo sul canale successivo.
+- `help.js`: la FAQ sulle frecce documenta la nuova semantica (destra scarica, sinistra cambia).
+- Test: 5 nuovi in `home-mio-scarica-scarta-cambia.test.js` + 1 pin sulla FAQ; suite 159/1256 verde,
+  deploy preview + smoke 4/4 ok, probe Playwright su HTML live: Mio scarica senza ruotare,
+  Scarta ruota Natura → Città, zero errori JS.
+
 <!-- ## 2026-08-01 — m2-test-auth-rotte-protette
 - Aggiunti test su tutte le rotte protette (401/403): era il criterio mancante per chiudere M2.
 - Mock manuale dei binding KV invece di @cloudflare/vitest-pool-workers: meno dipendenze, sufficiente
