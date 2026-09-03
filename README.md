@@ -12,9 +12,9 @@ ieri oggi è un po' più in alto sul sentiero, la città neon ha acceso nuove in
 
 ## 🎨 I canali attivi
 
-Un canale non è più un tema fisso: è un'**indole**, e ogni settimana pesca
-dalla libreria una storia diversa (schema di evoluzione + soggetto) da quella
-indole — cambia la sceneggiatura dei 7 giorni, non il carattere del canale.
+Un canale non è più un tema fisso: è un'**indole**, e ogni settimana
+**inventa** una storia nuova, mai vista prima, dentro quella indole — cambia
+la sceneggiatura dei 7 giorni, non il carattere del canale.
 
 | Canale | Indole (cosa può capitare) | URL |
 |---|---|---|
@@ -26,8 +26,8 @@ indole — cambia la sceneggiatura dei 7 giorni, non il carattere del canale.
 Tutti gli URL iniziano con `https://artipop.riccardo-dominici.workers.dev`.
 Ogni giorno cambia UN pezzo della scena (una pennellata, una foglia nuova) e il
 resto resta identico: non è un'immagine diversa, è la stessa storia che avanza.
-Isola, Studio e Bloom — i canali della versione precedente — vivono ora come
-tre delle tante storie che Natura e Quiete possono pescare; i loro vecchi
+Isola, Studio e Bloom — i canali della versione precedente — vivono ora in
+Natura e Quiete; i loro vecchi
 indirizzi (`/w/island`, `/w/studio`, `/w/bloom`) restano attivi e il loro
 archivio resta consultabile per sempre. Dettagli: [GUIDA.md §2.5](GUIDA.md#25-come-sono-fatti-i-canali).
 
@@ -69,6 +69,12 @@ fondo hai uno sfondo a cui tieni, aggiungine uno nuovo qualsiasi e sarà quello.
   curate), e l'immagine di oggi è un **edit additivo** di quella di ieri
   (FLUX.2 klein con doppio riferimento: ieri = contenuto da preservare,
   keyframe dell'arco = àncora di qualità) — cambia solo il pezzo del giorno.
+- Ogni settimana, quando un arco si chiude, il canale **inventa** il soggetto
+  del progetto nuovo (una chiamata di testo all'AI), mentre le **tappe** — la
+  forma della storia — restano quelle curate della sua famiglia: soggetto mai
+  visto prima, regole di evoluzione già collaudate. Se l'invenzione non va in
+  porto, si ripiega in silenzio sulla libreria di soggetti scritti a mano:
+  all'utente non arriva mai niente di rotto.
 - L'immagine è generata da **FLUX.2 klein-4b** (Workers AI) a 960x2048.
 - **Niente va perso**: ogni wallpaper finisce in un archivio permanente,
   consultabile dal sito ("Il viaggio finora") o via `…/w/natura?date=YYYY-MM-DD`

@@ -12,6 +12,7 @@
 import { ACTIVE_CHANNELS } from "./channels.js";
 import { CONFIG } from "./config.js";
 import { INSTALL_TAGS, metaAnteprima, canonicalTag } from "./head.js";
+import { esc } from "./util.js";
 
 /** Voci di troubleshooting: sintomo → causa → rimedio. `priority` le mette in cima. */
 const PROBLEMI = [
@@ -120,8 +121,9 @@ const FAQ = [
     q: "Come funziona la storia degli sfondi?",
     a: `Ogni canale racconta un progetto che avanza di un pezzo al giorno e si completa in
       <strong>${CONFIG.ARC_LENGTH_DAYS} giorni</strong>. Al settimo giorno il progetto è finito:
-      l'ottavo giorno si riparte da una <strong>base nuova</strong> — nuova scena, nuovo progetto —
-      e il ciclo ricomincia. Così non vedi mai due settimane uguali.
+      l'ottavo giorno si riparte da una <strong>base nuova</strong>, <strong>inventata apposta</strong>
+      per quella settimana — nuova scena, nuovo progetto, mai vista prima — e il ciclo ricomincia.
+      Così non vedi mai due settimane uguali.
       <br><br>
       Per sfogliare il viaggio dalla home usa le <strong>frecce</strong> sul mockup e il
       contatore "N di M" per muoverti fra i giorni; <strong>torna a oggi</strong> per rientrare
@@ -218,13 +220,6 @@ const FAQ = [
       iscritto, il calendario si aggiorna da solo.`,
   },
 ];
-
-/** Escape minimo per il testo dinamico inserito nell'HTML. */
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
-}
 
 /**
  * Slug kebab-case da un testo di sintomo/domanda: minuscolo, accenti e

@@ -14,13 +14,7 @@
 
 import { INSTALL_TAGS, metaAnteprima, dataEstesaItaliana, canonicalTag, feedLinkTag } from "./head.js";
 import { LEGACY_ALIASES, getChannel, displayName } from "./channels.js";
-
-/** Escape minimo per il testo dinamico inserito nell'HTML (id canale, date). */
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
-}
+import { esc } from "./util.js";
 
 /**
  * Data d'archivio in forma leggibile: `<time datetime="YYYY-MM-DD">2 agosto

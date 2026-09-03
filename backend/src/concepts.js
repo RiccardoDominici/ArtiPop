@@ -313,8 +313,9 @@ const CONCEPTS_RAW = [
  * Concept completi: la famiglia fornisce tappe e profilo, il concept può
  * sovrascriverli. `{s}` viene risolto qui una volta per tutte, così il resto
  * del sistema non deve più sapere niente dei segnaposto.
+ * Interno del modulo: nessuno fuori da qui consuma questa lista mappata.
  */
-export const CONCEPTS = CONCEPTS_RAW.map((c) => {
+const CONCEPTS = CONCEPTS_RAW.map((c) => {
   const fam = FAMILIES[c.famiglia];
   if (!fam) throw new Error(`concept ${c.id}: famiglia sconosciuta "${c.famiglia}"`);
   const tappe = (c.tappe ?? fam.tappe).map((frasi) =>

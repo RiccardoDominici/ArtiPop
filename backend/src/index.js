@@ -367,11 +367,19 @@ export default {
           extra: e.extra,
           pubblicato: true,
           canale: CHANNELS.find((c) => c.famiglie.includes(e.famigliaNativa))?.id ?? null,
+          // I built-in sono di fabbrica, quindi per definizione non auto-generati:
+          // il campo serve al tuning tool per distinguere (come per `sospeso`)
+          // la roba della macchina da quella curata a mano.
+          auto: false,
           sospeso: ELEMENT_SOSPESI.includes(e.id) || FAMIGLIE_SOSPESE.includes(e.famigliaNativa),
         })),
         ...Object.values(catalog.elements).map((e) => ({
           ...e,
           custom: true,
+          // `=== true` e non il valore grezzo: un element salvato prima che
+          // `auto` esistesse non ha il campo, e qui deve comunque arrivare un
+          // booleano (assenza = scritto a mano = false).
+          auto: e.auto === true,
           sospeso: ELEMENT_SOSPESI.includes(e.id) || FAMIGLIE_SOSPESE.includes(e.famigliaNativa),
         })),
       ];

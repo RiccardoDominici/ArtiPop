@@ -13,10 +13,13 @@ di credito, nessuna manutenzione.
 cron (03:00 UTC, ogni notte)
   └─ scheduled() ──fan-out via SELF binding──► /run/<flusso>  (×3, in parallelo)
        per ogni flusso:
-         1. story.js    → pesca il concept della settimana (se un arco è finito)
-                          e sceglie la tappa di oggi in base a come è andata ieri
-                          (families.js = schema di evoluzione, concepts.js/
-                          catalog.js = libreria dei soggetti)
+         0. inventa.js  → solo al rollover d'arco: un modello di testo Workers
+                         AI inventa il soggetto della settimana; se fallisce,
+                         ripiego silenzioso sulla libreria (mai un giorno perso)
+         1. story.js    → apre l'arco col soggetto appena inventato (o pesca
+                         dalla libreria) e sceglie la tappa di oggi in base a
+                         come è andata ieri (families.js = schema di evoluzione,
+                         concepts.js/catalog.js = libreria dei soggetti)
          2. generate.js → immagine 960x2048 con FLUX.2 klein-4b, doppio
                           riferimento visivo (ieri + keyframe dell'arco),
                           collaudata da metrics.js (il "cancello")
@@ -40,8 +43,9 @@ fetch()
 | `src/channels.js` | i tre flussi (identità visiva, indole = famiglie da cui pescano) e gli alias verso i vecchi canali |
 | `src/families.js` | le famiglie di concept: le sette tappe di ognuna e il profilo di cambiamento atteso |
 | `src/concepts.js` | la libreria degli element (soggetti): setting, stile, palette, famiglia nativa |
-| `src/catalog.js` | concept ed element aggiunti da fuori (KV `catalogo:custom`), sopra la libreria di codice |
-| `src/story.js` | pesca del concept settimanale, scelta della tappa, evoluzione giorno per giorno |
+| `src/catalog.js` | concept ed element aggiunti da fuori (KV `catalogo:custom`), sopra la libreria di codice; qui atterrano anche gli element inventati dalla macchina, marcati `auto` e datati `creatoIl`, tenuti a numero per canale da `potaGenerati()` |
+| `src/story.js` | apertura d'arco col soggetto imposto dall'invenzione o pescato dalla libreria, scelta della tappa, evoluzione giorno per giorno |
+| `src/inventa.js` | inventa il soggetto della settimana con un modello di testo Workers AI (primario `CONFIG.TEXT_MODEL_PRIMARY`, fallback `TEXT_MODEL_FALLBACK`): solo soggetto e mondo, le tappe restano quelle della famiglia; nessun fallimento esce dal modulo — si ripiega sulla pesca dalla libreria |
 | `src/generate.js` | catena di generazione immagini con fallback, e il cancello di collaudo (`generateWithGate`) |
 | `src/daygen.js` | genera l'immagine di UN giorno (keyframe o edit), usato da cron/backfill/lab |
 | `src/metrics.js` | le sei misure del cambiamento (estensione, intensità, compattezza, deriva, degrado, occupazione) |
@@ -59,7 +63,7 @@ fetch()
 
 | Risorsa | Uso giornaliero | Limite free |
 |---|---|---|
-| Workers AI (immagini) | ~600-900 neuroni (3 canali, di più nei giorni di cambio base per il riallineamento del keyframe) | 10.000 neuroni/giorno |
+| Workers AI (immagini) | ~600-900 neuroni (3 canali, di più nei giorni di cambio base per il riallineamento del keyframe; la chiamata di **testo** che inventa il soggetto nei giorni di cambio base pesa trascurabilmente, vedi sotto) | 10.000 neuroni/giorno |
 | Scritture KV | ~15 | 1.000/giorno |
 | Letture KV | qualche centinaio | 100.000/giorno |
 | Richieste Worker | poche migliaia | 100.000/giorno |
@@ -80,8 +84,39 @@ e resta l'immagine del giorno prima.
 - Prima di pubblicare, `generateWithGate` misura quanto l'immagine candidata
   è cambiata rispetto a ieri (`metrics.js`) e la accetta solo se rientra nel
   profilo del concept; altrimenti rigenera correggendo la "dose" descrittiva.
-- Ogni 7 giorni l'arco chiude: nuovo concept pescato dall'indole del canale
-  (mai lo stesso della settimana appena finita), nuovo keyframe, nuovo seed.
+- Ogni 7 giorni l'arco chiude: il canale prova a **inventare** il soggetto
+  nuovo (vedi sotto), e solo se l'invenzione fallisce pesca dalla libreria
+  dell'indole (mai lo stesso soggetto della settimana appena finita); nuovo
+  keyframe, nuovo seed.
+
+## L'invenzione del soggetto settimanale
+
+Al rollover d'arco `runChannel` (`handlers.js`) chiama `inventaElement`
+(`inventa.js`): un modello di **testo** di Workers AI — primario
+`CONFIG.TEXT_MODEL_PRIMARY` (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`),
+fallback `CONFIG.TEXT_MODEL_FALLBACK` (`@cf/meta/llama-3.1-8b-instruct-fast`),
+al massimo `INVENZIONE_MAX_TENTATIVI` (2) tentativi in tutto — inventa nome,
+soggetto, setting, stile e palette di un element nuovo, che nasce con
+`tappe: null` e si salva nel catalogo custom (`catalogo:custom`) con
+`auto: true` e `creatoIl`, già pubblicato sul canale e imposto all'arco che
+si apre. Le tappe ereditate sono ciò che rende sicuro un soggetto mai
+collaudato: il cancello lo giudica col profilo di range tarato sulla
+famiglia, e quel profilo dipende dalle tappe.
+
+Il costo è una chiamata di **solo testo**, una a settimana per canale:
+trascurabile rispetto ai ~290 neuroni di una singola immagine (`config.js`).
+Qualunque fallimento — modello assente, quota finita, risposta illeggibile,
+KV che rifiuta la scrittura — è **silenzioso**: `inventaElement` non lancia
+mai, si pesca dalla libreria e l'utente non vede mai niente di rotto. Il
+backfill non inventa: ricostruisce giorni passati e basta.
+
+Dopo ogni invenzione `potaGenerati` (`catalog.js`) tiene il catalogo dal
+crescere senza limiti: conserva per ogni canale i `GENERATI_PER_CANALE`
+element `auto` più recenti e rimuove i più vecchi, senza mai toccare quelli
+scritti a mano né quelli che un arco in corso sta usando. `GET /catalogo`
+espone `auto` (e `creatoIl`); modificare a mano un element generato (dal tool
+di tuning, tab **Catalogo**) significa adottarlo: il salvataggio manuale lo
+riporta a `auto: false` e la potatura non lo tocca più.
 
 ## Deploy e gestione
 

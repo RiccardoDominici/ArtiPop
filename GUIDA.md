@@ -43,15 +43,16 @@ sul telefono, la **Parte 2** a chi lo gestisce. Non serve leggerle entrambe.
 | **Cosa fa** | Ogni notte ArtiPop genera un wallpaper nuovo per ogni canale |
 | **Come arriva sul telefono** | Una Shortcut lo scarica e lo imposta, da sola, ogni sera |
 | **Cosa cambia ogni giorno** | Un pezzo della scena: la storia avanza, non riparte |
-| **Ogni 7 giorni** | Il progetto è completo → si cambia **base** e ricomincia da capo |
+| **Ogni 7 giorni** | Il progetto è completo → il canale **inventa** una **base** nuova, mai vista prima, e ricomincia da capo |
 | **Costo** | Zero, per sempre. Nessun account, nessuna app |
 
 ## 1.2 Scegliere il canale
 
 Vai su **[artipop.riccardo-dominici.workers.dev](https://artipop.riccardo-dominici.workers.dev)**
 e sfoglia le card (si trascinano). Un canale non è più un tema fisso: è
-un'**indole**, e ogni settimana pesca dalla libreria una storia diversa —
-cambia la sceneggiatura dei 7 giorni, non cambia il carattere del canale.
+un'**indole**, e ogni settimana **inventa** una storia nuova, mai vista prima,
+dentro quella indole — cambia la sceneggiatura dei 7 giorni, non cambia il
+carattere del canale.
 
 | Canale | Indole (cosa può capitare) | URL |
 |---|---|---|
@@ -61,8 +62,8 @@ cambia la sceneggiatura dei 7 giorni, non cambia il carattere del canale.
 | 🎲 **Random** | ogni giorno uno dei tre canali sopra, a sorpresa | `…/w/random` |
 
 > Isola, Studio e Bloom — i canali della versione precedente — non sono
-> spariti: sono diventati tre delle tante storie che i canali di oggi possono
-> pescare (Isola e Bloom sotto Natura, Studio sotto Quiete). I loro vecchi
+> spariti: sono diventati tre delle storie raccontate dai canali di oggi
+> (Isola e Bloom sotto Natura, Studio sotto Quiete). I loro vecchi
 > indirizzi funzionano ancora — `…/w/island`, `…/w/studio`, `…/w/bloom`
 > mostrano l'immagine di oggi del canale che ne ha raccolto l'eredità — e il
 > loro archivio resta consultabile per sempre sotto il nome di allora
@@ -283,45 +284,86 @@ usano il sito e lo strumento di tuning in sola lettura.
 ## 2.5 Come sono fatti i canali
 
 Un canale (nel codice, un **flusso**: `backend/src/channels.js`) non è
-legato a un tema fisso. È un'**indole**: un insieme di famiglie di storie da
-cui pescare. Ogni volta che un ciclo di 7 giorni si chiude, il canale ne
-pesca una nuova, diversa dalle ultime usate, e non la rivede finché non ha
-esaurito le altre (`pickConcept` in `story.js`).
+legato a un tema fisso: è un'**indole**. Ciò che racconta ogni settimana è
+composto da tre strati, dal più generale al più specifico — i primi due
+fissi, il terzo inventato:
 
-Il vocabolario, dal più generale al più specifico:
+1. **L'indole** — fissa, è il carattere del canale: le famiglie di storie da
+   cui può attingere (`famiglie` in `channels.js`).
+2. **La famiglia** — fissa. Nel vocabolario del codice è il **CONCEPT**
+   (`backend/src/families.js`): la *forma* di una storia di 7 giorni. Porta
+   con sé le sette tappe (tappa 0 = stato di partenza; 1-6 = il cambiamento
+   di quel giorno rispetto a ieri) e il *profilo di cambiamento* con cui il
+   cancello giudica se un'immagine è cambiata abbastanza, e non troppo
+   (vedi [2.6](#26-come-è-garantita-la-coerenza-visiva)
+   e `metrics.js`). Esempi: crescita, costruzione, timelapse, attraversamento,
+   accumulo, metamorfosi.
+3. **L'element** (`backend/src/concepts.js` + catalogo) — il *soggetto* che
+   riempie quella forma: setting, stile, palette, e il nome breve che
+   sostituisce `{s}` nelle tappe. Girasole, Isola, Studio, Neon sono tutti
+   element. È l'unico strato che cambia ogni settimana.
 
-- **CONCEPT** = una **FAMIGLIA** (`backend/src/families.js`): la *forma* di
-  una storia di 7 giorni. Definisce le sette tappe (tappa 0 = stato di
-  partenza; 1-6 = il cambiamento di quel giorno rispetto a ieri) e il
-  *profilo di cambiamento* con cui il cancello giudica se un'immagine è
-  cambiata abbastanza, e non troppo (vedi [2.6](#26-come-è-garantita-la-coerenza-visiva)
-  e `metrics.js`). Esempi: crescita, costruzione, timelapse, attraversamento,
-  accumulo, metamorfosi.
-- **ELEMENT** (`backend/src/concepts.js`) = il *soggetto* che riempie quella
-  forma: setting, stile, palette, e il nome breve che sostituisce `{s}`
-  nelle tappe. Girasole, Isola, Studio, Neon sono tutti element: ciascuno
-  pesca dalla propria famiglia nativa, e può portare tappe proprie quando il
-  copione generico della famiglia non gli si addice (le felci non hanno
-  petali: vedi il commento in testa a `concepts.js`).
-- Un canale ha un'**indole**: le famiglie da cui può pescare (`famiglie` in
-  `channels.js`). Le indoli sono **disgiunte** — nessuna famiglia appartiene
-  a due canali — così due canali non possono mai pescare lo stesso element
-  nella stessa settimana, senza bisogno di coordinamento fra loro.
+### Il soggetto si inventa
+
+Ogni volta che un ciclo di 7 giorni si chiude, il canale non riprende un
+soggetto già visto: lo **inventa** al momento (`inventaElement` in
+`backend/src/inventa.js`, chiamata da `runChannel` al rollover d'arco). Un
+modello di testo di Workers AI scrive il mondo nuovo — nome, soggetto,
+setting, stile, palette — e l'element appena nato viene salvato nel catalogo
+custom, pubblicato sul canale e imposto all'arco che si apre. Da lì in poi è
+un element come gli altri.
+
+**Le tappe non si inventano.** L'element nasce senza tappe proprie ed eredita
+quelle della sua famiglia, come quasi tutti gli element scritti a mano (le
+due eccezioni curate a mano — felce e cactus — portano tappe proprie: vedi il
+commento in testa a `concepts.js`). È la scelta chiave del meccanismo, e
+tiene a un solo motivo: il cancello giudica ogni immagine con un profilo di
+range tarato a mano sulla famiglia, e quel profilo dipende dalle tappe — una
+crescita cambia poco e in un punto solo, un timelapse urbano cambia tanto e
+dappertutto. Tappe della famiglia ⇒ il soggetto nuovo, misurato, si comporta
+come gli altri della sua famiglia ⇒ i range tarati (quelli pubblicati dal
+tool di tuning con `PUT /tuning`) restano validi anche per un concept mai
+visto prima. Se il modello inventasse anche la forma della storia, ogni
+settimana sarebbe una regola nuova senza taratura: il cancello brucerebbe i
+suoi tentativi per pubblicare comunque il candidato meno peggiore.
+
+**Se l'invenzione non va in porto** — modello assente, quota finita,
+risposta illeggibile, KV che rifiuta la scrittura — il canale ripiega **in
+silenzio** sulla pesca dalla libreria di element scritti a mano
+(`pickConcept` in `story.js`, con le regole anti-ripetizione invariate):
+l'utente non vede mai niente di rotto. Il backfill, che ricostruisce giorni
+passati, non inventa nulla e pesca dalla libreria come ha sempre fatto.
+
+**Gli element inventati si vedono.** Nel tool di tuning, tab **Catalogo**,
+compaiono fra gli element custom marcati `auto` (il campo è esposto anche da
+`GET /catalogo`, insieme alla data di nascita `creatoIl`) e si modificano
+come qualsiasi altro. Modificarli a mano significa **adottarli**: il
+salvataggio manuale li riporta a `auto: false`, e da quel momento la potatura
+automatica non li tocca più. È `potaGenerati` (`backend/src/catalog.js`) a
+tenere il catalogo dal crescere senza limiti: dopo ogni invenzione conserva
+per ogni canale i `GENERATI_PER_CANALE` (`config.js`, oggi 40) element auto
+più recenti e rimuove i più vecchi, senza mai toccare quelli scritti a mano
+né quelli che un arco in corso sta usando.
+
+La libreria resta **estendibile a caldo, senza rideploy**: oltre a quelli
+scritti nel codice (`concepts.js`), lo strato custom in KV
+(`backend/src/catalog.js`) accetta nuovi concept e nuovi element creati da
+fuori — è lo strumento di tuning (tab **Catalogo**) a scriverci, tramite
+`PUT /catalogo/concept` e `PUT /catalogo/element` (vedi
+[2.4](#24-operazioni-comuni)). Da quel momento non c'è più differenza fra un
+element "di fabbrica", uno custom e uno inventato dalla macchina:
+`resolveConcept` li tratta allo stesso modo ovunque nel sistema.
+
+Un canale ha un'**indole**: le famiglie da cui può attingere (`famiglie` in
+`channels.js`). Le indoli sono **disgiunte** — nessuna famiglia appartiene
+a due canali — così due canali non possono mai raccontare lo stesso soggetto
+nella stessa settimana, senza bisogno di coordinamento fra loro.
 
 | Canale | Indole (famiglie) |
 |---|---|
 | natura | crescita, costruzione |
 | città | timelapse, attraversamento |
 | quiete | accumulo, metamorfosi |
-
-La libreria di element è **estendibile a caldo, senza rideploy**: oltre a
-quelli scritti nel codice (`concepts.js`), un secondo strato in KV
-(`backend/src/catalog.js`) accetta nuovi concept e nuovi element creati da
-fuori — è lo strumento di tuning (tab **Catalogo**) a scriverci, tramite
-`PUT /catalogo/concept` e `PUT /catalogo/element` (vedi
-[2.4](#24-operazioni-comuni)). Da quel momento non c'è più differenza fra un
-element "di fabbrica" e uno custom: `resolveConcept` li tratta allo stesso
-modo ovunque nel sistema.
 
 **Famiglie ed element sospesi dalla pesca.** `FAMIGLIE_SOSPESE` e
 `ELEMENT_SOSPESI` (`backend/src/config.js`) sono due liste di id esclusi
