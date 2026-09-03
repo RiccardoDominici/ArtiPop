@@ -42,9 +42,9 @@
 // scrittura — si logga e si torna null.
 //
 // Tutte le funzioni pure (famigliaDelTurno, idInventato, esempiPerFamiglia,
-// costruisciPrompt, interpretaRisposta, normalizzaElement, nomiRecenti) non
-// toccano la rete e sono testate una per una; solo inventaElement parla con
-// env.AI e, per il salvataggio, col KV.
+// costruisciPrompt, interpretaRisposta, normalizzaElement, soggettiRecenti)
+// non toccano la rete e sono testate una per una; solo inventaElement parla
+// con env.AI e, per il salvataggio, col KV.
 
 import { CONFIG, FAMIGLIE_SOSPESE } from "./config.js";
 import { ELEMENTS, getElement } from "./concepts.js";
@@ -159,9 +159,14 @@ export function costruisciPrompt({ famiglia, esempi = [], daEvitare = [] } = {})
   );
 
   // 2. Cosa inventare, campo per campo, coi limiti del contratto di catalogo.
+  //    Il "nome" deve NOMINARE il soggetto inventato (difetto visto davvero in
+  //    preview: a una barca a vela su un lago è stato dato "Nuvola", un
+  //    dettaglio della scena) — è ciò che l'utente legge in home
+  //    ("Questa settimana: …"), quindi deve dire che cos'è il soggetto.
   blocchi.push(
     "You invent ONLY the subject and its world:\n" +
-    `- "nome": the human name of the story, in ITALIAN, 1-2 words, at most ${LIMITI_ELEMENT.nome} characters.\n` +
+    `- "nome": the human name of the story, in ITALIAN, 1-2 words, at most ${LIMITI_ELEMENT.nome} characters. ` +
+    `It must NAME the subject you invent — not a background detail of the scene.\n` +
     `- "s": in English, a noun phrase that STARTS WITH AN ARTICLE (for example "the copper kettle"), ` +
     `at most ${LIMITI_ELEMENT.s} characters. It is substituted into the fixed script sentences in place of the subject, ` +
     "so it must read naturally inside them.\n" +
@@ -183,11 +188,16 @@ export function costruisciPrompt({ famiglia, esempi = [], daEvitare = [] } = {})
     );
   }
 
-  // 4. Cosa evitare: i soggetti recenti del canale, uno per riga.
+  // 4. Cosa evitare: i soggetti recenti del canale, uno per riga, con nome e
+  //    soggetto inglese insieme. Il divieto esplicito di RIBATTEZZARE conta
+  //    il difetto misurato su preview: con il solo "invent something
+  //    different" il modello ha riproposto lo stesso oggetto con nome nuovo.
   if (daEvitare.length > 0) {
     blocchi.push(
       "The following subjects have already been used on this channel: do not repeat any of them, " +
-      "do not paraphrase any of them, and invent something clearly different from all of them:\n" +
+      "do not paraphrase any of them, and invent something clearly different from all of them. " +
+      "A new name for the same object is still a repeat: the new subject must be a different object, " +
+      "not the same one renamed:\n" +
       daEvitare.map((n) => `- ${n}`).join("\n")
     );
   }
@@ -290,37 +300,63 @@ export function normalizzaElement(grezzo, { id, famigliaNativa, canale, creatoIl
 }
 
 /**
- * I nomi dei concept già usati di recente sul canale, da passare come
- * `daEvitare`: gli id in `prevState.usati` risolti al loro nome quando
- * possibile (custom dal catalogo, built-in dalla libreria), più i nomi degli
- * element generati dalla macchina (auto === true) già presenti sul canale.
- * Senza duplicati. Non lancia mai; con input vuoti o corrotti ritorna [].
+ * Le voci "da evitare" per il prompt dell'invenzione: una per concept già
+ * usato sul canale, nella forma `nome — soggetto` dove il soggetto è il
+ * campo INGLESE (`s`, quello che finisce dentro le frasi delle tappe); le
+ * sorgenti sono le stesse di sempre: gli id in `prevState.usati` risolti
+ * (custom dal catalogo, built-in dalla libreria) più gli element generati
+ * dalla macchina (auto === true) già presenti sul canale. Senza duplicati.
+ * Non lancia mai; con input vuoti o corrotti ritorna [].
+ *
+ * PERCHÉ IL SOGGETTO INGLESE: il prompt è interamente in inglese e la cosa
+ * da non ripetere è il SOGGETTO, non il nome — il nome italiano cambia a
+ * piacere, il soggetto no. Con il vecchio elenco di soli nomi italiani il
+ * modello evitava diligentemente "Villaggio di mare" e reinventava lo stesso
+ * soggetto sotto altro nome: difetto misurato davvero su tre archi
+ * consecutivi in preview sul canale citta (arco 0 "the old lighthouse" →
+ * arco 2 "the old wooden lighthouse"). L'elenco da evitare deve parlare la
+ * stessa lingua del campo che il modello genera, altrimenti evita il nome e
+ * ripete la cosa.
  */
-export function nomiRecenti(prevState, catalog, channel) {
-  const nomi = [];
-  const aggiungi = (n) => {
-    if (typeof n === "string" && n.trim() !== "" && !nomi.includes(n)) nomi.push(n);
+export function soggettiRecenti(prevState, catalog, channel) {
+  const voci = [];
+  const aggiungi = (v) => {
+    if (typeof v === "string" && v.trim() !== "" && !voci.includes(v)) voci.push(v);
+  };
+  // La voce di un element: `nome — soggetto` quando il soggetto inglese c'è,
+  // altrimenti il solo nome — mai un separatore penzolante né "undefined".
+  // Primario e ripiego sono SCAMBIATI fra i due mondi: un element custom
+  // nasce da normalizzaElement e il suo `s` è esattamente il campo che
+  // finisce nelle frasi delle tappe; un element built-in della libreria
+  // espone invece `soggetto` come nome neutro inglese.
+  const voce = (nome, primario, ripiego) => {
+    const soggetto = [primario, ripiego].find(
+      (v) => typeof v === "string" && v.trim() !== ""
+    );
+    return soggetto !== undefined ? `${nome} — ${soggetto.trim()}` : nome;
   };
   try {
     const usati = Array.isArray(prevState?.usati) ? prevState.usati : [];
     for (const id of usati) {
       const custom = catalog?.elements?.[id];
       if (custom?.nome) {
-        aggiungi(custom.nome);
+        aggiungi(voce(custom.nome, custom.s, custom.soggetto));
         continue;
       }
       const builtin = getElement(id); // undefined per id ignoti: si salta
-      if (builtin?.nome) aggiungi(builtin.nome);
+      if (builtin?.nome) aggiungi(voce(builtin.nome, builtin.soggetto, builtin.s));
     }
     for (const el of Object.values(catalog?.elements || {})) {
-      if (el?.auto === true && el?.nome && el?.canale === channel?.id) aggiungi(el.nome);
+      if (el?.auto === true && el?.nome && el?.canale === channel?.id) {
+        aggiungi(voce(el.nome, el.s, el.soggetto));
+      }
     }
   } catch (err) {
     // Stato o catalogo corrotti non devono mai fare fallire un arco nuovo:
     // senza elenco "da evitare" si inventa comunque, solo meno informati.
-    console.warn(`[inventa] nomiRecenti: elenco incompleto (${err?.message ?? err})`);
+    console.warn(`[inventa] soggettiRecenti: elenco incompleto (${err?.message ?? err})`);
   }
-  return nomi;
+  return voci;
 }
 
 /* ===================== L'UNICA FUNZIONE CHE TOCCA LA RETE ===================== */

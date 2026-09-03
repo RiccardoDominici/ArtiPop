@@ -21,12 +21,12 @@ import {
   costruisciPrompt,
   interpretaRisposta,
   normalizzaElement,
-  nomiRecenti,
+  soggettiRecenti,
   inventaElement,
 } from "../../src/inventa.js";
 import { CONFIG, FAMIGLIE_SOSPESE } from "../../src/config.js";
 import { FAMILIES } from "../../src/families.js";
-import { ELEMENTS } from "../../src/concepts.js";
+import { ELEMENTS, getElement } from "../../src/concepts.js";
 import { loadCatalog, poolForWith } from "../../src/catalog.js";
 import { LIMITI_ELEMENT } from "../../src/validazione.js";
 import { makeEnv } from "../helpers/fakeEnv.js";
@@ -178,6 +178,26 @@ describe("costruisciPrompt", () => {
     }
   });
 
+  it("il blocco da evitare porta il soggetto inglese di ogni voce e vieta il ribattezzamento", () => {
+    // Le voci arrivano da soggettiRecenti nella forma `nome — soggetto`:
+    // il testo del prompt deve contenere il SOGGETTO inglese, non solo il nome
+    // (il difetto misurato: nome evitato, soggetto ripetuto).
+    const daEvitare = ["Villaggio di mare — the old lighthouse", "Nuvola — the lone white sailboat"];
+    const { user } = costruisciPrompt({ famiglia: FAMILIES.crescita, esempi: [], daEvitare });
+
+    for (const voce of daEvitare) {
+      expect(user).toContain(voce); // nome e soggetto insieme, sulla stessa riga
+      expect(user).toContain(voce.split(" — ")[1]); // il soggetto inglese è nel testo
+    }
+    // Cambiare il nome non basta: il soggetto deve essere un oggetto DIVERSO.
+    expect(user).toContain("not the same one renamed");
+  });
+
+  it("il campo nome è dichiarato come nome italiano DEL SOGGETTO inventato", () => {
+    const { user } = costruisciPrompt({ famiglia: FAMILIES.crescita, esempi: [], daEvitare: [] });
+    expect(user).toContain("It must NAME the subject you invent");
+  });
+
   it("senza voci da evitare omette il blocco, senza rompere il resto", () => {
     const { user } = costruisciPrompt({ famiglia: FAMILIES.crescita, esempi: [], daEvitare: [] });
     expect(user).toContain(FAMILIES.crescita.tappe[0].join(". "));
@@ -281,15 +301,25 @@ describe("normalizzaElement", () => {
   });
 });
 
-/* ===================== nomiRecenti ===================== */
+/* ===================== soggettiRecenti ===================== */
 
-describe("nomiRecenti", () => {
-  it("unisce i nomi degli usati (custom e built-in) e quelli degli element auto del canale, senza duplicati", () => {
+describe("soggettiRecenti", () => {
+  it("unisce usati (custom e built-in) ed element auto del canale in voci `nome — soggetto inglese`, senza duplicati", () => {
     const catalog = {
       concepts: {},
       elements: {
-        "gen-natura-1": { id: "gen-natura-1", nome: "Lampada", auto: true, canale: "natura" },
-        // Stesso nome di un built-in usato di recente: il duplicato sparisce.
+        // Lo stesso element arriva da DUE strade (usati e scansione auto):
+        // la voce identica deve comparire una volta sola.
+        "gen-natura-1": {
+          id: "gen-natura-1",
+          nome: "Lampada",
+          s: "the brass lamp",
+          soggetto: "a brass lamp",
+          auto: true,
+          canale: "natura",
+        },
+        // Custom senza soggetto: resta il solo nome (anche se combacia col
+        // nome di un built-in: la voce del built-in porta il SUO soggetto).
         "gen-natura-3": { id: "gen-natura-3", nome: "Girasole", auto: true, canale: "natura" },
         "gen-citta-9": { id: "gen-citta-9", nome: "Torre", auto: true, canale: "citta" },
         manuale: { id: "manuale", nome: "Fatto a mano", auto: false, canale: "natura" },
@@ -297,20 +327,48 @@ describe("nomiRecenti", () => {
     };
     const prevState = { usati: ["gen-natura-1", "girasole", "id-mai-esistito"] };
 
-    const nomi = nomiRecenti(prevState, catalog, CANALE_NATURA);
+    const voci = soggettiRecenti(prevState, catalog, CANALE_NATURA);
 
-    expect(nomi).toContain("Lampada"); // usato di recente, custom → nome dal catalogo
-    expect(nomi).toContain("Girasole"); // usato di recente, built-in → nome dalla libreria
-    expect(nomi.filter((n) => n === "Girasole")).toHaveLength(1); // senza duplicati
-    expect(nomi).not.toContain("Torre"); // auto ma su un altro canale
-    expect(nomi).not.toContain("Fatto a mano"); // scritto a mano: non è roba della macchina
+    // Custom: il primario è `s` (quello che finisce nelle frasi delle tappe),
+    // NON il `soggetto` neutro.
+    expect(voci).toContain("Lampada — the brass lamp");
+    expect(voci.filter((v) => v === "Lampada — the brass lamp")).toHaveLength(1); // usati + auto: una voce sola
+    // Built-in: il primario è `soggetto` della libreria.
+    const girasole = getElement("girasole");
+    expect(voci).toContain(`Girasole — ${girasole.soggetto}`);
+    // Senza soggetto la voce è il solo nome.
+    expect(voci).toContain("Girasole");
+    expect(voci.filter((v) => v === "Girasole")).toHaveLength(1);
+    expect(voci).not.toContain("Torre"); // auto ma su un altro canale
+    expect(voci).not.toContain("Fatto a mano"); // scritto a mano: non è roba della macchina
+  });
+
+  it("custom con solo `soggetto` usa il ripiego; senza nessun soggetto la voce è il solo nome (mai 'undefined' né separatore penzolante)", () => {
+    const catalog = {
+      concepts: {},
+      elements: {
+        "gen-natura-1": { id: "gen-natura-1", nome: "Lampada", soggetto: "a brass lamp", auto: true, canale: "natura" },
+        "gen-natura-2": { id: "gen-natura-2", nome: "Nuvola", auto: true, canale: "natura" },
+        "gen-natura-4": { id: "gen-natura-4", nome: "Vuota", s: "   ", soggetto: "", auto: true, canale: "natura" },
+      },
+    };
+
+    const voci = soggettiRecenti({ usati: [] }, catalog, CANALE_NATURA);
+
+    expect(voci).toContain("Lampada — a brass lamp"); // manca `s`: ripiego su `soggetto`
+    expect(voci).toContain("Nuvola"); // nessun soggetto: solo nome
+    expect(voci).toContain("Vuota"); // soggetti vuoti o bianchi: come assenti
+    for (const v of voci) {
+      expect(v).not.toContain("undefined");
+      expect(v).not.toMatch(/—\s*$/); // nessun separatore penzolante
+    }
   });
 
   it("con input vuoti o corrotti ritorna array vuoto senza lanciare", () => {
-    expect(nomiRecenti(null, null, null)).toEqual([]);
-    expect(nomiRecenti({}, {}, {})).toEqual([]);
-    expect(nomiRecenti({ usati: "non-una-lista" }, null, null)).toEqual([]);
-    expect(nomiRecenti({ usati: [null, 42, {}] }, CATALOGO_VUOTO, CANALE_NATURA)).toEqual([]);
+    expect(soggettiRecenti(null, null, null)).toEqual([]);
+    expect(soggettiRecenti({}, {}, {})).toEqual([]);
+    expect(soggettiRecenti({ usati: "non-una-lista" }, null, null)).toEqual([]);
+    expect(soggettiRecenti({ usati: [null, 42, {}] }, CATALOGO_VUOTO, CANALE_NATURA)).toEqual([]);
   });
 });
 

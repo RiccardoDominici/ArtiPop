@@ -15,7 +15,7 @@ import { ACTIVE_CHANNELS, requireActiveChannel } from "./channels.js";
 import { evolveStory, clausesFor, todayKey, serveConceptNuovo, prossimoArcIndex } from "./story.js";
 // L'invenzione del concept della settimana (inventa.js): chiamata da runChannel
 // solo quando serveConceptNuovo prevede che l'arco si apra stanotte.
-import { inventaElement, nomiRecenti } from "./inventa.js";
+import { inventaElement, soggettiRecenti } from "./inventa.js";
 import { generateDay } from "./daygen.js";
 import { getState, putState, putImage, getGiorno, listArchiveDates } from "./storage.js";
 import { classify, encodeFingerprint, formatMeasures } from "./metrics.js";
@@ -231,7 +231,7 @@ export async function runChannel(env, channelId, { force = false } = {}) {
         // il conto vive in un solo posto (prossimoArcIndex, vedi story.js),
         // altrimenti l'element potrebbe nascere con l'id di un arco diverso.
         arcIndex: prossimoArcIndex(prevState),
-        daEvitare: nomiRecenti(prevState, catalog, channel),
+        daEvitare: soggettiRecenti(prevState, catalog, channel),
         adesso: new Date().toISOString(),
       });
       if (inventato) {
