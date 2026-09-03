@@ -7,7 +7,7 @@ import { makeEnv, callWorker } from "../helpers/fakeEnv.js";
 import { todayKey } from "../../src/story.js";
 
 const ORIGIN = "https://artipop.test";
-const COLORI_AMMESSI = ["#0a0b10", "#7ec8a9", "#f2b878"];
+const COLORI_AMMESSI = ["#2b3028", "#5c6e58", "#7a7a52"];
 
 function estraiHref(html, rel) {
   const m = html.match(new RegExp(`<link rel="${rel}" href="([^"]+)"`));

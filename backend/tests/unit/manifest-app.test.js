@@ -16,8 +16,8 @@ describe("renderManifest", () => {
     expect(json.short_name).toBe("ArtiPop");
     expect(json.start_url).toBe("/");
     expect(json.display).toBe("standalone");
-    expect(json.theme_color).toBe("#0a0b10");
-    expect(json.background_color).toBe("#0a0b10");
+    expect(json.theme_color).toBe("#DCE2D2");
+    expect(json.background_color).toBe("#DCE2D2");
     expect(Array.isArray(json.icons)).toBe(true);
     expect(json.icons.length).toBeGreaterThan(0);
     expect(json.icons[0].src).toBe("/icona.svg");
@@ -48,8 +48,8 @@ describe("renderManifest", () => {
     expect(json.start_url).toBe("/");
     expect(json.scope).toBe("/");
     expect(json.display).toBe("standalone");
-    expect(json.background_color).toBe("#0a0b10");
-    expect(json.theme_color).toBe("#0a0b10");
+    expect(json.background_color).toBe("#DCE2D2");
+    expect(json.theme_color).toBe("#DCE2D2");
     expect(json.icons).toEqual([
       {
         src: "/icona.svg",
@@ -65,7 +65,7 @@ describe("iconaSvg", () => {
   it("è un markup SVG vero (non URL-encoded)", () => {
     const svg = iconaSvg();
     expect(svg.startsWith("<svg")).toBe(true);
-    expect(svg).toContain("#0a0b10");
+    expect(svg).toContain("#2B3028");
   });
 });
 

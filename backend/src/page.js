@@ -137,17 +137,23 @@ ${feedLinkTag(feedUrl)}
 ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
 <style>
   :root {
-    --bg: #0a0b10;
-    --card: rgba(255,255,255,.055);
-    --card-border: rgba(255,255,255,.12);
-    --text: #f2f3f8;
-    --dim: #9aa3b8;
-    --a1: #7ec8a9;  /* accenti del canale corrente (animati via JS) */
-    --a2: #2b5f8a;
+    /* Palette Salvia (mockup "Salvia" — Biglietto Swipe, proposta §7 ciclo
+       feat-home-salvia): fondo salvia polveroso, carta crema verdastra,
+       inchiostro bosco spento, erba secca e muschio come accenti. */
+    --bg: #DCE2D2;
+    --card: #F6F8F1;
+    --card-border: #2B3028;
+    --text: #2B3028;
+    --dim: #68725F;
+    --soft: #5C6552;
+    --erba: #7A7A52;
+    --muschio: #5C6E58;
+    --dots: #B3BBA4;
+    --guida: #C6CDB6;
     --radius: 26px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; color-scheme: light; }
   body {
     background: var(--bg);
     color: var(--text);
@@ -156,11 +162,13 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
     overflow-x: hidden;
   }
 
-  /* ---------- sfondo ambient ---------- */
-  .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
+  /* ---------- sfondo ambient ----------
+     Salvia: carta tinta unita, niente blob — la regola resta (unico posto in
+     cui .blob è definito) ma spenta, così il markup .ambient non cambia. */
+  .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; display: none; }
   .blob {
     position: absolute; width: 65vmax; height: 65vmax; border-radius: 50%;
-    filter: blur(90px); opacity: .32;
+    filter: blur(90px); opacity: .32; display: none;
     /* Nessuna transizione sul colore: interpolare il background per 1.2s
        obbligava il browser a ricalcolare un blur(90px) su 65vmax × 2 per ~70
        fotogrammi, proprio mentre la card vola via — il cambio canale scattava
@@ -168,40 +176,48 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
        La gradualità resta dove non costa niente: h1 e .btn conservano la loro
        transition su background (VISUAL_SPECS §1.4). */
   }
-  .blob.b1 { background: var(--a1); top: -25vmax; left: -15vmax; animation: drift1 26s ease-in-out infinite alternate; }
-  .blob.b2 { background: var(--a2); bottom: -30vmax; right: -18vmax; animation: drift2 32s ease-in-out infinite alternate; }
+  .blob.b1 { background: var(--muschio); top: -25vmax; left: -15vmax; animation: drift1 26s ease-in-out infinite alternate; }
+  .blob.b2 { background: var(--muschio); bottom: -30vmax; right: -18vmax; animation: drift2 32s ease-in-out infinite alternate; }
   @keyframes drift1 { to { transform: translate(9vmax, 7vmax) scale(1.12); } }
   @keyframes drift2 { to { transform: translate(-8vmax, -6vmax) scale(1.08); } }
   @media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
 
-  main { max-width: 1100px; margin: 0 auto; padding: max(2rem, env(safe-area-inset-top)) 1.2rem 4rem; }
+  main { max-width: 560px; margin: 0 auto; padding: max(2rem, env(safe-area-inset-top)) 1.2rem 4rem; }
 
-  /* ---------- header ---------- */
-  header.hero { text-align: center; margin: 1.2rem 0 2.2rem; }
-  .hero h1 {
-    font-size: clamp(2.6rem, 7vw, 3.6rem); font-weight: 800; letter-spacing: -.03em;
-    background: linear-gradient(100deg, var(--a1), var(--a2));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-    transition: background 1.2s ease;
+  /* ---------- header (Salvia: colonna 560px, inchiostro pieno, lede secondaria) ---------- */
+  header.hero { text-align: left; margin: 1.2rem 0 0; }
+  .hero .route {
+    font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: .7rem; color: var(--dim);
   }
-  .hero p { color: var(--dim); max-width: 30rem; margin: .7rem auto 0; font-size: 1.02rem; line-height: 1.55; }
+  .hero .route .stamp {
+    color: var(--muschio); border: 2px solid var(--muschio); border-radius: 8px;
+    padding: .05rem .45rem; transform: rotate(3deg);
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 7vw, 2.6rem); font-weight: 800; letter-spacing: -.01em;
+    line-height: 1.05; color: var(--text);
+  }
+  .hero p { color: var(--dim); max-width: 30rem; margin: .5rem auto 0; font-size: .93rem; line-height: 1.6; }
   .hero p strong { color: var(--text); font-weight: 600; }
 
-  /* ---------- deck ---------- */
+  /* ---------- deck (Salvia: Biglietto Swipe — carta crema, bordo inchiostro 1.5px, ombra offset) ---------- */
   .deck-wrap { display: grid; justify-items: center; gap: 1.1rem; }
   .deck {
     position: relative;
-    width: min(340px, 86vw);
-    height: calc(min(340px, 86vw) * 2.02); /* telefono (~1.47) + info (~0.45) */
+    width: min(320px, 86vw);
+    height: calc(min(320px, 86vw) * 2.02); /* telefono (~1.47) + info (~0.45) */
     touch-action: pan-y;
+    margin-top: 1.4rem;
   }
   .card {
     position: absolute; inset: 0;
-    border-radius: var(--radius);
+    border-radius: 22px;
     /* fondo OPACO: le card dietro nella pila non devono trasparire */
-    background: linear-gradient(180deg, rgb(30,34,46), rgb(17,19,27));
-    border: 1px solid var(--card-border);
-    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    background: var(--card);
+    border: 1.5px solid var(--card-border);
+    box-shadow: 4px 4px 0 var(--card-border);
     display: flex; flex-direction: column; align-items: center;
     padding: 1rem 1rem 1.05rem;
     overflow: hidden;
@@ -213,13 +229,15 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .card.behind { pointer-events: none; }
   .card.animated { transition: transform .45s cubic-bezier(.2,.8,.25,1.1), opacity .45s ease; }
 
-  /* ---------- mockup iPhone ---------- */
+  /* ---------- mockup iPhone ----------
+     Salvia: il mockup resta il phone reale (wall veri, orologio live) ma la
+     cornice scura diventa inchiostro Salvia — stesso componente canonico. */
   .phone {
     position: relative; width: 66%; aspect-ratio: 6 / 13;
     border-radius: 13% / 6%;
-    background: #000; border: 3px solid #2a2d38;
+    background: #000; border: 3px solid var(--card-border);
     overflow: hidden; flex-shrink: 0;
-    box-shadow: 0 10px 34px rgba(0,0,0,.55), inset 0 0 0 2px #000;
+    box-shadow: 4px 4px 0 rgba(43,48,40,.3), inset 0 0 0 2px #000;
   }
   .phone img.wall {
     position: absolute; inset: 0; width: 100%; height: 100%;
@@ -235,47 +253,49 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .lock .lbottom { margin-top: auto; margin-bottom: 6%; display: flex; gap: 38%; width: 100%; justify-content: center; }
   .lock .lbtn { width: 2rem; height: 2rem; border-radius: 50%; background: rgba(20,20,25,.55); backdrop-filter: blur(6px); display: grid; place-items: center; font-size: .85rem; }
 
-  /* ---------- info canale ---------- */
+  /* ---------- info canale (Salvia: meta riga nome + "giorno N di 7", secondari soft) ---------- */
   .cinfo { width: 100%; text-align: center; margin-top: .85rem; display: grid; gap: .3rem; }
-  .cinfo h2 { font-size: 1.28rem; font-weight: 750; letter-spacing: -.01em; }
+  .cinfo h2 { font-size: .9rem; font-weight: 800; letter-spacing: -.01em; }
   .cinfo .tag { color: var(--dim); font-size: .84rem; line-height: 1.4; }
-  .cinfo .scene { font-size: .8rem; color: var(--dim); font-style: italic; line-height: 1.45;
+  .cinfo .scene { font-size: .75rem; color: var(--dim); font-weight: 500; line-height: 1.45;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .cinfo .scene b { color: var(--text); font-weight: 600; font-style: normal; }
   .cinfo .stale { font-size: .8rem; color: var(--dim); line-height: 1.45; }
-  .cinfo .eredita { font-size: .8rem; color: var(--dim); line-height: 1.45; }
-  .cinfo .eredita a { color: var(--a1); text-decoration: underline; }
+  .cinfo .eredita { font-size: .8rem; color: var(--soft); line-height: 1.45; }
+  .cinfo .eredita a { color: var(--muschio); text-decoration: underline; }
 
-  /* ---------- controlli deck ---------- */
+  /* ---------- controlli deck (Salvia: tondi inchiostro/carta, dots salvia) ---------- */
   .controls { display: flex; align-items: center; gap: 1rem; }
   .ctrl {
-    width: 3.2rem; height: 3.2rem; border-radius: 50%;
-    border: 1px solid var(--card-border); background: var(--card);
-    backdrop-filter: blur(14px); color: var(--text); font-size: 1.25rem;
+    width: 3.5rem; height: 3.5rem; border-radius: 50%;
+    border: 1.5px solid var(--card-border); background: var(--card);
+    color: var(--text); font-size: 1.3rem;
     cursor: pointer; transition: transform .15s ease, background .2s ease;
     display: grid; place-items: center;
   }
-  .ctrl:hover { transform: scale(1.09); background: rgba(255,255,255,.12); }
+  .ctrl:hover { transform: scale(1.09); }
   .ctrl:active { transform: scale(.94); }
-  .dots { display: flex; gap: .45rem; }
-  .dot { width: .5rem; height: .5rem; border-radius: 50%; background: rgba(255,255,255,.22); transition: all .3s ease; }
-  .dot.on { background: var(--a1); transform: scale(1.35); }
+  .ctrl#next { background: var(--muschio); color: #F6F8F1; border-color: var(--muschio); }
+  .dots { display: flex; gap: .4rem; }
+  .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--dots); transition: all .3s ease; }
+  .dot.on { width: 26px; background: var(--text); }
+  .pick { text-align: center; font-size: .82rem; font-weight: 700; }
+  .pick b { color: var(--muschio); }
   .hint { color: var(--dim); font-size: .78rem; opacity: .8; }
-  .hint a { color: var(--a1); text-decoration: underline; }
+  .hint a { color: var(--muschio); text-decoration: underline; }
 
-  /* ---------- azioni canale ---------- */
-  .actions { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
+  /* ---------- azioni canale (Salvia: CTA rettangolari inchiostro/carta, ombra offset) ---------- */
+  .actions { display: grid; gap: .6rem; justify-items: stretch; }
   .btn {
-    border: 0; border-radius: 999px; padding: .72rem 1.25rem;
-    font-size: .88rem; font-weight: 650; cursor: pointer;
-    min-height: 44px; /* §5.5: con .88rem di testo + .72rem di padding la pill si fermava a ~40px */
-    transition: transform .15s ease, filter .2s ease, background 1.2s ease;
+    border-radius: 12px; padding: .9rem;
+    font-size: .93rem; font-weight: 800; cursor: pointer; text-align: center;
+    min-height: 48px; /* §5.5: tap target mobile */
+    transition: transform .15s ease, filter .2s ease;
   }
   .btn:active { transform: scale(.96); }
-  .btn.primary { background: linear-gradient(100deg, var(--a1), var(--a2)); color: #fff; box-shadow: 0 8px 26px rgba(0,0,0,.35); }
+  .btn.primary { background: var(--text); color: var(--card); border: 1.5px solid var(--text); box-shadow: 3px 3px 0 rgba(43,48,40,.3); }
   .btn.primary:hover { filter: brightness(1.12); }
-  .btn.ghost { background: var(--card); border: 1px solid var(--card-border); color: var(--text); backdrop-filter: blur(14px); }
-  .btn.ghost:hover { background: rgba(255,255,255,.11); }
+  .btn.ghost { background: transparent; border: 1.5px solid var(--text); color: var(--text); }
   /* min-height:44px centra il testo nei <button>, ma le pill <a class="btn ...">
      (#archlink, #dayopen, #daysave, ecc.) restano inline e lasciano il testo
      ancorato in alto: ~2px di sfasamento verticale fra pill adiacenti. Il
@@ -293,10 +313,10 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .playbtn {
     border: 1px solid var(--card-border); background: var(--card); color: var(--text);
     border-radius: 999px; padding: .4rem .9rem; font-size: .78rem; font-weight: 650;
-    cursor: pointer; transition: all .2s ease; backdrop-filter: blur(10px);
+    cursor: pointer; transition: all .2s ease;
   }
-  .playbtn:hover { background: rgba(255,255,255,.12); }
-  .playbtn.playing { background: linear-gradient(100deg, var(--a1), var(--a2)); border-color: transparent; color: #fff; }
+  .playbtn:hover { background: rgba(43,48,40,.08); }
+  .playbtn.playing { background: var(--muschio); border-color: var(--muschio); color: #F6F8F1; }
   /* Le file di comandi del viaggio riusano .actions (la fila canonica sotto
      il deck): prima erano pill inline figlie dirette della sezione — nessun
      gap, andate a capo incontrollate, si toccavano (VISUAL_SPECS §5.4/§5.5).
@@ -317,11 +337,11 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .dayctrl {
     width: 2.3rem; height: 2.3rem; border-radius: 50%;
     border: 1px solid var(--card-border); background: var(--card);
-    backdrop-filter: blur(14px); color: var(--text); font-size: 1.05rem;
+    color: var(--text); font-size: 1.05rem;
     cursor: pointer; transition: transform .15s ease, background .2s ease;
     display: grid; place-items: center;
   }
-  .dayctrl:hover { transform: scale(1.09); background: rgba(255,255,255,.12); }
+  .dayctrl:hover { transform: scale(1.09); background: rgba(43,48,40,.08); }
   .dayctrl:active { transform: scale(.94); }
   .dayctrl:disabled { opacity: .35; cursor: default; transform: none; }
   .dayinfo { min-width: 8rem; display: grid; gap: .1rem; }
@@ -330,7 +350,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .daypick {
     min-height: 2.3rem; padding: 0 .6rem; border-radius: 999px;
     border: 1px solid var(--dim); background: var(--bg); color: var(--text);
-    font: inherit; color-scheme: dark;
+    font: inherit; color-scheme: light;
   }
   .dcap { color: var(--dim); font-size: .78rem; line-height: 1.5; margin: .8rem auto 0; max-width: 26rem; }
   .dcap strong { color: var(--text); font-weight: 650; }
@@ -363,7 +383,7 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .arcrow:has(.favmini) { display: flex; align-items: center; gap: .6rem; }
   .arcrow .favmini {
     width: 30px; height: 64px; object-fit: cover; border-radius: 10px;
-    border: 1px solid rgba(255,255,255,.10); flex: none;
+    border: 1px solid var(--guida); flex: none;
   }
   .arcrow .arctxt { display: block; min-width: 0; }
 
@@ -377,26 +397,31 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .ns-item img { max-width: 100%; border-radius: 12px; display: block; margin: 0 auto .6rem; }
   .ns-item a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 .6rem; color: var(--text); }
 
-  /* ---------- setup ---------- */
-  section.setup { margin-top: 3.4rem; }
-  .setup h2 { text-align: center; font-size: 1.6rem; font-weight: 750; letter-spacing: -.02em; }
-  .setup .sub { text-align: center; color: var(--dim); margin-top: .35rem; font-size: .92rem; }
-  .steps { display: grid; gap: .9rem; margin-top: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-  .step {
-    background: var(--card); border: 1px solid var(--card-border); border-radius: 20px;
-    padding: 1.15rem 1.2rem; backdrop-filter: blur(14px);
-    transition: transform .2s ease;
+  /* ---------- setup (Salvia: card guida carta, passi numerati inchiostro, connettore guida) ---------- */
+  section.setup {
+    margin-top: 1.6rem; background: var(--card); border: 1.5px solid var(--card-border);
+    border-radius: 18px; box-shadow: 4px 4px 0 rgba(43,48,40,.3); padding: 1.3rem;
   }
-  .step:hover { transform: translateY(-3px); }
+  .setup h2 { font-size: 1.2rem; font-weight: 800; }
+  .setup .sub { color: var(--dim); margin-bottom: .8rem; font-size: .85rem; }
+  .steps { list-style: none; }
+  .step { position: relative; padding: 0 0 1rem 2.6rem; font-size: .87rem; color: var(--soft); }
+  .step:not(:last-child)::after {
+    content: ""; position: absolute; left: .82rem;
+    top: 1.9rem; bottom: .1rem; width: 2px; background: var(--guida);
+  }
   .step .n {
-    width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center;
-    background: linear-gradient(100deg, var(--a1), var(--a2)); color: #fff;
-    font-weight: 800; font-size: .95rem; margin-bottom: .7rem;
+    position: absolute; left: 0; top: 0;
+    width: 1.7rem; height: 1.7rem; border-radius: 50%; display: grid; place-items: center;
+    background: var(--text); color: var(--bg);
+    font-weight: 800; font-size: .8rem;
   }
-  .step h4 { font-size: 1rem; margin-bottom: .35rem; }
-  .step p { color: var(--dim); font-size: .86rem; line-height: 1.55; }
-  .step p code { background: rgba(255,255,255,.09); border-radius: 6px; padding: .1rem .4rem; font-size: .78rem; word-break: break-all; }
-  .note { margin-top: 1rem; text-align: center; color: var(--dim); font-size: .8rem; line-height: 1.6; max-width: 44rem; margin-inline: auto; }
+  .step h4 { font-size: .93rem; margin-bottom: .15rem; color: var(--text); display: block; }
+  .step p { color: var(--soft); font-size: .87rem; line-height: 1.55; }
+  .step p strong { color: var(--text); }
+  .step p code { background: var(--guida); border-radius: 6px; padding: .1rem .4rem; font-size: .78rem; word-break: break-all; }
+  .note { margin-top: .4rem; font-size: .8rem; border-top: 1px dashed var(--guida); padding-top: .8rem; color: var(--soft); line-height: 1.6; }
+  .note a { color: var(--muschio); font-weight: 700; }
 
   /* ---------- home minimale (2026-09-03, richiesta utente) ----------
      La home mostra solo: anteprima (deck + mockup), nome canale, i due
@@ -417,14 +442,14 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   footer { display: none; }
 
   footer { margin-top: 3.2rem; text-align: center; color: var(--dim); font-size: .78rem; }
-  footer a { color: var(--a1); text-decoration: none; }
+  footer a { color: var(--muschio); text-decoration: none; }
 
-  /* toast copia */
+  /* toast copia (Salvia: inchiostro pieno, testo carta) */
   #toast {
     position: fixed; left: 50%; bottom: max(1.4rem, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
-    background: rgba(20,22,30,.92); border: 1px solid var(--card-border); color: var(--text);
+    background: var(--text); border: 1.5px solid var(--text); color: var(--card);
     padding: .7rem 1.2rem; border-radius: 999px; font-size: .85rem; opacity: 0;
-    transition: all .3s ease; pointer-events: none; backdrop-filter: blur(10px); z-index: 50;
+    transition: all .3s ease; pointer-events: none; z-index: 50;
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -439,21 +464,23 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
 
 <main>
   <header class="hero">
-    <h1>ArtiPop</h1>
+    <div class="route"><span>Sera · Tramonto · iPhone</span><span class="stamp">Gratis</span></div>
+    <h1>ArtiPop, il tramonto quotidiano</h1>
     <p>Un wallpaper nuovo ogni sera al tramonto, generato dall'AI quella notte.
-    Ogni canale è <strong>un viaggio che evolve giorno dopo giorno</strong>.<br>
-    Gratis, senza app: solo una Shortcut.</p>
+    Ogni canale è <strong>un viaggio che evolve giorno dopo giorno</strong>.
+    Gratis, senza app: solo una Shortcut. <strong>Trascina le card</strong> per sfogliare i canali.</p>
   </header>
 
   <div class="deck-wrap">
     <div class="deck" id="deck" aria-label="Canali — trascina per sfogliare"></div>
 
     <div class="controls">
-      <button class="ctrl" id="prev" aria-label="Canale precedente">‹</button>
+      <button class="ctrl" id="prev" aria-label="Scarta">👎</button>
       <div class="dots" id="dots"></div>
-      <button class="ctrl" id="next" aria-label="Canale successivo">›</button>
+      <button class="ctrl" id="next" aria-label="Mio">👍</button>
     </div>
-    <p class="hint" id="hint">↔ trascina la card o usa le frecce</p>
+    <p class="pick">Canale scelto: <b id="pick"></b></p>
+    <p class="hint">👈 trascina una card di lato · oppure tocca i pulsanti</p>
 
     <div class="actions">
       <!-- Niente attributo "download" (attenzione: qui dentro siamo in un
@@ -1119,8 +1146,6 @@ function ripristinaOggi(card) {
 /* Aggiorna colori ambient, dots, hint e galleria per il canale in cima. */
 function updateChrome() {
   const ch = CHANNELS[order[0]];
-  document.documentElement.style.setProperty("--a1", ch.accent[0]);
-  document.documentElement.style.setProperty("--a2", ch.accent[1]);
   // Il bottone di download segue sempre il canale della card in cima.
   document.getElementById("dlShortcut").href = \`/s/\${ch.id}.shortcut\`;
   // Il comando "segui col lettore di feed" e il link di autodiscovery
@@ -1140,6 +1165,9 @@ function updateChrome() {
   if (icslinkEl) icslinkEl.href = "/promemoria.ics?c=" + encodeURIComponent(ch.id);
   dotsEl.innerHTML = CHANNELS.map((c) =>
     \`<span class="dot\${c.id === ch.id ? " on" : ""}"></span>\`).join("");
+  /* Biglietto Swipe: "Canale scelto" sotto i dots, stesso canale in cima. */
+  const pickEl = document.getElementById("pick");
+  if (pickEl) pickEl.textContent = ch.emoji + " " + ch.name;
   previewDate = null;
   loadArchive(ch.id);
   ricordaCanale(ch.id); // memorizza il canale in cima: alla prossima visita si riapre da qui

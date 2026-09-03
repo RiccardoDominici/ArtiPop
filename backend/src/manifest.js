@@ -13,7 +13,7 @@ export function iconaSvg() {
 
 /**
  * Corpo JSON del web app manifest. `background_color`/`theme_color` sono il
- * token `--bg` #0a0b10 già dichiarato in VISUAL_SPECS §1.1: nessun colore
+ * token `--bg` #DCE2D2 (palette Salvia, VISUAL_SPECS §1.1): nessun colore
  * nuovo. `description` ripete alla lettera la meta description della home
  * (vedi `page.js`), per coerenza fra le due superfici che l'utente vede.
  */
@@ -26,8 +26,8 @@ export function renderManifest() {
     start_url: "/",
     scope: "/",
     display: "standalone",
-    background_color: "#0a0b10",
-    theme_color: "#0a0b10",
+    background_color: "#DCE2D2",
+    theme_color: "#DCE2D2",
     icons: [
       {
         src: "/icona.svg",

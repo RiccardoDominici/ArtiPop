@@ -55,10 +55,10 @@ describe("home — il viaggio si racconta anche a chi non vede", () => {
     expect(descrizioneBody).toMatch(/\$\{ch\.name\} — wallpaper \$\{isToday/);
   });
 
-  it("regressione: nessun token colore/misura nuovo, i token --bg/--card/--text/--dim restano invariati", () => {
-    expect(html).toMatch(/--bg:\s*#0a0b10/);
-    expect(html).toMatch(/--card:\s*rgba\(255,255,255,\.055\)/);
-    expect(html).toMatch(/--text:\s*#f2f3f8/);
-    expect(html).toMatch(/--dim:\s*#9aa3b8/);
+  it("regressione: nessun token colore/misura nuovo, i token Salvia (proposta §7 feat-home-salvia) restano invariati", () => {
+    expect(html).toMatch(/--bg:\s*#DCE2D2/);
+    expect(html).toMatch(/--card:\s*#F6F8F1/);
+    expect(html).toMatch(/--text:\s*#2B3028/);
+    expect(html).toMatch(/--dim:\s*#68725F/);
   });
 });
