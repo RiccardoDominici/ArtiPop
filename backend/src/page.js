@@ -398,6 +398,24 @@ ${metaAnteprima(origin, dateKey, pageTitle, pageDescription, condiviso)}
   .step p code { background: rgba(255,255,255,.09); border-radius: 6px; padding: .1rem .4rem; font-size: .78rem; word-break: break-all; }
   .note { margin-top: 1rem; text-align: center; color: var(--dim); font-size: .8rem; line-height: 1.6; max-width: 44rem; margin-inline: auto; }
 
+  /* ---------- home minimale (2026-09-03, richiesta utente) ----------
+     La home mostra solo: anteprima (deck + mockup), nome canale, i due
+     comandi "Scarica la Shortcut"/"Come si attiva" e la guida #setup.
+     Tutto il resto del testo è nascosto via CSS, NON rimosso dal DOM: i
+     test home-*.test.js asseriscono la presenza del markup (journey,
+     noscript, hint, footer) e restano verdi; cambia solo ciò che si vede.
+     La card centra il contenuto in verticale: senza tag/scene in .cinfo
+     resterebbe un vuoto in basso. */
+  header.hero { display: none; }
+  .card { justify-content: center; }
+  .cinfo .tag, .cinfo .scene, .cinfo .stale, .cinfo .eredita { display: none; }
+  .hint { display: none; }
+  /* Stato offline: non è contenuto ma un segnale d'errore, resta visibile. */
+  #netstate:not([hidden]) { display: block; }
+  section.journey { display: none; }
+  #copyurl, #feedlink { display: none; }
+  footer { display: none; }
+
   footer { margin-top: 3.2rem; text-align: center; color: var(--dim); font-size: .78rem; }
   footer a { color: var(--a1); text-decoration: none; }
 
